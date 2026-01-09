@@ -408,6 +408,11 @@
         async function saveSettingsToSheet(settings) {
             try {
                 showLoading();
+                const updatedSettings = {
+                    ...examSettings, // Mengambil data lama (termasuk active_subjects)
+                    ...settings,      // Menimpa dengan data baru dari form
+                    active_subjects: examSettings.active_subjects // Daftar jadwal terbaru
+                };
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify({
@@ -419,6 +424,7 @@
                 const result = await response.json();
                 if (result.success) {
                     await loadAllData();
+                    showToast('Pengaturan berhasil disimpan', 'success');
                     return true;
                 } else {
                     showToast('Gagal menyimpan pengaturan: ' + result.message, 'error');
@@ -802,6 +808,11 @@
                                     <p class="text-xs md:text-sm opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - ${currentExam.subject}</p>
                                 </div>
                             </div>
+
+                            <!-- posisi notif online/offline -->
+                            <div id="connection-status" class="fixed top-4 right-4 z-50 px-4 py-2 rounded-full text-sm font-bold hidden shadow-lg transition-all duration-300">
+                                <span id="status-text"></span>
+                            </div>
                             <div class="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-between sm:justify-end">
                                 <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background-color: ${violationCount > 0 ? '#fee2e2' : '#dcfce7'};">
                                     <span class="text-lg md:text-xl">${violationCount > 0 ? '🚨' : '✅'}</span>
@@ -836,6 +847,35 @@
             renderNavigationButtons();
             setupViolationDetection();
         }
+
+        function updateConnectionStatus() {
+            const statusDiv = document.getElementById('connection-status');
+            const statusText = document.getElementById('status-text');
+
+            if (navigator.onLine) {
+                // Jika Online
+                statusDiv.classList.remove('bg-red-500', 'text-white');
+                statusDiv.classList.add('bg-green-500', 'text-white');
+                statusText.innerText = "🌐 Akhirnya online lagi 🤗";
+        
+                // Sembunyikan pesan setelah 2 detik
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 2000);
+            } else {
+                // Jika Offline
+                statusDiv.classList.remove('hidden', 'bg-green-500');
+                statusDiv.classList.add('bg-red-500', 'text-white');
+                statusText.innerText = "🚫 Koneksi Terputus! Jangan Refresh Halaman🥹";
+            }
+        }
+
+        // Pasang pendengar kejadian (event listeners)
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // Cek status saat pertama kali halaman dimuat
+        document.addEventListener('DOMContentLoaded', updateConnectionStatus);
         
         function setupViolationDetection() {
             // Deteksi saat tab tidak aktif (berpindah tab atau minimize)
@@ -1255,25 +1295,27 @@
 
         async function submitExam() {
 
+            if (!navigator.onLine) {
+                alert("Gagal mengirim! Koneksi internet Anda terputus. Silakan cari sinyal dan coba lagi."); //nottif offline
+                return; // Hentikan proses pengiriman
+            }
+
             // Cek apakah sisa waktu masih di atas minimum yang diizinkan
             const minTimeInSeconds = minTimeToSubmit * 60;
-
-            if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
-            showLoading();
-
-            // Tambahkan delay acak antara 1 hingga 10 detik agar tidak serentak
-            const randomDelay = Math.floor(Math.random() * 25000);
-            await new Promise(resolve => setTimeout(resolve, randomDelay));
-
-                        
+      
             if (remainingTime > minTimeInSeconds && minTimeToSubmit > 0) {
                 const remainingMinutes = Math.floor(remainingTime / 60);
                 const remainingSeconds = remainingTime % 60;
                 showSubmitWarning(remainingMinutes, remainingSeconds, minTimeToSubmit);
                 return;
             }
-            
             if (examTimer) clearInterval(examTimer);
+
+            if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
+            showLoading();
+            // Tambahkan delay acak antara 1 hingga 10 detik agar tidak serentak
+            const randomDelay = Math.floor(Math.random() * 25000);
+            await new Promise(resolve => setTimeout(resolve, randomDelay));
             
             // Tandai bahwa ujian sudah selesai untuk menonaktifkan deteksi pelanggaran
             examSubmitted = true;
@@ -2094,7 +2136,7 @@
                             class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             <option value="">Semua Kelas</option>
-                            ${generateClassOptions()}
+                            <!-- ${generateClassOptions()} munculin kelas-->  
                         </select>
                         <select id="filterSubject" onchange="filterResults()"
                             class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
@@ -2337,7 +2379,7 @@
             // 4. Proses Download
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Ujian");
-            XLSX.writeFile(workbook, `Hasil_Ujian_Rapi_${new Date().getTime()}.xlsx`);
+            XLSX.writeFile(workbook, `Hasil_Ujian_${new Date().getTime()}.xlsx`);
         }
 
         function renderQuestionsSection() {
@@ -3352,5 +3394,4 @@
 
         init();
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7b35ccf5ef585b',t:'MTc2NzM2NjkwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-</html>
+ </html>
