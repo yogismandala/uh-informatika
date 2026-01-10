@@ -251,7 +251,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('Error loading data:', error);
                 showToast('Gagal terhubung ke Google Sheets', 'error');
                 return false;
             } finally {
@@ -279,7 +278,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('Error saving user:', error);
                 showToast('Gagal menyimpan user', 'error');
                 return false;
             } finally {
@@ -307,7 +305,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('Error deleting user:', error);
                 showToast('Gagal menghapus user', 'error');
                 return false;
             } finally {
@@ -335,7 +332,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('Error saving question:', error);
                 showToast('Gagal menyimpan soal', 'error');
                 return false;
             } finally {
@@ -363,7 +359,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('Error deleting question:', error);
                 showToast('Gagal menghapus soal', 'error');
                 return false;
             } finally {
@@ -389,9 +384,7 @@
                     }
             
                     // Jika server merespon tapi sukses false, log errornya
-                            console.warn(`Percobaan ke-${i + 1} gagal: ${result.message}`);
                 } catch (error) {
-                    console.error(`Kesalahan koneksi pada percobaan ke-${i + 1}:`, error);
                 } finally {
                     hideLoading();
                 }
@@ -431,7 +424,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('Error saving settings:', error);
                 showToast('Gagal menyimpan pengaturan', 'error');
                 return false;
             } finally {
@@ -714,6 +706,7 @@
             if (!remainingTime) {
                 remainingTime = examSettings.exam_duration * 60;
             }
+            
         }
 
         function shuffleArray(array) {
@@ -1368,9 +1361,13 @@
             let correctAnswers = 0;
             
             examQuestions.forEach((question, idx) => {
-                const studentAnswer = studentAnswers[idx];
-                let answerKey = question.answer_key;
-                
+                //const studentAnswer = studentAnswers[idx]; 
+                //let answerKey = atob(question.security_token);
+
+                // Versi paling aman untuk angka maupun huruf
+                const studentAnswer = String(studentAnswers[idx] || "").trim();
+                const answerKey = String(atob(question.security_token) || "").trim();
+               
                 try {
                     answerKey = JSON.parse(answerKey);
                 } catch {
