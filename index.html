@@ -166,13 +166,7 @@
             shuffle_answers: false,
             show_score: true,
             max_questions: 0,
-            grade_ranges: {
-                A: { min: 90, max: 100 },
-                B: { min: 80, max: 89 },
-                C: { min: 70, max: 79 },
-                D: { min: 60, max: 69 },
-                E: { min: 0, max: 59 }
-            },
+            
             active_subjects: [] // Array of active exam subjects with schedules
         };
         
@@ -230,9 +224,7 @@
                         examSettings.show_score = data.settings.show_score !== undefined ? data.settings.show_score : true;
                         examSettings.max_questions = data.settings.max_questions || 0;
                         
-                        if (data.settings.grade_ranges) {
-                            examSettings.grade_ranges = data.settings.grade_ranges;
-                        }
+                        
                         
                         if (data.settings.active_subjects) {
                             try {
@@ -706,7 +698,6 @@
             if (!remainingTime) {
                 remainingTime = examSettings.exam_duration * 60;
             }
-            
         }
 
         function shuffleArray(array) {
@@ -1400,11 +1391,6 @@
 
         function getLetterGrade(score) {
             const ranges = examSettings.grade_ranges || {
-                A: { min: 90, max: 100 },
-                B: { min: 80, max: 89 },
-                C: { min: 70, max: 79 },
-                D: { min: 60, max: 69 },
-                E: { min: 0, max: 59 }
             };
             
             for (const [grade, range] of Object.entries(ranges)) {
@@ -1412,7 +1398,6 @@
                     return grade;
                 }
             }
-            return 'E';
         }
 
         function getGradeColor(grade) {
@@ -1449,14 +1434,10 @@
                         </div>
                         
                         ${examSettings.show_score ? `
-                            <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="grid grid-cols-1 gap-4 mb-6">
                                 <div class="bg-blue-50 rounded-xl p-6">
                                     <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Nilai Angka:</p>
                                     <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${primaryColor};">${score}</p>
-                                </div>
-                                <div class="rounded-xl p-6" style="background-color: ${gradeColor}15;">
-                                    <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Nilai Huruf:</p>
-                                    <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${gradeColor};">${letterGrade}</p>
                                 </div>
                             </div>
                         ` : `
@@ -3208,60 +3189,7 @@
             }
         }
 
-        async function saveGradeRanges(e) {
-            e.preventDefault();
-            
-            const gradeRanges = {
-                A: {
-                    min: parseInt(document.getElementById('gradeAMin').value),
-                    max: parseInt(document.getElementById('gradeAMax').value)
-                },
-                B: {
-                    min: parseInt(document.getElementById('gradeBMin').value),
-                    max: parseInt(document.getElementById('gradeBMax').value)
-                },
-                C: {
-                    min: parseInt(document.getElementById('gradeCMin').value),
-                    max: parseInt(document.getElementById('gradeCMax').value)
-                },
-                D: {
-                    min: parseInt(document.getElementById('gradeDMin').value),
-                    max: parseInt(document.getElementById('gradeDMax').value)
-                },
-                E: {
-                    min: parseInt(document.getElementById('gradeEMin').value),
-                    max: parseInt(document.getElementById('gradeEMax').value)
-                }
-            };
-            
-            // Validasi: pastikan rentang tidak tumpang tindih
-            const ranges = Object.values(gradeRanges);
-            for (let i = 0; i < ranges.length; i++) {
-                if (ranges[i].min > ranges[i].max) {
-                    showToast('Nilai minimum tidak boleh lebih besar dari nilai maksimum!', 'error');
-                    return;
-                }
-                
-                for (let j = i + 1; j < ranges.length; j++) {
-                    if ((ranges[i].min <= ranges[j].max && ranges[i].min >= ranges[j].min) ||
-                        (ranges[i].max <= ranges[j].max && ranges[i].max >= ranges[j].min)) {
-                        showToast('Rentang nilai tidak boleh tumpang tindih!', 'error');
-                        return;
-                    }
-                }
-            }
-            
-            const settingsData = {
-                grade_ranges: JSON.stringify(gradeRanges)
-            };
-            
-            const success = await saveSettingsToSheet(settingsData);
-            
-            if (success) {
-                showToast('Rentang nilai berhasil disimpan!', 'success');
-            }
-        }
-
+    
         async function refreshData() {
             await loadAllData();
             showToast('Data berhasil diperbarui!', 'success');
