@@ -793,7 +793,7 @@
             currentQuestionIndex = 0;
             remainingTime = 0;
             
-            localStorage.clear(violationCount);
+            localStorage.clear();
             localStorage.clear();
             renderLoginPage();
         }
@@ -1367,7 +1367,7 @@
             localStorage.removeItem('violationCount');
             localStorage.removeItem('doubtQuestions');
             // Jika ingin benar-benar bersih, gunakan: 
-            localStorage.clear();
+            localStorage.clear('violationCount');
             sessionStorage.removeItem('currentUser');
             sessionStorage.removeItem('currentExam');
             sessionStorage.removeItem('studentAnswers');
@@ -1375,7 +1375,7 @@
             sessionStorage.removeItem('currentQuestionIndex');
             sessionStorage.removeItem('remainingTime');
             sessionStorage.removeItem('violationCount');
-            sessionStorage.clear();
+            sessionStorage.clear('violationCount');
             
             const success = await saveExamResultToSheet(examData);
             
