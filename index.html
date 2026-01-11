@@ -476,7 +476,7 @@
                 const savedDoubt = localStorage.getItem('doubtQuestions') || sessionStorage.getItem('doubtQuestions');
                 const savedIndex = localStorage.getItem('currentQuestionIndex') || sessionStorage.getItem('currentQuestionIndex');
                 const savedTime = localStorage.getItem('remainingTime') || sessionStorage.getItem('remainingTime');
-                const savedViolations = sessionStorage.getItem('violationCount') || localStorage.getItem('violationCount');
+                const savedViolations = localStorage.getItem('violationCount') || sessionStorage.getItem('violationCount');
                 // 2. VALIDASI KRUSIAL: Cek apakah mata pelajaran ini benar-benar punya soal
                 const subjectQuestions = allQuestions.filter(q => q.subject === currentExam.subject);
         
@@ -1374,7 +1374,6 @@
             sessionStorage.removeItem('currentQuestionIndex');
             sessionStorage.removeItem('remainingTime');
             sessionStorage.removeItem('violationCount');
-            sessionStorage.clear();
             
             const success = await saveExamResultToSheet(examData);
             
@@ -1568,8 +1567,8 @@
             remainingTime = 0;
             violationCount = 0;
             
-            localStorage.removeItem(violationCount);
-            sessionStorage.removeItem(violationCount);
+            localStorage.removeItem('violationCount');
+            sessionStorage.removeItem('violationCount');
             renderLoginPage();
         }
 
