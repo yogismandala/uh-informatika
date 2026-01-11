@@ -464,7 +464,7 @@
             const dataLoaded = await loadAllData();
     
             // 2. Gunakan localStorage agar lebih persisten saat refresh
-            const savedUser = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+            const savedUser = localStorage.getItem('currentUser'); //|| sessionStorage.getItem('currentUser');
             const savedExam = localStorage.getItem('currentExam');
     
             if (savedUser && savedExam && dataLoaded) {
@@ -473,9 +473,9 @@
         
                 // Load data jawaban dan state lainnya
                 const savedAnswers = localStorage.getItem('studentAnswers');
-                const savedDoubt = localStorage.getItem('doubtQuestions') || sessionStorage.getItem('doubtQuestions');
-                const savedIndex = localStorage.getItem('currentQuestionIndex') || sessionStorage.getItem('currentQuestionIndex');
-                const savedTime = localStorage.getItem('remainingTime') || sessionStorage.getItem('remainingTime');
+                const savedDoubt = localStorage.getItem('doubtQuestions'); //|| sessionStorage.getItem('doubtQuestions');
+                const savedIndex = localStorage.getItem('currentQuestionIndex'); //|| sessionStorage.getItem('currentQuestionIndex');
+                const savedTime = localStorage.getItem('remainingTime'); //|| sessionStorage.getItem('remainingTime');
                 const savedViolations = sessionStorage.getItem('violationCount');
                 // 2. VALIDASI KRUSIAL: Cek apakah mata pelajaran ini benar-benar punya soal
                 const subjectQuestions = allQuestions.filter(q => q.subject === currentExam.subject);
