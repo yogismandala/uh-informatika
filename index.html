@@ -118,7 +118,7 @@
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body class="h-full gradient-bg">
+i <body class="h-full gradient-bg">
   <div id="loadingOverlay" class="loading-overlay" style="display: none;">
    <div class="text-center">
     <div class="spinner mx-auto mb-4"></div>
@@ -907,6 +907,8 @@
                     // Tidak ada aksi saat kembali ke tab (document.visible)                   
                     
                 }
+                localStorage.removeItem('violationCount');
+                sessionStorage.removeItem('violationCount');
             });
             
             // Deteksi klik kanan (mencoba buka menu context)
@@ -1567,8 +1569,7 @@
             remainingTime = 0;
             violationCount = 0;
             
-            localStorage.removeItem('violationCount');
-            sessionStorage.removeItem('violationCount');
+            
             renderLoginPage();
         }
 
@@ -2693,7 +2694,7 @@
         }
 
         async function confirmDeleteQuestion(questionId) {
-            document.querySelector('div.fixed').remove();
+            document.querySelector('div.fixed').v();
             
             const success = await deleteQuestionFromSheet(questionId);
             
