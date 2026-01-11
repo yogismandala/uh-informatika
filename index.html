@@ -907,8 +907,6 @@ i <body class="h-full gradient-bg">
                     // Tidak ada aksi saat kembali ke tab (document.visible)                   
                     
                 }
-                localStorage.removeItem('violationCount');
-                sessionStorage.removeItem('violationCount');
             });
             
             // Deteksi klik kanan (mencoba buka menu context)
@@ -1368,7 +1366,6 @@ i <body class="h-full gradient-bg">
             localStorage.removeItem('violationCount');
             localStorage.removeItem('doubtQuestions');
             // Jika ingin benar-benar bersih, gunakan: 
-            localStorage.clear('violationCount');
             sessionStorage.removeItem('currentUser');
             sessionStorage.removeItem('currentExam');
             sessionStorage.removeItem('studentAnswers');
@@ -1569,6 +1566,7 @@ i <body class="h-full gradient-bg">
             remainingTime = 0;
             violationCount = 0;
             
+            localStorage.removeItem('violationCount');
             
             renderLoginPage();
         }
