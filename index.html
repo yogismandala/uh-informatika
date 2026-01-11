@@ -2,6 +2,9 @@
 <html lang="id" class="h-full">
  <head>
   <meta charset="UTF-8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SMPN 11 TANGERANG</title>
   <script src="/_sdk/element_sdk.js"></script>
@@ -432,6 +435,17 @@
             isRefreshing = true;
         };
 
+        function activateFullscreen() {
+            let element = document.documentElement; // Mengambil seluruh halaman
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) { /* Safari & iOS */
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { /* IE11 */
+                element.msRequestFullscreen();
+            }
+        }
+
         async function init() {
             // 1. Pastikan data dari server sudah dimuat sebelum mengecek status login
             const dataLoaded = await loadAllData();
@@ -629,6 +643,9 @@
             currentUser = user;
             sessionStorage.setItem('currentUser', JSON.stringify(user));
             localStorage.setItem('currentUser', JSON.stringify(user)); // Tambahkan ini
+
+            // TAMBAHKAN KODE INI DI SINI
+            activateFullscreen();
             
             if (user.role === 'admin') {
                 renderAdminDashboard();
@@ -886,6 +903,14 @@
                     showToast('Klik kanan tidak diperbolehkan selama ujian', 'error');
                 }
             });
+            // Mencegah tombol F12, Ctrl+Shift+I, Ctrl+U
+            document.onkeydown = function(e) {
+                if (e.keyCode == 123 || 
+                    (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) || 
+                    (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0))) {
+                    return false;
+                }
+            }
         }
         
         function updateViolationDisplay() {
