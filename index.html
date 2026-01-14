@@ -13,6 +13,16 @@
   
   
   <style>
+
+        body {
+            /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
+            overscroll-behavior-y: contain; 
+            /* Mencegah pemilihan teks (opsional untuk keamanan) */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
         /* Efek Glassmorphism untuk Form Login */
         .glass-panel {
             background: rgba(255, 255, 255, 0.2); /* Transparansi putih */
@@ -465,6 +475,10 @@
         window.onbeforeunload = function() {
             isRefreshing = true;
         };
+        // Tambahkan listener global di luar fungsi manapun
+        window.onbeforeunload = function() {
+            isRefreshing = true; // Tandai bahwa user sedang merefresh halaman
+        };
 
         function activateFullscreen() {
             let element = document.documentElement; // Mengambil seluruh halaman
@@ -481,6 +495,7 @@
         }
 
         async function init() {
+            isRefreshing = false;
 
             // Deteksi klik kanan (mencoba buka menu context)
             document.addEventListener('contextmenu', function(e) {
@@ -938,11 +953,12 @@
             // Hanya hitung pelanggaran saat KELUAR dari tab, bukan saat kembali
 
             document.addEventListener('visibilitychange', function() {
-                if (currentUser && currentUser.role === 'siswa' && currentExam && !examSubmitted) {
+                if (currentUser?.role === 'siswa' && currentExam && !examSubmitted) {
                     if (document.hidden && !isRefreshing) {
                         // Hanya tambah pelanggaran saat keluar dari tab
                         violationCount++;
-                        sessionStorage.setItem('violationCount', violationCount.toString());
+                        saveToStorage();
+                        
                         updateViolationDisplay();
                         showViolationWarning();
                     }
@@ -958,6 +974,31 @@
                     showToast('Klik kanan tidak diperbolehkan selama ujian', 'error');
                 }
             });
+
+            // 2. Deteksi Fullscreen (Khusus Siswa)
+            document.addEventListener('fullscreenchange', () => {
+                if (currentUser?.role === 'siswa' && !document.fullscreenElement && !isRefreshing && !examSubmitted) {
+                    // Berikan sedikit jeda sebelum menambah pelanggaran untuk menghindari glitch saat refresh
+                    setTimeout(() => {
+                        if (!document.fullscreenElement && !isRefreshing) {
+                            violationCount++;
+                            saveToStorage();
+                            updateViolationDisplay();
+                            alert("Peringatan! Anda keluar dari mode Fullscreen. Pelanggaran dicatat.");
+                            activateFullscreen(); // Paksa masuk lagi
+                        }
+                    }, 1000);
+                }
+            });
+
+
+            // Fungsi pembantu untuk simpan data ke storage agar tidak hilang saat refresh
+            function saveToStorage() {
+                localStorage.setItem('violationCount', violationCount.toString());
+                sessionStorage.setItem('violationCount', violationCount.toString());
+            }
+
+
             // Mencegah tombol F12, Ctrl+Shift+I, Ctrl+U
             document.onkeydown = function(e) {
                 if (e.keyCode == 123 || 
