@@ -5,7 +5,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>SMPN 11 TANGERANG</title>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,6 +13,31 @@
   
   
   <style>
+        /* Efek Glassmorphism untuk Form Login */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.2); /* Transparansi putih */
+            backdrop-filter: blur(15px);          /* Efek blur kaca */
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+        }
+
+        /* Penyesuaian input agar senada dengan efek kaca */
+        .glass-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .glass-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: white;
+        }
         body {
             box-sizing: border-box;
         }
@@ -118,7 +143,7 @@
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
-i <body class="h-full gradient-bg">
+ <body class="h-full">
   <div id="loadingOverlay" class="loading-overlay" style="display: none;">
    <div class="text-center">
     <div class="spinner mx-auto mb-4"></div>
@@ -217,7 +242,13 @@ i <body class="h-full gradient-bg">
                 if (data.success) {
                     allUsers = data.users || [];
                     allQuestions = data.questions || [];
-                    allExamResults = data.examResults || [];
+                    // LOGIKA BARU: Hanya muat hasil ujian jika user adalah Admin atau Guru
+                    const userRole = currentUser ? currentUser.role : null;
+                    if (userRole === 'admin' || userRole === 'guru') {
+                        allExamResults = data.examResults || [];
+                    } else {
+                        allExamResults = []; // Siswa tidak perlu data ini
+                    }
                     
                     // Load settings dari sheet (kecuali min_time_to_submit yang disimpan di localStorage)
                     if (data.settings) {
@@ -438,9 +469,12 @@ i <body class="h-full gradient-bg">
         function activateFullscreen() {
             let element = document.documentElement; // Mengambil seluruh halaman
             if (element.requestFullscreen) {
-                element.requestFullscreen();
+                element.requestFullscreen().catch(err => {
+                });
             } else if (element.webkitRequestFullscreen) { /* Safari & iOS */
                 element.webkitRequestFullscreen();
+            } else if (element.mozRequestFullScreen) { /* Firefox */
+                element.mozRequestFullScreen();
             } else if (element.msRequestFullscreen) { /* IE11 */
                 element.msRequestFullscreen();
             }
@@ -517,49 +551,53 @@ i <body class="h-full gradient-bg">
             const baseFontStack = 'Arial, sans-serif';
             const baseSize = config.font_size || defaultConfig.font_size;
             const primaryColor = config.primary_color || defaultConfig.primary_color;
-            const backgroundColor = config.background_color || defaultConfig.background_color;
+            //const backgroundColor = config.background_color || defaultConfig.background_color;
             const textColor = config.text_color || defaultConfig.text_color;
+
+            // Ganti URL ini dengan gambar latar belakang pilihan Anda
+            const bgImage = "https://i.ibb.co.com/VsdD05v/Whats-App-Image-2024-06-17-at-19-11-44.jpg";
             
             document.getElementById('app').innerHTML = `
-                <div class="min-h-full flex items-center justify-center p-4" style="background: linear-gradient(135deg, ${backgroundColor} 0%, #bfdbfe 100%);">
+                <div class="min-h-full flex items-center justify-center p-4" 
+                    style="background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${bgImage}'); background-size: cover; background-position: center;">
                     <div class="w-full max-w-md">
-                        <div class="bg-white rounded-2xl shadow-custom p-8">
+                        <div class="glass-panel p-8 shadow-2xl">
                             <div class="text-center mb-8">
-                                <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: ${textColor};">Selamat Datang</h1>
-                                <p class="text-gray-500" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Silahkan Login dengan Username dan Password masing - masing</p>
+                                <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: white;">Selamat Datang</h1>
+                                <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: rgba(255,255,255,0.8);">Silahkan Login untuk memulai ujian</p>
                             </div>
-                            
+                    
                             <form id="loginForm" class="space-y-4">
                                 <div>
-                                    <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
+                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
                                     <input type="text" id="username" required 
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                                        class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition"
                                         style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                         placeholder="Masukkan username">
                                 </div>
-                                
+                        
                                 <div>
-                                    <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
+                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
                                     <input type="password" id="password" required 
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                                        class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition"
                                         style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                         placeholder="Masukkan password">
                                 </div>
-                                
+                        
                                 <div id="subjectSelect" style="display: none;">
-                                    <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
+                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
                                     <select id="subject" 
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
-                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                                        class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition appearance-none"
+                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: black;">
                                         <option value="">Pilih Mata Pelajaran</option>
                                         ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
                                     </select>
                                 </div>
-                                
-                                <div id="errorMessage" class="text-red-600 text-center hidden" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"></div>
-                                
+                        
+                                <div id="errorMessage" class="text-red-300 text-center hidden font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"></div>
+
                                 <button type="submit" id="loginBtn"
-                                    class="w-full py-3 rounded-lg text-white font-semibold hover:opacity-90 transition"
+                                    class="w-full py-3 rounded-lg text-white font-semibold hover:scale-[1.02] transition-transform shadow-lg"
                                     style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                                     ${config.login_button_text || defaultConfig.login_button_text}
                                 </button>
@@ -658,10 +696,14 @@ i <body class="h-full gradient-bg">
             localStorage.setItem('currentUser', JSON.stringify(user)); // Tambahkan ini
 
             // TAMBAHKAN KODE INI DI SINI
+            if (user.role === 'siswa') {
             activateFullscreen();
+            }
             
             if (user.role === 'admin') {
                 renderAdminDashboard();
+            } else if (user.role === 'guru') {
+                renderGuruDashboard();
             } else {
                 currentExam = { subject: subject };
                 sessionStorage.setItem('currentExam', JSON.stringify(currentExam));
@@ -1427,28 +1469,6 @@ i <body class="h-full gradient-bg">
             return Math.round((correctAnswers / examQuestions.length) * 100);
         }
 
-        function getLetterGrade(score) {
-            const ranges = examSettings.grade_ranges || {
-            };
-            
-            for (const [grade, range] of Object.entries(ranges)) {
-                if (score >= range.min && score <= range.max) {
-                    return grade;
-                }
-            }
-        }
-
-        function getGradeColor(grade) {
-            const colors = {
-                'A': '#22c55e',
-                'B': '#3b82f6',
-                'C': '#eab308',
-                'D': '#f97316',
-                'E': '#ef4444'
-            };
-            return colors[grade] || '#6b7280';
-        }
-
         function renderResultPage(score) {
             const config = window.elementSdk?.config || defaultConfig;
             const customFont = config.font_family || defaultConfig.font_family;
@@ -1456,10 +1476,7 @@ i <body class="h-full gradient-bg">
             const baseSize = config.font_size || defaultConfig.font_size;
             const primaryColor = config.primary_color || defaultConfig.primary_color;
             const textColor = config.text_color || defaultConfig.text_color;
-            
-            const letterGrade = getLetterGrade(score);
-            const gradeColor = getGradeColor(letterGrade);
-            
+                    
             document.getElementById('app').innerHTML = `
                 <div class="min-h-full flex items-center justify-center p-4 gradient-bg">
                     <div class="max-w-2xl w-full bg-white rounded-2xl shadow-custom p-8 text-center">
@@ -1670,6 +1687,82 @@ i <body class="h-full gradient-bg">
             
             showAdminSection('dashboard');
         }
+
+        function renderGuruDashboard() {
+            const config = window.elementSdk?.config || defaultConfig;
+            const customFont = config.font_family || defaultConfig.font_family;
+            const baseFontStack = 'Arial, sans-serif';
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            const textColor = config.text_color || defaultConfig.text_color;
+            
+            // Start auto refresh setiap 30 detik
+            if (adminRefreshInterval) {
+                clearInterval(adminRefreshInterval);
+            }
+            adminRefreshInterval = setInterval(async () => {
+                await loadAllData();
+                const activeSection = document.querySelector('[id^="nav-"]').parentElement.querySelector('[style*="color: rgb"]')?.id.replace('nav-', '');
+                if (activeSection) {
+                    // Update konten tanpa full re-render untuk menghindari flicker
+                    if (activeSection === 'dashboard') {
+                        updateDashboardStats();
+                    } else if (activeSection === 'results') {
+                        updateResultsTable();
+                    }
+                }
+            }, 30000); // Refresh setiap 30 detik
+            
+            document.getElementById('app').innerHTML = `
+                <div class="h-full flex flex-col">
+                    <div class="gradient-header text-white shadow-lg" style="background: linear-gradient(90deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
+                        <div class="px-4 md:px-6 py-3 md:py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xl md:text-2xl">👨‍💼</span>
+                                    </div>
+                                    <div>
+                                        <h2 class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">Guru Panel</h2>
+                                        <p class="text-xs opacity-80 hidden sm:block" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</p>
+                                    </div>
+                                </div>
+                                
+                                <button onclick="logout()"
+                                    class="px-3 py-1.5 md:px-4 md:py-2 text-sm rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition flex-shrink-0"
+                                    style="font-family: ${customFont}, ${baseFontStack};">
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <nav class="bg-white shadow-md border-b border-gray-200">
+                        <div class="px-4 md:px-6">
+                            <div class="flex overflow-x-auto gap-1 md:gap-2 scrollbar-hide py-2">
+                                <button onclick="showGuruSection('dashboard')" id="nav-dashboard"
+                                    class="px-4 py-2.5 text-sm md:text-base rounded-lg transition whitespace-nowrap flex-shrink-0 touch-manipulation"
+                                    style="font-family: ${customFont}, ${baseFontStack}; min-width: 130px; -webkit-tap-highlight-color: transparent;">
+                                    📊 Dashboard
+                                </button>
+                                <button onclick="showGuruSection('questions')" id="nav-questions"
+                                    class="px-4 py-2.5 text-sm md:text-base rounded-lg transition whitespace-nowrap flex-shrink-0 touch-manipulation"
+                                    style="font-family: ${customFont}, ${baseFontStack}; min-width: 130px; -webkit-tap-highlight-color: transparent;">
+                                    📚 Bank Soal
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+                    
+                    <div class="flex-1 overflow-auto p-3 md:p-6 gradient-bg">
+                        <div id="guruContent" class="max-w-7xl mx-auto"></div>
+                    </div>
+                </div>
+            `;
+            
+            showGuruSection('dashboard');
+
+        }
         
         function updateDashboardStats() {
             const config = window.elementSdk?.config || defaultConfig;
@@ -1716,8 +1809,7 @@ i <body class="h-full gradient-bg">
             
             if (tbody) {
                 tbody.innerHTML = allExamResults.map(result => {
-                    const letterGrade = getLetterGrade(result.final_score);
-                    const gradeColor = getGradeColor(letterGrade);
+                    
                     return `
                     <tr class="border-b border-gray-200 hover:bg-gray-50">
                         <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
@@ -1726,8 +1818,8 @@ i <body class="h-full gradient-bg">
                         <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${new Date(result.exam_time).toLocaleString('id-ID')}</td>
                         <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.final_score}</td>
                         <td class="p-3">
-                            <span class="px-3 py-1 rounded-full font-bold text-white" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${gradeColor};">
-                                ${letterGrade}
+                            <span class="px-3 py-1 rounded-full font-bold text-white" style="font-family: ${customFont}, ${baseFontStack};">
+
                             </span>
                         </td>
                         <td class="p-3">
@@ -1741,8 +1833,7 @@ i <body class="h-full gradient-bg">
             
             if (mobileView) {
                 mobileView.innerHTML = allExamResults.length > 0 ? allExamResults.map(result => {
-                    const letterGrade = getLetterGrade(result.final_score);
-                    const gradeColor = getGradeColor(letterGrade);
+                    
                     return `
                     <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                         <div class="flex justify-between items-start mb-3">
@@ -1755,8 +1846,7 @@ i <body class="h-full gradient-bg">
                                     <div class="text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 75 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</div>
                                     <p class="text-xs text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">Nilai</p>
                                 </div>
-                                <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${gradeColor};">
-                                    ${letterGrade}
+                                <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack};">
                                 </div>
                             </div>
                         </div>
@@ -1808,6 +1898,26 @@ i <body class="h-full gradient-bg">
             else if (section === 'schedule') renderScheduleSection();
         }
 
+        function showGuruSection(section) {
+            const config = window.elementSdk?.config || defaultConfig;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            
+            document.querySelectorAll('[id^="nav-"]').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'text-blue-800', 'font-semibold');
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+            });
+            
+            const activeBtn = document.getElementById(`nav-${section}`);
+            activeBtn.style.backgroundColor = `${primaryColor}15`;
+            activeBtn.style.color = primaryColor;
+            activeBtn.classList.add('font-semibold');
+            
+            if (section === 'dashboard') renderDashboardGuruSection();
+            else if (section === 'questions') renderGuruQuestionsSection();
+        }
+
+
         function renderDashboardSection() {
             const config = window.elementSdk?.config || defaultConfig;
             const customFont = config.font_family || defaultConfig.font_family;
@@ -1840,6 +1950,83 @@ i <body class="h-full gradient-bg">
                             <p class="font-bold text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${totalUsers}</p>
                             <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${totalStudents} Siswa</p>
                         </div>
+                        
+                        <div class="bg-white rounded-xl shadow p-4 md:p-5">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
+                                <span class="text-xl md:text-2xl">📝</span>
+                            </div>
+                            <p class="font-bold text-green-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</p>
+                            <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Soal Tersedia</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow p-4 md:p-5">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
+                                <span class="text-xl md:text-2xl">📊</span>
+                            </div>
+                            <p class="font-bold text-purple-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</p>
+                            <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Total Ujian</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow p-4 md:p-5">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata</h3>
+                                <span class="text-xl md:text-2xl">⭐</span>
+                            </div>
+                            <p class="font-bold text-yellow-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${avgScore}</p>
+                            <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Nilai Rata-rata</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor};">🏆 Hasil Ujian Terbaru</h3>
+                        <div class="space-y-2">
+                            ${recentResults.length > 0 ? recentResults.map((result) => `
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                                    <div>
+                                        <p class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</p>
+                                        <p class="text-gray-500 text-xs" style="font-family: ${customFont}, ${baseFontStack};">${result.exam_subject} - Kelas ${result.student_class}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 75 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</p>
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="text-center py-8 text-gray-400">
+                                    <p style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboardGuruSection() { //tampilan dashboard
+            const config = window.elementSdk?.config || defaultConfig;
+            const customFont = config.font_family || defaultConfig.font_family;
+            const baseFontStack = 'Arial, sans-serif';
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const textColor = config.text_color || defaultConfig.text_color;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            
+            
+            
+            const totalQuestions = allQuestions.length;
+            const totalExams = allExamResults.length;
+            
+            const avgScore = allExamResults.length > 0 
+                ? Math.round(allExamResults.reduce((sum, r) => sum + r.final_score, 0) / allExamResults.length)
+                : 0;
+            
+            const recentResults = [...allExamResults]
+                .sort((a, b) => new Date(b.exam_time) - new Date(a.exam_time))
+                .slice(0, 5);
+            
+            document.getElementById('guruContent').innerHTML = `
+                <div class="space-y-4 md:space-y-6">
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         
                         <div class="bg-white rounded-xl shadow p-4 md:p-5">
                             <div class="flex items-center justify-between mb-2">
@@ -2183,14 +2370,12 @@ i <body class="h-full gradient-bg">
                                     <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Mapel</th>
                                     <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Waktu</th>
                                     <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Nilai</th>
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Huruf</th>
                                     <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Pelanggaran</th>
                                 </tr>
                             </thead>
                             <tbody id="resultsTableBody">
                                 ${allExamResults.map(result => {
-                                    const letterGrade = getLetterGrade(result.final_score);
-                                    const gradeColor = getGradeColor(letterGrade);
+                                    
                                     return `
                                     <tr class="border-b border-gray-200 hover:bg-gray-50">
                                         <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
@@ -2198,11 +2383,6 @@ i <body class="h-full gradient-bg">
                                         <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
                                         <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${new Date(result.exam_time).toLocaleString('id-ID')}</td>
                                         <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.final_score}</td>
-                                        <td class="p-3">
-                                            <span class="px-3 py-1 rounded-full font-bold text-white" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${gradeColor};">
-                                                ${letterGrade}
-                                            </span>
-                                        </td>
                                         <td class="p-3">
                                             <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
                                                 ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
@@ -2222,8 +2402,7 @@ i <body class="h-full gradient-bg">
                     <!-- Mobile Card View -->
                     <div class="md:hidden space-y-3" id="resultsMobileView">
                         ${allExamResults.length > 0 ? allExamResults.map(result => {
-                            const letterGrade = getLetterGrade(result.final_score);
-                            const gradeColor = getGradeColor(letterGrade);
+                            
                             return `
                             <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                                 <div class="flex justify-between items-start mb-3">
@@ -2236,8 +2415,8 @@ i <body class="h-full gradient-bg">
                                             <div class="text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 75 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</div>
                                             <p class="text-xs text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">Nilai</p>
                                         </div>
-                                        <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${gradeColor};">
-                                            ${letterGrade}
+                                        <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack};">
+               
                                         </div>
                                     </div>
                                 </div>
@@ -2268,6 +2447,7 @@ i <body class="h-full gradient-bg">
             `;
         }
 
+
         function filterResults() {
             const filterClass = document.getElementById('filterClass').value;
             const filterSubject = document.getElementById('filterSubject').value;
@@ -2290,8 +2470,7 @@ i <body class="h-full gradient-bg">
             
             // Update Desktop Table
             document.getElementById('resultsTableBody').innerHTML = filtered.map(result => {
-                const letterGrade = getLetterGrade(result.final_score);
-                const gradeColor = getGradeColor(letterGrade);
+                
                 return `
                 <tr class="border-b border-gray-200 hover:bg-gray-50">
                     <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
@@ -2299,11 +2478,7 @@ i <body class="h-full gradient-bg">
                     <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
                     <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${new Date(result.exam_time).toLocaleString('id-ID')}</td>
                     <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.final_score}</td>
-                    <td class="p-3">
-                        <span class="px-3 py-1 rounded-full font-bold text-white" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${gradeColor};">
-                            ${letterGrade}
-                        </span>
-                    </td>
+                    
                     <td class="p-3">
                         <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
                             ${result.violations > 0 ? `⚠️ ${result.violations}x` : '✅ 0'}
@@ -2316,8 +2491,7 @@ i <body class="h-full gradient-bg">
             const mobileView = document.getElementById('resultsMobileView');
             if (mobileView) {
                 mobileView.innerHTML = filtered.length > 0 ? filtered.map(result => {
-                    const letterGrade = getLetterGrade(result.final_score);
-                    const gradeColor = getGradeColor(letterGrade);
+                    
                     return `
                     <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                         <div class="flex justify-between items-start mb-3">
@@ -2330,8 +2504,8 @@ i <body class="h-full gradient-bg">
                                     <div class="text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 75 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</div>
                                     <p class="text-xs text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">Nilai</p>
                                 </div>
-                                <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${gradeColor};">
-                                    ${letterGrade}
+                                <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack};">
+           
                                 </div>
                             </div>
                         </div>
@@ -2472,12 +2646,169 @@ i <body class="h-full gradient-bg">
             `;
         }
 
+        function renderGuruQuestionsSection() { // tambah soal
+            const config = window.elementSdk?.config || defaultConfig;
+            const customFont = config.font_family || defaultConfig.font_family;
+            const baseFontStack = 'Arial, sans-serif';
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const textColor = config.text_color || defaultConfig.text_color;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            
+            const questionsByGrade = {
+                '7': allQuestions.filter(q => q.question_class.startsWith('7')),
+                '8': allQuestions.filter(q => q.question_class.startsWith('8')),
+                '9': allQuestions.filter(q => q.question_class.startsWith('9'))
+            };
+            
+            document.getElementById('guruContent').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
+                        <div class="flex gap-2">
+                            <button onclick="showAddQuestionForm()" 
+                                class="px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm"
+                                style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
+                                ➕ Tambah Soal
+                            </button>
+                            <button onclick="refreshData()" 
+                                class="px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm"
+                                style="font-family: ${customFont}, ${baseFontStack};">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="questionFormContainer" style="display: none;" class="bg-white rounded-lg shadow p-4"></div>
+                    
+                    <div class="space-y-4">
+                        ${['7', '8', '9'].map(grade => `
+                            <div class="bg-white rounded-lg shadow p-4">
+                                <div class="flex items-center justify-between mb-3 pb-2 border-b-2 border-gray-200">
+                                    <h3 class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">
+                                        📚 Kelas ${grade} <span class="text-sm font-normal text-gray-600">(${questionsByGrade[grade].length} soal)</span>
+                                    </h3>
+                                </div>
+                                <div class="space-y-2" id="questionsList${grade}">
+                                    ${questionsByGrade[grade].length > 0 ? questionsByGrade[grade].map(q => `
+                                        <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition">
+                                            <div class="flex justify-between items-start gap-3">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex gap-2 mb-2 flex-wrap">
+                                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold" style="font-family: ${customFont}, ${baseFontStack};">${q.subject}</span>
+                                                        <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold" style="font-family: ${customFont}, ${baseFontStack};">${getQuestionTypeLabel(q.question_type)}</span>
+                                                    </div>
+                                                    <p class="text-gray-800 text-sm break-words" style="font-family: ${customFont}, ${baseFontStack}; word-break: break-word; overflow-wrap: break-word;">${q.question_text}</p>
+                                                </div>
+                                                <button onclick="deleteQuestion('${q.id}')" 
+                                                    class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex-shrink-0"
+                                                    style="font-family: ${customFont}, ${baseFontStack};">
+                                                    🗑️ Hapus
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('') : `
+                                        <div class="text-center py-8 text-gray-400">
+                                            <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Belum ada soal untuk kelas ${grade}</p>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         function showAddQuestionForm() {
             const config = window.elementSdk?.config || defaultConfig;
             const customFont = config.font_family || defaultConfig.font_family;
             const baseFontStack = 'Arial, sans-serif';
             const baseSize = config.font_size || defaultConfig.font_size;
             const primaryColor = config.primary_color || defaultConfig.primary_color;
+            
+            const container = document.getElementById('questionFormContainer');
+            container.style.display = 'block';
+            container.innerHTML = `
+                <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Soal Baru</h3>
+                <form id="addQuestionForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Jenjang Kelas</label>
+                            <select id="qClass" required
+                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                                <option value="">Pilih Jenjang</option>
+                                <option value="7">Kelas 7 (Semua Kelas 7)</option>
+                                <option value="8">Kelas 8 (Semua Kelas 8)</option>
+                                <option value="9">Kelas 9 (Semua Kelas 9)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
+                            <select id="qSubject" required
+                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                                <option value="">Pilih Mapel</option>
+                                ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Tipe Soal</label>
+                        <select id="qType" required onchange="updateQuestionForm()"
+                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <option value="">Pilih Tipe</option>
+                            <option value="pilihan_ganda">Pilihan Ganda</option>
+                            <option value="pilihan_ganda_kompleks">Pilihan Ganda Kompleks</option>
+                            <option value="isian_singkat">Isian Singkat</option>
+                            <option value="benar_salah">Benar/Salah</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Teks Soal</label>
+                        <textarea id="qText" required rows="3"
+                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">URL Gambar (Opsional)</label>
+                        <input type="url" id="qImage"
+                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                    </div>
+                    
+                    <div id="optionsContainer"></div>
+                    <div id="answerContainer"></div>
+                    
+                    <div class="flex gap-3">
+                        <button type="submit" 
+                            class="px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
+                            style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            Simpan Soal
+                        </button>
+                        <button type="button" onclick="hideAddQuestionForm()" 
+                            class="px-6 py-2 bg-gray-500 rounded-lg text-white font-semibold hover:bg-gray-600 transition"
+                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('addQuestionForm').addEventListener('submit', addQuestion);
+        }
+
+        function showGuruAddQuestionForm() { //guru nambah soal
+            const config = window.elementSdk?.config || defaultConfig;
+            const customFont = config.font_family || defaultConfig.font_family;
+            const baseFontStack = 'Arial, sans-serif';
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            const guruSubject = currentUser.subject;
             
             const container = document.getElementById('questionFormContainer');
             container.style.display = 'block';
