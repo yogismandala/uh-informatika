@@ -954,7 +954,7 @@
                         // Hanya tambah pelanggaran saat keluar dari tab
                         violationCount++;
                         saveToStorage();
-                        
+                        sessionStorage.setItem('violationCount', violationCount.toString());
                         updateViolationDisplay();
                         showViolationWarning();
                     }
@@ -970,29 +970,6 @@
                     showToast('Klik kanan tidak diperbolehkan selama ujian', 'error');
                 }
             });
-
-            // 2. Deteksi Fullscreen (Khusus Siswa)
-            document.addEventListener('fullscreenchange', () => {
-                if (currentUser?.role === 'siswa' && !document.fullscreenElement && !isRefreshing && !examSubmitted) {
-                    // Berikan sedikit jeda sebelum menambah pelanggaran untuk menghindari glitch saat refresh
-                    setTimeout(() => {
-                        if (!document.fullscreenElement && !isRefreshing) {
-                            violationCount++;
-                            saveToStorage();
-                            updateViolationDisplay();
-                            alert("Peringatan! Anda keluar dari mode Fullscreen. Pelanggaran dicatat.");
-                            activateFullscreen(); // Paksa masuk lagi
-                        }
-                    }, 1000);
-                }
-            });
-
-
-            // Fungsi pembantu untuk simpan data ke storage agar tidak hilang saat refresh
-            function saveToStorage() {
-                localStorage.setItem('violationCount', violationCount.toString());
-                sessionStorage.setItem('violationCount', violationCount.toString());
-            }
 
 
             // Mencegah tombol F12, Ctrl+Shift+I, Ctrl+U
