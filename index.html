@@ -475,10 +475,6 @@
         window.onbeforeunload = function() {
             isRefreshing = true;
         };
-        // Tambahkan listener global di luar fungsi manapun
-        window.onbeforeunload = function() {
-            isRefreshing = true; // Tandai bahwa user sedang merefresh halaman
-        };
 
         function activateFullscreen() {
             let element = document.documentElement; // Mengambil seluruh halaman
