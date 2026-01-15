@@ -952,7 +952,6 @@
                     if (document.hidden && !isRefreshing) {
                         // Hanya tambah pelanggaran saat keluar dari tab
                         violationCount++;
-                        saveToStorage();
                         sessionStorage.setItem('violationCount', violationCount.toString());
                         updateViolationDisplay();
                         showViolationWarning();
@@ -1725,7 +1724,7 @@
                         updateResultsTable();
                     }
                 }
-            }, 30000); // Refresh setiap 30 detik
+            }, 1800000); // Refresh setiap 30 menit
             
             document.getElementById('app').innerHTML = `
                 <div class="h-full flex flex-col">
