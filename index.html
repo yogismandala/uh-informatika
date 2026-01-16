@@ -2030,6 +2030,7 @@
             const totalQuestions = allQuestions.length;
             const totalExams = allExamResults.length;
             
+            
             const avgScore = allExamResults.length > 0 
                 ? Math.round(allExamResults.reduce((sum, r) => sum + r.final_score, 0) / allExamResults.length)
                 : 0;
@@ -2704,8 +2705,14 @@
                                 </div>
                                 <div class="space-y-2" id="questionsList${grade}">
                                     ${questionsByGrade[grade].length > 0 ? questionsByGrade[grade].map(q => {
-                                        // Cek apakah guru ini pemilik mapel soal tersebut
-                                        const isOwner = q.subject === currentUser.subject;
+
+                                        // 1. Cek Mapel: Apakah mapel soal sama dengan mapel guru?
+                                        const isRightSubject = q.subject === currentUser.subject;
+                                        // 2. Cek Kelas: Apakah grade saat ini ada dalam daftar kelas yang diajar guru?
+                                        // Asumsi: currentUser.class berisi string seperti "7" atau array ["7", "8"]
+                                        const teachesThisGrade = currentUser.class && currentUser.class.includes(grade);
+                                        // Tombol hapus HANYA muncul jika Mapel cocok DAN Guru memang mengajar kelas tersebut
+                                        const isOwner = isRightSubject && teachesThisGrade;
         
                                         return `
                                             <div class="border border-gray-200 rounded-lg p-3 ${isOwner ? 'hover:bg-gray-50' : 'bg-gray-50/50'} transition">
@@ -2727,7 +2734,7 @@
                                                             class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex-shrink-0">
                                                             🗑️ Hapus
                                                         </button>
-                                                    ` : 'read only'}
+                                                    ` : '<span class="text-xs text-gray-400 italic self-center">Read Only</span>'}
                                                 </div>
                                             </div>
                                         `;
@@ -2837,6 +2844,17 @@
             const container = document.getElementById('questionFormContainer');
             container.style.display = 'block';
             const isGuru = currentUser.role === 'GURU' || currentUser.role === 'guru';
+            // Logika Filter Kelas: Jika guru, hanya tampilkan kelas yang sesuai
+            let classOptions = `
+                <option value="">Pilih Jenjang</option>
+                <option value="7">Kelas 7</option>
+                <option value="8">Kelas 8</option>
+                <option value="9">Kelas 9</option>
+            `;
+            if (isGuru && currentUser.class) {
+                // Jika guru memiliki data class, hanya tampilkan kelas tersebut
+                classOptions = `<option value="${currentUser.class}">Kelas ${currentUser.class}</option>`;
+            }
             container.innerHTML = `
                 <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Soal Baru</h3>
                 <form id="addQuestionForm" class="space-y-4">
@@ -2846,10 +2864,8 @@
                             <select id="qClass" required
                                 class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                <option value="">Pilih Jenjang</option>
-                                <option value="7">Kelas 7 (Semua Kelas 7)</option>
-                                <option value="8">Kelas 8 (Semua Kelas 8)</option>
-                                <option value="9">Kelas 9 (Semua Kelas 9)</option>
+                                ${isGuru ? 'disabled' : ''}> 
+                                ${classOptions}
                             </select>
                         </div>
                         <div>
