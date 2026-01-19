@@ -584,13 +584,18 @@
                                         placeholder="Masukkan username">
                                 </div>
                         
-                                <div>
-                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
+                                <div class="relative">
+                                <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
+                                <div class="relative">
                                     <input type="password" id="password" required 
-                                        class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition"
+                                        class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition pr-10"
                                         style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                         placeholder="Masukkan password">
+                                    <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-white opacity-70 hover:opacity-100">
+                                        <span id="eyeIcon">🙈</span>
+                                    </button>
                                 </div>
+                            </div>
                         
                                 <div id="subjectSelect" style="display: none;">
                                     <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
@@ -617,6 +622,20 @@
             
             document.getElementById('username').addEventListener('input', checkUserRole);
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+            // Logika untuk Show/Hide Password
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.getElementById('togglePassword');
+            const eyeIcon = document.getElementById('eyeIcon');
+
+            toggleButton.addEventListener('click', function () {
+                // Cek tipe input saat ini
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                // Ubah icon (Opsional: Anda bisa mengganti emoji-nya)
+                eyeIcon.textContent = type === 'password' ? '🙈' : '🐵';
+            });
         }
 
         function checkUserRole() {
