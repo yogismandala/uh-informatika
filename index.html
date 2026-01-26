@@ -1140,7 +1140,7 @@
                             ${getQuestionTypeLabel(question.question_type)}
                         </span>
                     </div>
-                    <p class="text-lg mb-4 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word;">${question.question_text}</p>
+                    <p class="text-lg mb-4 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${question.question_text}</p>
                     ${question.question_image && question.question_image.trim() !== '' ? 
                         `<div class="mb-4">
                             <img src="${question.question_image}" alt="Gambar Soal" class="max-w-full h-auto rounded-lg shadow-lg border-2 border-gray-300" 
