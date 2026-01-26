@@ -211,21 +211,21 @@
         let minTimeToSubmit = parseInt(localStorage.getItem('minTimeToSubmit') || '0');
         
         const SUBJECTS = [
-            "Pendidikan Agama Islam",
-            "Pendidikan Agama Kristen",
-            "Pendidikan Agama Katolik",
-            "Pendidikan Agama Hindu",
-            "Pendidikan Agama Buddha",
-            "Pendidikan Pancasila",
-            "Bahasa Indonesia",
-            "Matematika",
-            "IPA",
-            "IPS",
-            "Bahasa Inggris",
-            "SBK",
-            "Prakarya",
-            "PJOK",
-            "Informatika"
+            "UP BAB I",
+            "UP BAB II",
+            "UP BAB III",
+            "UP TENGAH SEMESTER 1",
+            "UP BAB IV",
+            "UP BAB V",
+            "ULANGAN HARIAN I SMT1",
+            "ULANGAN HARIAN II SMT1",
+            "UP BAB VI",
+            "UP BAB VII",
+            "UP TENGAH SEMESTER 2",
+            "UP BAB VIII",
+            "UP BAB IX",
+            "ULANGAN HARIAN I SMT2",
+            "ULANGAN HARIAN II SMT2"
         ];
         
         // ============================================
@@ -610,7 +610,7 @@
                             </div>
                         
                                 <div id="subjectSelect" style="display: none;">
-                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
+                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Pilih Ujian</label>
                                     <select id="subject" 
                                         class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition appearance-none"
                                         style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: black;">
@@ -658,7 +658,7 @@
                 document.getElementById('subjectSelect').style.display = 'block';
                 // Filter hanya mata pelajaran yang aktif
                 const subjectSelect = document.getElementById('subject');
-                subjectSelect.innerHTML = '<option value="">Pilih Mata Pelajaran</option>';
+                subjectSelect.innerHTML = '<option value="">Pilih Ujian</option>';
                 
                 const activeSubjects = getActiveSubjects();
                 
@@ -717,7 +717,7 @@
             }
             
             if (user.role === 'siswa' && !subject) {
-                showError('Silakan pilih mata pelajaran!');
+                showError('Silakan pilih Ujian!');
                 return;
             }
             
@@ -851,7 +851,7 @@
                                 </p>
                             </div>
                             <p class="text-gray-500 text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
-                                Silakan hubungi admin atau pilih mata pelajaran lain.
+                                Silakan hubungi admin atau pilih Ujian lain.
                             </p>
                         </div>
                         
@@ -902,7 +902,7 @@
                                 }
                                 <div class="flex-1 min-w-0">
                                     <h2 class="font-bold text-sm md:text-base truncate" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</h2>
-                                    <p class="text-xs md:text-sm opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - ${currentExam.subject}</p>
+                                    <p class="text-xs md:text-sm opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - Informatika ${currentExam.subject}</p>
                                 </div>
                             </div>
 
@@ -1421,7 +1421,7 @@
             if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
             showLoading();
             // Tambahkan delay acak antara 1 hingga 10 detik agar tidak serentak
-            const randomDelay = Math.floor(Math.random() * 25000);
+            const randomDelay = Math.floor(Math.random() * 5000);
             await new Promise(resolve => setTimeout(resolve, randomDelay));
             
             // Tandai bahwa ujian sudah selesai untuk menonaktifkan deteksi pelanggaran
