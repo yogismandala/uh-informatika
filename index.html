@@ -207,6 +207,8 @@
             
             active_subjects: [] // Array of active exam subjects with schedules
         };
+        let currentAdminTab = 'dashboard'; // Default tab admin
+        let currentGuruTab = 'dashboard';  // Default tab guru
         
         // Load minimum waktu submit dari localStorage
         let minTimeToSubmit = parseInt(localStorage.getItem('minTimeToSubmit') || '0');
@@ -243,30 +245,23 @@
         // ============================================
         // GOOGLE SHEETS API FUNCTIONS
         // ============================================
-        async function loadAllData() {
+        async function loadInitialData() {
             try {
                 showLoading();
-                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAllData`);
+                // Panggil action 'getLoginData' (sesuai script baru)
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLoginData`);
                 const data = await response.json();
                 
                 if (data.success) {
                     allUsers = data.users || [];
-                    allQuestions = data.questions || [];
-                    // LOGIKA BARU: Hanya muat hasil ujian jika user adalah Admin atau Guru
-                    const userRole = currentUser ? currentUser.role : null;
-                    if (userRole === 'admin' || userRole === 'guru') {
-                        allExamResults = data.examResults || [];
-                    } else {
-                        allExamResults = []; // Siswa tidak perlu data ini
-                    }
                     
-                    // Load settings dari sheet (kecuali min_time_to_submit yang disimpan di localStorage)
+                    // Load settings
                     if (data.settings) {
                         examSettings.exam_duration = data.settings.exam_duration || examSettings.exam_duration;
                         examSettings.shuffle_questions = data.settings.shuffle_questions || false;
                         examSettings.shuffle_answers = data.settings.shuffle_answers || false;
                         examSettings.show_score = data.settings.show_score !== undefined ? data.settings.show_score : true;
-                        examSettings.max_questions = data.settings.max_questions || 0;                        
+                        examSettings.max_questions = data.settings.max_questions || 0;
                         
                         if (data.settings.active_subjects) {
                             try {
@@ -278,17 +273,48 @@
                             }
                         }
                     }
-                    
                     return true;
                 } else {
-                    showToast('Gagal memuat data: ' + data.message, 'error');
+                    showToast('Gagal memuat user: ' + data.message, 'error');
                     return false;
                 }
             } catch (error) {
-                showToast('Gagal terhubung ke Google Sheets', 'error');
+                showToast('Gagal terhubung ke server', 'error');
                 return false;
             } finally {
                 hideLoading();
+            }
+        }
+
+        // 2. LOAD BERAT: Soal & Nilai (Dipanggil SETELAH login berhasil)
+        async function loadExamData(silent = false) {
+            try {
+                // Hanya tampilkan loading jika silent bernilai false
+                if (!silent) showLoading();
+                // Panggil action 'getExamData' (sesuai script baru)
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getExamData`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    allQuestions = data.questions || [];
+                    
+                    // Logika filter role
+                    const userRole = currentUser ? currentUser.role : null;
+                    if (userRole === 'admin' || userRole === 'guru') {
+                        allExamResults = data.examResults || [];
+                    } else {
+                        allExamResults = [];
+                    }
+                    return true;
+                } else {
+                    showToast('Gagal memuat soal: ' + data.message, 'error');
+                    return false;
+                }
+            } catch (error) {
+                showToast('Gagal memuat data ujian', 'error');
+                return false;
+            } finally {
+                if (!silent) hideLoading();
             }
         }
         
@@ -516,7 +542,7 @@
                 }
             }
             // 1. Pastikan data dari server sudah dimuat sebelum mengecek status login
-            const dataLoaded = await loadAllData();
+            const dataLoaded = await loadInitialData();
     
             // 2. Gunakan localStorage agar lebih persisten saat refresh
             const savedUser = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
@@ -524,6 +550,16 @@
     
             if (savedUser && savedExam && dataLoaded) {
                 currentUser = JSON.parse(savedUser);
+
+                // TAMBAHAN PENTING:
+                // Karena user refresh halaman saat ujian, kita WAJIB load soal sekarang
+                const examLoaded = await loadExamData();
+                if (!examLoaded) {
+                    alert("Gagal mengembalikan sesi ujian. Silakan login ulang.");
+                    localStorage.clear();
+                    renderLoginPage();
+                    return;
+                }
                 currentExam = JSON.parse(savedExam);
         
                 // Load data jawaban dan state lainnya
@@ -718,7 +754,7 @@
             }
             
             if (user.role === 'siswa' && !subject) {
-                showError('Silakan pilih Ujian!');
+                showError('Silakan pilih mata pelajaran!');
                 return;
             }
             
@@ -734,6 +770,14 @@
             currentUser = user;
             sessionStorage.setItem('currentUser', JSON.stringify(user));
             localStorage.setItem('currentUser', JSON.stringify(user)); // Tambahkan ini
+
+            // --- TAMBAHAN BARU DI SINI ---
+            // Karena login sukses, sekarang saatnya download soal yang berat
+            const examDataLoaded = await loadExamData();
+            if (!examDataLoaded) {
+                showError('Gagal memuat data soal. Coba lagi.');
+                return;
+            }
 
             // TAMBAHKAN KODE INI DI SINI
             if (user.role === 'siswa') {
@@ -1422,7 +1466,7 @@
             if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
             showLoading();
             // Tambahkan delay acak antara 1 hingga 10 detik agar tidak serentak
-            const randomDelay = Math.floor(Math.random() * 5000);
+            const randomDelay = Math.floor(Math.random() * 3000);
             await new Promise(resolve => setTimeout(resolve, randomDelay));
             
             // Tandai bahwa ujian sudah selesai untuk menonaktifkan deteksi pelanggaran
@@ -1431,14 +1475,15 @@
             
             
             const score = calculateScore();
-            
             const answersString = JSON.stringify(studentAnswers);
-            
             const examData = {
                 student_name: currentUser.name,
                 student_class: currentUser.class,
                 exam_subject: currentExam.subject,
-                exam_time: new Date().toISOString(),
+                exam_time: new Date().toLocaleDateString('id-ID', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                }) + ' WIB',
                 answers: answersString,
                 final_score: score,
                 violations: violationCount
@@ -1464,7 +1509,7 @@
             
             if (success) {
                 // Reload data untuk update hasil ujian terbaru
-                await loadAllData();
+                await loadExamData();
             }
                         
             if (success) {
@@ -1650,17 +1695,21 @@
                 clearInterval(adminRefreshInterval);
             }
             adminRefreshInterval = setInterval(async () => {
-                await loadAllData();
-                const activeSection = document.querySelector('[id^="nav-"]').parentElement.querySelector('[style*="color: rgb"]')?.id.replace('nav-', '');
-                if (activeSection) {
-                    // Update konten tanpa full re-render untuk menghindari flicker
-                    if (activeSection === 'dashboard') {
-                        updateDashboardStats();
-                    } else if (activeSection === 'results') {
-                        updateResultsTable();
-                    }
-                }
-            }, 30000); // Refresh setiap 30 detik
+            await loadExamData(true); // Tambahkan true agar loading tidak muncul
+            updateDashboardStats();
+            
+            /// 3. Cek tab mana yang sedang dibuka, lalu render ulang tab tersebut
+            // Pastikan nama fungsi render di bawah sesuai dengan yang ada di kode Anda
+            if (currentAdminTab === 'results') {
+                renderResultsSection(); // Render ulang tabel hasil
+            } else if (currentAdminTab === 'questions') {
+                renderQuestionsSection(); // Render ulang bank soal
+            } else if (currentAdminTab === 'schedule') {
+                renderScheduleSection(); // Render ulang jadwal (jika ada)
+            } else if (currentAdminTab === 'dashboard') {
+                renderDashboardSection(); // Render ulang bank soal
+            }
+            }, 5000); // Refresh setiap 30 detik
             
             document.getElementById('app').innerHTML = `
                 <div class="h-full flex flex-col">
@@ -1746,15 +1795,13 @@
                 clearInterval(adminRefreshInterval);
             }
             adminRefreshInterval = setInterval(async () => {
-                await loadAllData();
-                const activeSection = document.querySelector('[id^="nav-"]').parentElement.querySelector('[style*="color: rgb"]')?.id.replace('nav-', '');
-                if (activeSection) {
-                    // Update konten tanpa full re-render untuk menghindari flicker
-                    if (activeSection === 'dashboard') {
-                        updateDashboardStats();
-                    }
+                await loadExamData(true);
+                updateDashboardStats(); // Update statistik guru
+
+                if (currentGuruTab === 'questions') {
+                    renderGuruQuestionsSection(); // Fungsi render soal khusus guru
                 }
-            }, 1800000); // Refresh setiap 30 menit
+            }, 5000); // Refresh setiap 30 menit
             
             document.getElementById('app').innerHTML = `
                 <div class="h-full flex flex-col">
@@ -1914,6 +1961,7 @@
         }
 
         function showAdminSection(section) {
+            currentAdminTab = section;
             const config = window.elementSdk?.config || defaultConfig;
             const primaryColor = config.primary_color || defaultConfig.primary_color;
             
@@ -1937,6 +1985,7 @@
         }
 
         function showGuruSection(section) {
+            currentGuruTab = section;
             const config = window.elementSdk?.config || defaultConfig;
             const primaryColor = config.primary_color || defaultConfig.primary_color;
             
@@ -3784,8 +3833,3 @@
         init();
     </script>
  </html>
-
-
-
-
-
