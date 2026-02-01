@@ -1486,7 +1486,7 @@
                 student_name: currentUser.name,
                 student_class: currentUser.class,
                 exam_subject: currentExam.subject,
-                exam_time: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}) + ' WIB',
+                exam_time: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}),
                 answers: answersString,
                 final_score: score,
                 violations: violationCount
@@ -1934,15 +1934,15 @@
                             </div>
                         </div>
                         <div class="pt-3 border-t border-gray-200">
-                            <div class="flex items-center justify-between text-sm mb-2">
+                            <div class="flex items-center justify-between text-xs mb-2">
                                 <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">📚 Mata Pelajaran:</span>
                                 <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_subject}</span>
                             </div>
-                            <div class="flex items-center justify-between text-sm mb-2">
+                            <div class="flex items-center justify-between text-xs mb-2">
                                 <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🕐 Waktu:</span>
                                 <span class="font-medium" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
                             </div>
-                            <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center justify-between text-xs">
                                 <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">⚠️ Pelanggaran:</span>
                                 <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
                                     ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ Tidak Ada'}
@@ -2508,15 +2508,15 @@
                                     </div>
                                 </div>
                                 <div class="pt-3 border-t border-gray-200">
-                                    <div class="flex items-center justify-between text-sm mb-2">
+                                    <div class="flex items-center justify-between text-xs mb-2">
                                         <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">📚 Mata Pelajaran:</span>
                                         <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_subject}</span>
                                     </div>
-                                    <div class="flex items-center justify-between text-sm mb-2">
+                                    <div class="flex items-center justify-between text-xs mb-2">
                                         <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🕐 Waktu:</span>
                                         <span class="font-medium" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
                                     </div>
-                                    <div class="flex items-center justify-between text-sm">
+                                    <div class="flex items-center justify-between text-xs">
                                         <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🚨 Pelanggaran:</span>
                                         <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
                                             ${result.violations > 0 ? `${result.violations}x` : '✅ Tidak Ada'}
@@ -2597,15 +2597,15 @@
                             </div>
                         </div>
                         <div class="pt-3 border-t border-gray-200">
-                            <div class="flex items-center justify-between text-sm mb-2">
+                            <div class="flex items-center justify-between text-sxs mb-2">
                                 <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">📚 Mata Pelajaran:</span>
                                 <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_subject}</span>
                             </div>
-                            <div class="flex items-center justify-between text-sm mb-2">
+                            <div class="flex items-center justify-between text-xs mb-2">
                                 <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🕐 Waktu:</span>
                                 <span class="font-medium" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
                             </div>
-                            <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center justify-between text-xs">
                                 <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">⚠️ Pelanggaran:</span>
                                 <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
                                     ${result.violations > 0 ? `${result.violations}x` : '✅ Tidak Ada'}
