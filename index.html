@@ -12,6 +12,11 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+  
   <style>
 
         body {
@@ -384,8 +389,9 @@
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
-                    await loadAllData();
+                    await loadExamData();
                     if (currentUser.role === 'admin') {
                         renderQuestionsSection();
                     } else if (currentUser.role === 'guru') {
@@ -418,7 +424,7 @@
                 
                 const result = await response.json();
                 if (result.success) {
-                    await loadAllData();
+                    await loadExamData();
                     if (currentUser.role === 'admin') {
                         renderQuestionsSection();
                     } else if (currentUser.role === 'guru') {
@@ -1699,8 +1705,6 @@
             // Pastikan nama fungsi render di bawah sesuai dengan yang ada di kode Anda
             if (currentAdminTab === 'results') {
                 renderResultsSection(); // Render ulang tabel hasil
-            } else if (currentAdminTab === 'questions') {
-                renderQuestionsSection(); // Render ulang bank soal
             } else if (currentAdminTab === 'schedule') {
                 renderScheduleSection(); // Render ulang jadwal (jika ada)
             } else if (currentAdminTab === 'dashboard') {
@@ -2107,7 +2111,7 @@
                 : 0;
             
             const recentResults = [...allExamResults]
-                .sort((a, b) => new Date(b.exam_time) - new Date(a.exam_time))
+                .reverse() //sort((a, b) => new Date(b.exam_time) - new Date(a.exam_time))
                 .slice(0, 5);
             
             document.getElementById('guruContent').innerHTML = `
@@ -2871,9 +2875,10 @@
                     
                     <div>
                         <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Teks Soal</label>
-                        <textarea id="qText" required rows="3"
-                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></textarea>
+                        <div class="bg-white rounded-lg border-2 border-gray-300 overflow-hidden">
+                            <div id="editor-container" style="height: 200px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></div>
+                        </div>
+                        <input type="hidden" id="qText" name="qText">
                     </div>
                     
                     <div>
@@ -2900,8 +2905,61 @@
                     </div>
                 </form>
             `;
+
+            // === INISIALISASI QUILL EDITOR ===
+            var quill = new Quill('#editor-container', {
+                theme: 'snow',
+                placeholder: 'Tulis pertanyaan di sini...',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'], // Format huruf
+                        [{ 'script': 'sub'}, { 'script': 'super' }], // Pangkat atas/bawah
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        ['link', 'image', 'formula'], // 'formula' untuk simbol MTK
+                        ['clean']
+                    ]
+                },
+                
+            });
+
+            // Sinkronisasi otomatis: Saat mengetik di Quill, update input tersembunyi 'qText'
+            quill.on('text-change', function() {
+                var html = quill.root.innerHTML;
+                document.getElementById('qText').value = html;
+            });
+
+            // Panggil updateOptions() pertama kali agar form jawaban muncul
+            setTimeout(() => {
+                if(typeof updateOptions === 'function') updateOptions();
+            }, 100);
+
+            // 5. EVENT LISTENER YANG AMAN (PENCEGAH LOGOUT/RELOAD)
+            const form = document.getElementById('addQuestionForm');
             
-            document.getElementById('addQuestionForm').addEventListener('submit', addQuestion);
+            // Hapus listener lama jika ada (untuk menghindari duplikasi, meski opsional di sini)
+            // Kita buat listener baru yang membungkus logika simpan
+            form.addEventListener('submit', function(e) {
+                // PENTING: Baris ini mencegah halaman reload (logout)
+                e.preventDefault(); 
+                
+                // Cek apakah editor kosong? (Opsional)
+                if (quill.root.innerHTML === '<p><br></p>') {
+                    alert('Pertanyaan tidak boleh kosong!');
+                    return;
+                }
+
+                // Salin isi dari Quill ke input hidden 'qText'
+                // agar fungsi addQuestion bisa membacanya
+                document.getElementById('qText').value = quill.root.innerHTML;
+                
+                // Panggil fungsi penyimpanan asli
+                addQuestion(e);
+            });
+            
+            //document.getElementById('addQuestionForm').addEventListener('submit', addQuestion);
         }
 
         function showGuruAddQuestionForm() { //guru nambah soal
