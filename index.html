@@ -16,6 +16,7 @@
   <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <style>
 
@@ -155,6 +156,20 @@
             scroll-behavior: smooth;
         }
     </style>
+    <style>
+        /* ... style lainnya ... */
+
+        /* Pastikan SweetAlert selalu di atas Loading Overlay */
+        .swal2-container {
+            z-index: 99999 !important;
+        }
+        
+        /* Mencegah body bergeser saat popup muncul */
+        body.swal2-shown > [aria-hidden="true"] {
+            transition: 0.1s filter;
+            filter: blur(3px); /* Efek blur keren di background saat popup muncul */
+        }
+    </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
@@ -209,11 +224,16 @@
             shuffle_answers: false,
             show_score: true,
             max_questions: 0,
-            
+            limit_one_attempt: false,
             active_subjects: [] // Array of active exam subjects with schedules
         };
         let currentAdminTab = 'dashboard'; // Default tab admin
         let currentGuruTab = 'dashboard';  // Default tab guru
+        let filterState = {
+            class: "",      // Menyimpan kelas yang dipilih
+            subject: "",     // Menyimpan mapel yang dipilih
+            sortBy: "time_desc" // Default: Waktu Terbaru
+        };
         
         // Load minimum waktu submit dari localStorage
         let minTimeToSubmit = parseInt(localStorage.getItem('minTimeToSubmit') || '0');
@@ -239,12 +259,47 @@
         // ============================================
         // LOADING FUNCTIONS
         // ============================================
+        // FUNGSI HELPER FILTER
+        // --- 2. FUNGSI UPDATE FILTER ---
+        // Fungsi ini menggantikan filterResults() yang lama
+        function updateFilter(key, value) {
+            filterState[key] = value;
+            renderResultsSection(); // Render ulang tampilan dengan data yang difilter
+        }
+        
         function showLoading() {
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
         
         function hideLoading() {
             document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        // Fungsi ini tugasnya cuma satu: Mengembalikan data yang sudah difilter & disortir
+        function getProcessedData() {
+            // 1. FILTER
+            let filtered = allExamResults.filter(item => {
+                const selectedClass = String(filterState.class || "").trim();
+                const itemClass = String(item.student_class || "").trim();
+                const selectedSubject = String(filterState.subject || "").trim();
+                const itemSubject = String(item.exam_subject || "").trim();
+
+                const matchClass = selectedClass === "" || itemClass === selectedClass;
+                const matchSubject = selectedSubject === "" || itemSubject === selectedSubject;
+                return matchClass && matchSubject;
+            });
+
+            // 2. SORTING
+            filtered.sort((a, b) => {
+                switch (filterState.sortBy) {
+                    case 'score_desc': return Number(b.final_score) - Number(a.final_score);
+                    case 'score_asc': return Number(a.final_score) - Number(b.final_score);
+                    case 'name_asc': return a.student_name.localeCompare(b.student_name);
+                    case 'name_desc': return b.student_name.localeCompare(a.student_name);
+                    case 'time_desc': default: return new Date(b.exam_time || 0) - new Date(a.exam_time || 0);
+                }
+            });
+
+            return filtered;
         }
         
         // ============================================
@@ -267,6 +322,7 @@
                         examSettings.shuffle_answers = data.settings.shuffle_answers || false;
                         examSettings.show_score = data.settings.show_score !== undefined ? data.settings.show_score : true;
                         examSettings.max_questions = data.settings.max_questions || 0;
+                        examSettings.limit_one_attempt = data.settings.limit_one_attempt || false;
                         
                         if (data.settings.active_subjects) {
                             try {
@@ -305,10 +361,16 @@
                     
                     // Logika filter role
                     const userRole = currentUser ? currentUser.role : null;
+                    const fullResults = data.examResults || [];
                     if (userRole === 'admin' || userRole === 'guru') {
                         allExamResults = data.examResults || [];
                     } else {
+                        
+                        if (currentUser) {
+                            allExamResults = fullResults.filter(r => r.student_name === currentUser.name);
+                        } else {
                         allExamResults = [];
+                        }
                     }
                     return true;
                 } else {
@@ -494,7 +556,7 @@
                 
                 const result = await response.json();
                 if (result.success) {
-                    await loadAllData();
+                    await loadInitialData();
                     showToast('Pengaturan berhasil disimpan', 'success');
                     return true;
                 } else {
@@ -780,9 +842,71 @@
             // --- TAMBAHAN BARU DI SINI ---
             // Karena login sukses, sekarang saatnya download soal yang berat
             const examDataLoaded = await loadExamData();
+            if (user.role === 'siswa' && examSettings.limit_one_attempt) {
+                // Cek apakah ada hasil ujian untuk user ini di mapel yang dipilih
+                const hasTakenExam = allExamResults.some(result => 
+                    result.student_name === user.name && 
+                    result.exam_subject === subject
+                );
+
+                if (hasTakenExam) {
+                    hideLoading();
+                    if (typeof Swal !== 'undefined') {
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Akses Ditolak',
+                            text: 'Anda sudah mengerjakan ujian ini. Kesempatan hanya 1 kali.',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Kembali',
+                            heightAuto: false, //Mencegah layar "terangkat" (putih)
+                            backdrop: `
+                                rgba(0,0,123,0.4)
+                                left top
+                                no-repeat
+                            `, // Membuat background belakang agak gelap transparan
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        });
+                    } else {
+                        alert("Anda sudah mengerjakan ujian ini!");
+                    }
+                    // Bersihkan sesi agar tidak lanjut
+                    currentUser = null;
+                    sessionStorage.removeItem('currentUser');
+                    localStorage.removeItem('currentUser');
+                    document.getElementById('loginForm').reset();
+                    renderLoginPage();
+                    return;
+                }
+            }
             if (!examDataLoaded) {
                 showError('Gagal memuat data soal. Coba lagi.');
                 return;
+            }
+
+            if (user.role === 'siswa' && examSettings.limit_one_attempt) {
+                // Cek apakah siswa ini sudah pernah punya nilai di mapel yang dipilih
+                // Kita cek berdasarkan NAMA dan MAPEL
+                const hasTaken = allExamResults.some(result => 
+                    result.student_name === user.name && 
+                    result.exam_subject === subject
+                );
+
+                if (hasTaken) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Akses Ditolak',
+                        text: 'Anda hanya diperbolehkan mengerjakan ujian ini satu kali!',
+                        confirmButtonColor: '#d33'
+                    }).then(() => {
+                        // Logout paksa
+                        currentUser = null;
+                        sessionStorage.clear();
+                        localStorage.clear();
+                        window.location.reload();
+                    });
+                    return; // Berhenti di sini, jangan lanjut masuk
+                }
             }
 
             // TAMBAHKAN KODE INI DI SINI
@@ -1705,8 +1829,6 @@
             // Pastikan nama fungsi render di bawah sesuai dengan yang ada di kode Anda
             if (currentAdminTab === 'results') {
                 renderResultsSection(); // Render ulang tabel hasil
-            } else if (currentAdminTab === 'schedule') {
-                renderScheduleSection(); // Render ulang jadwal (jika ada)
             } else if (currentAdminTab === 'dashboard') {
                 renderDashboardSection(); // Render ulang bank soal
             }
@@ -2326,7 +2448,28 @@
             
             document.getElementById('addUserForm').addEventListener('submit', addUser);
         }
+        //untuk hasil nilai
+        function generateClassOptions() {
+            // 1. Ambil list kelas unik
+            const uniqueClasses = [...new Set(allExamResults.map(item => item.student_class))].sort();            
+            return uniqueClasses.map(c => {
+                // --- PEMBERSIHAN DATA ---
+                // Ubah data kelas (c) menjadi String dan buang spasi (trim)
+                const classValue = String(c || "").trim();
+                
+                // Ubah state yang dipilih menjadi String dan buang spasi (trim)
+                const selectedValue = String(filterState.class || "").trim();
 
+                // --- BANDINGKAN ---
+                // Jika nilainya sama persis, tambahkan atribut 'selected'
+                const isSelected = (classValue === selectedValue) ? 'selected' : '';
+
+                // Return HTML Option
+                return `<option value="${classValue}" ${isSelected}>${classValue}</option>`;
+            }).join('');
+        }
+
+        //untuk tambah user
         function generateClassOptions() {
             let options = '';
             for (let grade = 7; grade <= 9; grade++) {
@@ -2417,121 +2560,152 @@
             const baseFontStack = 'Arial, sans-serif';
             const baseSize = config.font_size || defaultConfig.font_size;
             const textColor = config.text_color || defaultConfig.text_color;
-            
-            document.getElementById('adminContent').innerHTML = `
-                <div class="bg-white rounded-xl shadow-custom p-4 md:p-6">
-                    <h2 class="font-bold mb-4 md:mb-6 text-lg md:text-xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Hasil Ujian</h2>
-                    
-                    <div class="mb-4 md:mb-6 flex flex-col sm:flex-row gap-2 md:gap-3">
-                        <select id="filterClass" onchange="filterResults()"
-                            class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            <option value="">Semua Kelas</option>
-                            <!-- ${generateClassOptions()} munculin kelas-->  
-                        </select>
-                        <select id="filterSubject" onchange="filterResults()"
-                            class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            <option value="">Semua Mapel</option>
-                            ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
-                        </select>
-                        <button onclick="downloadExcel()" 
-                            class="w-full sm:w-auto px-4 py-2 text-sm bg-green-500 rounded-lg text-white font-semibold hover:bg-green-600 transition"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            📊 Download Hasil (Excel)
-                        </button> 
-                        <button onclick="refreshTarget('examResults')" 
-                            class="w-full sm:w-auto px-4 py-2 text-sm bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                    
-                    <!-- Desktop Table View -->
-                    <div class="hidden md:block overflow-x-auto -mx-4 md:mx-0">
-                        <table class="w-full min-w-full">
-                            <thead>
-                                <tr class="border-b-2 border-gray-300">
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Nama</th>
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Kelas</th>
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Mapel</th>
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Waktu</th>
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Nilai</th>
-                                    <th class="text-left p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Pelanggaran</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resultsTableBody">
-                                ${allExamResults.map(result => {
-                                    
-                                    return `
-                                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
-                                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_class}</td>
-                                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
-                                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
-                                        <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.final_score}</td>
-                                        <td class="p-3">
-                                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                                ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `}).join('')}
-                            </tbody>
-                        </table>
-                        ${allExamResults.length === 0 ? `
-                            <div class="text-center py-12">
-                                <p class="text-gray-400 text-lg" style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <!-- Mobile Card View -->
-                    <div class="md:hidden space-y-3" id="resultsMobileView">
-                        ${allExamResults.length > 0 ? allExamResults.map(result => {
+
+            const filteredData = getProcessedData();
+
+            // --- 2. CEK APAKAH ELEMEN SUDAH ADA? (INTI SOLUSI) ---
+            const existingTableBody = document.getElementById('resultsTableBody');
+
+            // --- BAGIAN A: RENDER WADAH (Hanya Sekali) ---
+            // Jika 'resultsTableBody' belum ada, berarti ini pertama kali buka tab.
+            // Kita buat Dropdown, Tombol, dan Header Tabel di sini.
+            if (!existingTableBody) {
+                
+                // Siapkan opsi dropdown saat inisialisasi awal
+                const uniqueClasses = [...new Set(allExamResults.map(item => String(item.student_class || "").trim()))].sort();
+                const classOptionsHTML = uniqueClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+                const subjectOptionsHTML = SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="bg-white rounded-xl shadow-custom p-4 md:p-6">
+                        <h2 class="font-bold mb-4 md:mb-6 text-lg md:text-xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Hasil Ujian</h2>
+                        
+                        <div class="mb-4 md:mb-6 flex flex-col sm:flex-row flex-wrap gap-2 md:gap-3">
                             
-                            return `
-                            <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                                <div class="flex justify-between items-start mb-3">
-                                    <div class="flex-1">
-                                        <h3 class="font-bold text-base mb-1" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.student_name}</h3>
-                                        <p class="text-sm text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${result.student_class}</p>
-                                    </div>
-                                    <div class="text-right flex gap-2 items-center">
-                                        <div>
-                                            <div class="text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 75 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</div>
-                                            <p class="text-xs text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">Nilai</p>
-                                        </div>
-                                        <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack};">
-               
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="pt-3 border-t border-gray-200">
-                                    <div class="flex items-center justify-between text-xs mb-2">
-                                        <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">📚 Mata Pelajaran:</span>
-                                        <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_subject}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-xs mb-2">
-                                        <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🕐 Waktu:</span>
-                                        <span class="font-medium" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-xs">
-                                        <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🚨 Pelanggaran:</span>
-                                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                            ${result.violations > 0 ? `${result.violations}x` : '✅ Tidak Ada'}
-                                        </span>
-                                    </div>
-                                </div>
+                            <select id="filterClass" onchange="updateFilter('class', this.value)"
+                                class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                style="font-family: ${customFont}, ${baseFontStack};">
+                                <option value="">Semua Kelas</option>
+                                ${classOptionsHTML}
+                            </select>
+
+                            <select id="filterSubject" onchange="updateFilter('subject', this.value)"
+                                class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                style="font-family: ${customFont}, ${baseFontStack};">
+                                <option value="">Semua Mapel</option>
+                                ${subjectOptionsHTML}
+                            </select>
+
+                            <select id="filterSort" onchange="updateFilter('sortBy', this.value)"
+                                class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                style="font-family: ${customFont}, ${baseFontStack};">
+                                <option value="time_desc">🕒 Terkini</option>
+                                <option value="score_desc">🏆 Nilai Tertinggi</option>
+                                <option value="score_asc">📉 Nilai Terendah</option>
+                                <option value="name_asc">🔤 Nama (A-Z)</option>
+                                <option value="name_desc">🔠 Nama (Z-A)</option>
+                            </select>
+
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button onclick="downloadExcel()" class="flex-1 sm:flex-none px-4 py-2 text-sm bg-green-500 rounded-lg text-white font-semibold hover:bg-green-600 transition" style="font-family: ${customFont}, ${baseFontStack};">
+                                    📊 Download Hasil Excel
+                                </button> 
+                                <button onclick="refreshTarget('examResults')" class="flex-1 sm:flex-none px-4 py-2 text-sm bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition" style="font-family: ${customFont}, ${baseFontStack};">
+                                    🔄 Refresh
+                                </button>
                             </div>
-                        `}).join('') : `
-                            <div class="text-center py-12">
-                                <p class="text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
-                            </div>
-                        `}
+                        </div>
+                        
+                        <div class="hidden md:block overflow-x-auto -mx-4 md:mx-0">
+                            <table class="w-full min-w-full">
+                                <thead>
+                                    <tr class="border-b-2 border-gray-300">
+                                        <th class="text-left p-3">Nama</th>
+                                        <th class="text-left p-3">Kelas</th>
+                                        <th class="text-left p-3">Mapel</th>
+                                        <th class="text-left p-3">Waktu</th>
+                                        <th class="text-left p-3">Nilai</th>
+                                        <th class="text-left p-3">Pelanggaran</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsTableBody"></tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="md:hidden space-y-3" id="resultsMobileView"></div>
                     </div>
-                </div>
-            `;
+                `;
+
+                // SET NILAI AWAL STATE (Hanya saat render pertama)
+                const dropClass = document.getElementById('filterClass');
+                const dropSubject = document.getElementById('filterSubject');
+                const dropSort = document.getElementById('filterSort');
+
+                if (dropClass) dropClass.value = String(filterState.class || "").trim();
+                if (dropSubject) dropSubject.value = String(filterState.subject || "").trim();
+                if (dropSort) dropSort.value = filterState.sortBy;
+            }
+
+            // --- BAGIAN B: UPDATE ISI DATA (Berjalan Terus) ---
+            // Bagian ini hanya menyentuh <tbody> dan div mobile, TIDAK menyentuh Dropdown.
+            // Sehingga dropdown aman dan tidak akan tertutup sendiri.
+
+            const tableBody = document.getElementById('resultsTableBody');
+            const mobileView = document.getElementById('resultsMobileView');
+
+            // 1. Update Tabel Desktop
+            if (tableBody) {
+                if (filteredData.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400">Data tidak ditemukan</td></tr>`;
+                } else {
+                    tableBody.innerHTML = filteredData.map(result => `
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
+                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_class}</td>
+                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
+                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
+                            <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;" style="color: ${result.final_score >= 75 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                    ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            }
+
+            // 2. Update Mobile View
+            if (mobileView) {
+                if (filteredData.length === 0) {
+                    mobileView.innerHTML = `<div class="text-center py-12"><p class="text-gray-400">Data tidak ditemukan</p></div>`;
+                } else {
+                    mobileView.innerHTML = filteredData.map(result => `
+                        <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-base mb-1">${result.student_name}</h3>
+                                    <p class="text-sm text-gray-600">Kelas ${result.student_class}</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold" style="color: ${result.final_score >= 75 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</div>
+                                    <p class="text-xs text-gray-500">Nilai</p>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-gray-200 text-sm space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">Mapel</span>
+                                    <span class="font-medium">${result.exam_subject}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">Pelanggaran</span>
+                                    <span class="${result.violations > 0 ? 'text-red-600 font-bold' : 'text-green-600'}">${result.violations > 0 ? result.violations + 'x' : 'Nihil'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
         }
 
 
@@ -2626,37 +2800,48 @@
                 showToast('Tidak ada data untuk didownload', 'error');
                 return;
             }
+            const dataToExport = getProcessedData();
+            if (dataToExport.length === 0) {
+                alert("Tidak ada data yang sesuai filter untuk diunduh.");
+                return;
+            }
 
             // 1. Siapkan data
-            const dataCustom = allExamResults.map((item, index) => ({
+            const formattedData = dataToExport.map((item, index) => ({
                 "No": index + 1,
                 "Nama Siswa": item.student_name,
                 "Kelas": item.student_class,
                 "Mata Pelajaran": item.exam_subject,
                 "Skor": item.final_score,
+                //"Waktu Selesai": item.exam_time ? new Date(item.exam_time).toLocaleString('id-ID') : '-',
                 "Pelanggaran": item.violations || 0
             }));
 
-            // 2. Buat worksheet
-            const worksheet = XLSX.utils.json_to_sheet(dataCustom);
+            // 3. Buat Nama File Dinamis
+            // Contoh: "Hasil_Ujian_7A.xlsx" atau "Hasil_Ujian_Semua.xlsx"
+            let fileName = "Hasil_Ujian";
+            if (filterState.class) fileName += `_Kelas_${filterState.class}`;
+            if (filterState.subject) fileName += `_${filterState.subject}`;
+            fileName += ".xlsx";
 
-            // 3. ATUR LEBAR KOLOM OTOMATIS
-            const objectMaxLength = [];
-            dataCustom.forEach((row) => {
-                Object.keys(row).forEach((key, i) => {
-                    const value = row[key] ? row[key].toString() : "";
-                    const width = Math.max(objectMaxLength[i] || 10, value.length + 5); 
-                    objectMaxLength[i] = width;
-                });
-            });
-    
-            // Terapkan pengaturan lebar ke worksheet
-            worksheet['!cols'] = objectMaxLength.map(w => ({ width: w }));
-
-            // 4. Proses Download
+            // 4. Proses Pembuatan File Excel (SheetJS)
+            const worksheet = XLSX.utils.json_to_sheet(formattedData);
             const workbook = XLSX.utils.book_new();
+
+            // Mengatur lebar kolom (Opsional, agar rapi)
+            const wscols = [
+                {wch: 5},  // No
+                {wch: 30}, // Nama
+                {wch: 10}, // Kelas
+                {wch: 20}, // Mapel
+                {wch: 10}, // Nilai
+                //{wch: 25}, // Waktu
+                {wch: 15}  // Pelanggaran
+            ];
+            worksheet['!cols'] = wscols;
+
             XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Ujian");
-            XLSX.writeFile(workbook, `Hasil_Ujian_${new Date().getTime()}.xlsx`);
+            XLSX.writeFile(workbook, fileName);            
         }
 
         function renderQuestionsSection() {
@@ -3112,6 +3297,34 @@
             }
         }
 
+        // Simpan instance editor opsi jawaban agar bisa diambil nilainya nanti
+        let optionQuills = [];
+
+        // Fungsi untuk mengaktifkan Quill pada 5 kotak opsi (A-E)
+        function initOptionQuills() {
+            optionQuills = []; // Reset array
+            const labels = ['A', 'B', 'C', 'D', 'E'];
+            
+            labels.forEach((label, index) => {
+                // Cek apakah elemennya ada di layar
+                const containerId = `#quill-option-${index}`;
+                if (document.querySelector(containerId)) {
+                    const quill = new Quill(containerId, {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: [
+                                ['bold', 'italic', 'underline'],
+                                ['formula'], // Tombol Rumus Matematika
+                                ['image', 'code-block']
+                            ]
+                        },
+                        placeholder: `Tulis jawaban opsi ${label} disini...`
+                    });
+                    optionQuills.push(quill);
+                }
+            });
+        }
+
         function updateQuestionForm() {
             const type = document.getElementById('qType').value;
             const config = window.elementSdk?.config || defaultConfig;
@@ -3337,6 +3550,13 @@
                                         class="w-5 h-5 text-blue-600 rounded">
                                     <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Tampilkan Nilai Setelah Ujian</span>
                                 </label>
+                            </div>
+                            <div>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="settingLimitOneAttempt" ${examSettings.limit_one_attempt ? 'checked' : ''} class="w-5 h-5 text-blue-600 rounded">
+                                    <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Batasi Siswa 1x Mengerjakan (Per Mapel)</span>
+                                </label>
+                                <p class="text-sm text-gray-500 ml-8 mt-1">Jika aktif, siswa yang sudah punya nilai tidak bisa login ke mapel tersebut.</p>
                             </div>
                             
                             <button type="submit" 
@@ -3672,7 +3892,7 @@
                 scheduleItem.is_active = isActive;
             }
             
-            examSettings.active_subjects.push(scheduleItem);
+            examSettings.active_subjects.push(scheduleItem);            
             
             const success = await saveSettingsToSheet({
                 active_subjects: JSON.stringify(examSettings.active_subjects)
@@ -3746,6 +3966,7 @@
             const shuffle = document.getElementById('settingShuffle').checked;
             const shuffleAnswers = document.getElementById('settingShuffleAnswers').checked;
             const showScore = document.getElementById('settingShowScore').checked;
+            const limitOneAttempt = document.getElementById('settingLimitOneAttempt').checked;
             
             // Validasi: pastikan minTimeToSubmit adalah angka yang valid
             if (isNaN(minTimeToSubmitValue) || minTimeToSubmitValue < 0) {
@@ -3769,6 +3990,7 @@
                 max_questions: maxQuestions,
                 shuffle_questions: shuffle,
                 shuffle_answers: shuffleAnswers,
+                limit_one_attempt: limitOneAttempt,
                 show_score: showScore
             };
             
