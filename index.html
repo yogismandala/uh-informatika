@@ -2823,10 +2823,14 @@
                                         <p class="text-xs text-gray-500">Nilai</p>
                                     </div>
                                 </div>
-                                <div class="pt-3 border-t border-gray-200 text-sm space-y-2">
+                                <div class="pt-3 border-t border-gray-200 text-xs space-y-2">
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">Mapel</span>
                                         <span class="font-medium">${result.exam_subject}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Waktu</span>
+                                        <span class="font-medium">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">Pelanggaran</span>
@@ -4292,9 +4296,3 @@
         </script>
     </body>
  </html>
-
-
-
-
-
-
