@@ -18,6 +18,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         
   
         <style>
@@ -265,6 +266,23 @@
                 font_size: 16
             };
 
+            // 1. SETUP DATABASE
+            const MY_SUPABASE_URL = 'https://wvpuqjbogceftyoxzsiu.supabase.co'; 
+            const MY_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2cHVxamJvZ2NlZnR5b3h6c2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4NDg5MjQsImV4cCI6MjA4MzQyNDkyNH0.3K9iuFsgvvFLKG-JbG1P2oWqU7JnoZxBZe9aNiHhtT4'; // <-- Masukkan Key Anon/Public kamu
+
+            // Variabel ini harus diluar fungsi agar bisa dibaca semua orang
+            let dbClient = null;
+
+            // Inisialisasi Database
+            if (typeof window.supabase !== 'undefined') {
+                if (!window.supabaseInstance) {
+                    window.supabaseInstance = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY);
+                }
+                dbClient = window.supabaseInstance;
+            } else {
+                console.error("Library Supabase belum terpasang di <head>!");
+            }
+
             // ============================================
             // GLOBAL VARIABLES
             // ============================================
@@ -301,6 +319,7 @@
             
             // Load minimum waktu submit dari localStorage
             let minTimeToSubmit = parseInt(localStorage.getItem('minTimeToSubmit') || '0');
+            let hasSubmitted = false; // Status apakah siswa sudah submit ujian
             
             const SUBJECTS = [
                 "SMT GANJIL - UP BAB I",
@@ -392,7 +411,6 @@
                 if (overlay) overlay.style.display = 'none';
             }
 
-            // --- SAMPAI SINI ---
             // Fungsi ini tugasnya cuma satu: Mengembalikan data yang sudah difilter & disortir
             function getProcessedData() {
                 // 1. FILTER
@@ -501,6 +519,179 @@
                     return false;
                 } finally {
                     if (!silent) hideLoading();
+                }
+            }         
+
+            // ============================================================
+            // 1. BAGIAN SISWA (LAPOR)
+            // ============================================================
+
+            async function laporKeAdmin() {
+                // Cek koneksi & user login
+                if (!dbClient || !currentUser) return;
+
+                let statusSiswa = "Mengerjakan";
+                if (document.hidden) statusSiswa = "MENCURIGAKAN (Minimize)";
+                if (typeof hasSubmitted !== 'undefined' && hasSubmitted) statusSiswa = "Selesai";
+
+                let progressCount = 0;
+                if (typeof studentAnswers !== 'undefined') {
+                    progressCount = Object.keys(studentAnswers).length;
+                }
+
+                // Ambil Nama Mapel (Dengan pengecekan aman)
+                let namaMapel = "Ujian"; 
+                if (typeof currentExam !== 'undefined' && currentExam && currentExam.subject) {
+                    namaMapel = currentExam.subject;
+                }
+
+                const payload = {
+                    id: currentUser.username, // Sesuaikan dengan kolom PK di database (nisn/id)
+                    nama: currentUser.name,
+                    kelas: currentUser.class,
+                    mapel: namaMapel,
+                    status: statusSiswa,
+                    progress: progressCount + " Soal Terjawab",
+                    last_update: new Date().toISOString() // Penting untuk kolom Last Update di Admin
+                };
+
+                // Kirim ke Database
+                const { error } = await dbClient
+                    .from('monitoring')
+                    .upsert(payload, { onConflict: 'id' }); 
+
+                if (error) console.error("Gagal lapor:", error.message);
+            }
+
+            // Pemicu Laporan Siswa
+            function mulaiPelaporanSiswa() {
+                console.log("Sistem pelaporan siswa aktif.");
+                
+                // 1. Lapor Rutin (WAJIB DIAKTIFKAN BIAR PROGRESS JALAN)
+                // Lapor setiap 5 detik agar Admin tau siswa masih hidup/mengerjakan
+                setInterval(laporKeAdmin, 5000); 
+                
+                // 2. Lapor Instan saat Pindah Tab (Anti-Curang)
+                document.addEventListener("visibilitychange", laporKeAdmin);
+            }
+
+
+            // ============================================================
+            // 2. BAGIAN ADMIN (MONITORING AUTO-REFRESH)
+            // ============================================================
+
+            // Variabel timer refresh admin
+            let monitorInterval = null;
+
+            async function bukaMonitoring() {
+                console.log("🚀 Membuka monitoring (Mode Auto-Refresh)...");
+                
+                // Cek Database
+                if (!dbClient) {
+                    alert("Database belum siap. Coba refresh halaman.");
+                    return;
+                }
+
+                // Tampilkan Panel
+                const panel = document.getElementById('monitorPanel');
+                if (panel) panel.classList.remove('hidden');
+
+                const loadingText = document.getElementById('loadingText');
+                if (loadingText) {
+                    loadingText.style.display = 'block';
+                    loadingText.innerText = "Menghubungkan...";
+                    loadingText.style.color = "green";
+                }
+
+                // A. Ambil Data Awal (Langsung)
+                await ambilDataTerbaru();
+
+                // B. Aktifkan Loop Auto-Refresh (Setiap 3 Detik)
+                if (monitorInterval) clearInterval(monitorInterval);
+                
+                monitorInterval = setInterval(async () => {
+                    await ambilDataTerbaru();
+                }, 3000); 
+            }
+
+            // Fungsi Fetch Data ke Supabase
+            async function ambilDataTerbaru() {
+                const { data, error } = await dbClient
+                    .from('monitoring')
+                    .select('*')
+                    .order('last_update', { ascending: false }); // Yang baru update di paling atas
+
+                if (error) {
+                    console.error("❌ Gagal refresh:", error.message);
+                } else {
+                    // Update teks status
+                    const loadingText = document.getElementById('loadingText');
+                    if (loadingText) loadingText.innerText = `Update: ${new Date().toLocaleTimeString()}`;
+
+                    // Masukkan data ke tabel
+                    if (data) {
+                        data.forEach(siswa => {
+                            updateBarisTabel(siswa);
+                        });
+                    }
+                }
+            }
+
+            // Fungsi Render HTML Baris Tabel
+            function updateBarisTabel(data) {
+                const tbody = document.getElementById('monitorTableBody');
+                if (!tbody) return;
+
+                // Pastikan punya ID
+                const uniqueId = data.id; 
+                if (!uniqueId) return;
+
+                const rowId = 'row-' + uniqueId;
+                let row = document.getElementById(rowId);
+
+                // Logika Warna Status
+                let statusClass = "text-green-600 font-bold";
+                let bgClass = "bg-white hover:bg-gray-50";
+                
+                const statusText = data.status || "-";
+                if (statusText.includes("MENCURIGAKAN")) {
+                    statusClass = "text-red-600 font-bold animate-pulse";
+                    bgClass = "bg-red-50";
+                } else if (statusText === "Selesai") {
+                    statusClass = "text-blue-600 font-bold";
+                    bgClass = "bg-blue-50";
+                }
+                
+                const mapelSiswa = data.mapel || "-";
+                const waktuUpdate = data.last_update ? data.last_update.split('T')[1]?.split('.')[0] : "Barusan";
+
+                // Template HTML
+                const htmlContent = `
+                    <td class="p-3 border-b font-medium text-gray-800">${data.nama || "No Name"}</td>
+                    <td class="p-3 border-b text-gray-600">${data.kelas || "-"}</td>
+                    <td class="p-3 border-b text-blue-600 font-medium text-sm">${mapelSiswa}</td>
+                    <td class="p-3 border-b text-center ${statusClass}">${statusText}</td>
+                    <td class="p-3 border-b text-center font-mono text-sm">${data.progress || "0"}</td>
+                    <td class="p-3 border-b text-right text-xs text-gray-400">${waktuUpdate}</td>
+                `;
+
+                // Cek apakah baris sudah ada?
+                if (row) {
+                    // Update hanya jika konten berubah (biar hemat resource browser)
+                    if (row.innerHTML !== htmlContent) {
+                        row.innerHTML = htmlContent;
+                        row.className = bgClass;
+                        // Efek kedip kuning
+                        row.style.backgroundColor = "#fffbeb";
+                        setTimeout(() => { row.style.backgroundColor = ""; }, 500);
+                    }
+                } else {
+                    // Buat baris baru
+                    const newRow = document.createElement('tr');
+                    newRow.id = rowId;
+                    newRow.className = bgClass;
+                    newRow.innerHTML = htmlContent;
+                    tbody.prepend(newRow);
                 }
             }
             
@@ -1078,6 +1269,9 @@
                     }
                     
                     await loadExamQuestions();
+                    if (typeof mulaiPelaporanSiswa === "function") {
+                        mulaiPelaporanSiswa();
+                    }
                     renderExamPage();
                 }
             }
@@ -1732,6 +1926,12 @@
                 
                 // Tandai bahwa ujian sudah selesai untuk menonaktifkan deteksi pelanggaran
                 examSubmitted = true;
+                hasSubmitted = true;
+
+                // Kirim sinyal "SELESAI" ke Admin sekarang juga
+                if (typeof laporKeAdmin === 'function') {
+                    await laporKeAdmin(); 
+                }
 
                 
                 
@@ -2022,12 +2222,51 @@
                                         style="font-family: ${customFont}, ${baseFontStack}; min-width: 130px; -webkit-tap-highlight-color: transparent;">
                                         📅 Jadwal Ujian
                                     </button>
+
+                                    <button onclick="bukaMonitoring()"
+                                    class="px-4 py-2.5 text-sm md:text-base rounded-lg transition whitespace-nowrap flex-shrink-0 touch-manipulation bg-red-50 text-red-600 font-bold border border-red-200 hover:bg-red-100"
+                                    style="font-family: ${customFont}, ${baseFontStack}; min-width: 130px;">
+                                    📡 Live Monitor
+                                </button>
                                 </div>
                             </div>
                         </nav>
                         
                         <div class="flex-1 overflow-auto p-3 md:p-6 gradient-bg">
                             <div id="adminContent" class="max-w-7xl mx-auto"></div>
+                        </div>
+                        <div id="monitorPanel" class="fixed inset-0 bg-gray-100 z-50 hidden overflow-auto flex flex-col">
+                            <div class="bg-white shadow p-4 sticky top-0 z-10">
+                                <div class="max-w-7xl mx-auto flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <span class="animate-pulse text-red-600 text-xl">●</span>
+                                        <h2 class="text-xl font-bold text-gray-800">Live Monitoring Siswa</h2>
+                                    </div>
+                                    <button onclick="document.getElementById('monitorPanel').classList.add('hidden')" class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 text-sm">
+                                        Tutup Monitor
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="p-4 md:p-6 max-w-7xl mx-auto w-full">
+                                <div class="bg-white rounded-lg shadow overflow-hidden">
+                                    <table class="min-w-full text-sm">
+                                        <thead class="bg-gray-800 text-white">
+                                            <tr>
+                                                <th class="p-3 text-left">Nama Siswa</th>
+                                                <th class="p-3 text-left">Kelas</th>
+                                                <th class="px-5 py-3">Mapel</th>
+                                                <th class="p-3 text-center">Status</th>
+                                                <th class="p-3 text-center">Progress</th>
+                                                <th class="p-3 text-right">Update</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="monitorTableBody">
+                                            </tbody>
+                                    </table>
+                                    <p id="loadingText" class="text-center p-8 text-gray-500">Menunggu sinyal dari siswa...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
