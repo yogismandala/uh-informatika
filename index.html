@@ -552,7 +552,7 @@
                     mapel: namaMapel,
                     status: statusSiswa,
                     progress: progressCount + " Soal Terjawab",
-                    last_update: new Date().toISOString() // Penting untuk kolom Last Update di Admin
+                    last_update: new Date().toLocaleTimeString('id-ID') // Penting untuk kolom Last Update di Admin
                 };
 
                 // Kirim ke Database
@@ -663,7 +663,17 @@
                 }
                 
                 const mapelSiswa = data.mapel || "-";
-                const waktuUpdate = data.last_update ? data.last_update.split('T')[1]?.split('.')[0] : "Barusan";
+                let waktuUpdate = "Barusan";
+
+                if (data.last_update) {
+                    // Jika formatnya ISO (ada huruf T), kita ubah jadi jam lokal Indonesia
+                    if (data.last_update.includes('T')) {
+                        waktuUpdate = new Date(data.last_update).toLocaleTimeString('id-ID');
+                    } else {
+                        // Jika formatnya sudah teks biasa (Solusi 1), langsung tampilkan
+                        waktuUpdate = data.last_update;
+                    }
+                }
 
                 // Template HTML
                 const htmlContent = `
