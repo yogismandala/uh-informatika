@@ -622,6 +622,10 @@
                 // Cek koneksi & user login
                 if (!dbClient || !currentUser) return;
 
+                if (currentUser.class === 'admin' || currentUser.class === 'guru') {
+                    return; // Fungsi langsung dihentikan di sini, tidak ada data yang dikirim
+                }
+
                 let statusSiswa = "Mengerjakan";
                 if (document.hidden) statusSiswa = "MENCURIGAKAN (Minimize)";
                 if (typeof hasSubmitted !== 'undefined' && hasSubmitted) statusSiswa = "Selesai";
