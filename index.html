@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id" class="h-full">
+<html lang="id" class="min-h-screen">
     <head>
         <meta charset="UTF-8">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -181,13 +181,15 @@
             body {
                 margin: 0;
                 padding: 0;
+                top: 0; 
+                left: 0;
                 width: 100%;
                 min-height: 100vh;
                 background-color:#1e3a8a;
                 overflow-x: hidden; 
             
             
-            /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
+                /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
                 overscroll-behavior-y: contain; 
                 /* Mencegah pemilihan teks (opsional untuk keamanan) */
                 -webkit-user-select: none;
@@ -269,7 +271,7 @@
             }
         </style>
     </head>
-    <body class="h-full">
+    <body class="min-h-screen">
         <div class="header-waves">
             <div class="inner-header flex"></div>
             <div>
@@ -1112,7 +1114,7 @@
                 //const bgImage = "https://i.ibb.co.com/vvgwB7rL/yo.png";
                 
                 document.getElementById('app').innerHTML = `
-                    <div id="login-animasi" class="min-h-full flex items-center justify-center p-4">
+                    <div id="login-animasi" class="min-h-screen flex items-center justify-center p-4">
                         <div class="w-full max-w-md">
                             <div class="glass-panel p-8 shadow-2xl">
                                 <div class="text-center mb-8">
