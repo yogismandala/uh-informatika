@@ -188,26 +188,15 @@
                 filter: blur(3px); /* Efek blur keren di background saat popup muncul */
             }
             /* Reset Margin */
-            html, body {
-                margin: 0; 
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                position: fixed; /* Mencegah iOS mengangkat seluruh halaman */
-                top: 0;
-                left: 0;
-                overflow: hidden; /* Matikan scroll utama */
-                background-color: #1e3a8a; /* Ubah warna putih menjadi biru gelap sesuai warna dasar ombak */
-            }
+            body { margin: 0; padding: 0; background-color: #1e3a8a; position: fixed; overflow: hidden; }
 
             .header-waves {
-                position: absolute; /* Ubah fixed menjadi absolute */
+                position: absolute;
                 top: 0; left: 0;
-                width: 100%; 
-                height: 100vh; /* Gunakan vh penuh */
-                background: linear-gradient(60deg, #0f172a 0%, #1e3a8a 100%); 
+                width: 100%; height: 100%;
+                background: linear-gradient(60deg, #0f172a 0%, #1e3a8a 100%); /* Warna Laut Dalam */
                 color: white;
-                z-index: 0; 
+                z-index: 0; /* Di belakang layar */
                 overflow: hidden;
             }
 
@@ -218,17 +207,6 @@
                 height: 45vh; /* Tinggi ombak 15% dari layar */
                 min-height: 100px;
                 max-height: 200px;
-            }
-            #app {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                overflow-y: auto;
-                /* Perintah khusus agar scroll di iOS tetap mulus/lancar */
-                -webkit-overflow-scrolling: touch; 
-                z-index: 10;
             }
 
             /* Animasi Gerakan Ombak */
@@ -2048,14 +2026,18 @@
                         
                         // Tampilkan pop-up dan kumpulkan jawaban otomatis
                         Swal.fire({
-                            icon: 'warning',
+                            icon: 'info',
                             title: 'Waktu Habis!',
-                            text: 'Jawaban Anda akan dikumpulkan secara otomatis.',
+                            text: 'Sistem sedang mengirim jawaban Anda ke server...',
                             allowOutsideClick: false,
-                            confirmButtonColor: '#3b82f6'
-                        }).then(() => {
-                            submitExam(); // Memanggil fungsi kirim ujian Anda
+                            showConfirmButton: false,
+                            //confirmButtonColor: '#3b82f6'
+                            didOpen: () => {
+                                Swal.showLoading(); // Tampilkan animasi muter-muter
+                            }
                         });
+                            submitExam(true); // langsung eksekusi kirim
+                        
                         
                     } else {
                         // JIKA WAKTU MASIH ADA (Konversi milidetik ke Menit & Detik)
@@ -2082,7 +2064,7 @@
                 }, 1000);
             }
 
-            async function submitExam() {
+            async function submitExam(isAutoSubmit = false) {
                 if (!navigator.onLine) {
                     alert("Gagal mengirim! Koneksi internet Anda terputus. Silakan cari sinyal dan coba lagi."); //nottif offline
                     return; // Hentikan proses pengiriman
@@ -2104,7 +2086,7 @@
                 // Cek apakah sisa waktu masih di atas minimum yang diizinkan
                 const minTimeInSeconds = minTimeToSubmit * 60;
 
-                if (remainingSeconds > minTimeInSeconds && minTimeToSubmit > 0) {
+                if (!isAutoSubmit && remainingSeconds > minTimeInSeconds && minTimeToSubmit > 0) {
                     const remainingMinutesToShow = Math.floor(remainingSeconds / 60);
                     const remainingSecondsToShow = remainingSeconds % 60;
                     showSubmitWarning(remainingMinutesToShow, remainingSecondsToShow, minTimeToSubmit);
