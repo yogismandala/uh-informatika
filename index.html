@@ -8,11 +8,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>SMPN 11 TANGERANG</title>
         <link rel="icon" type="image/png" href="https://i.ibb.co.com/99y5fNyw/LOGO-11.png">
-        <script src="/_sdk/element_sdk.js"></script>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-        
-        
         <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
         <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
@@ -20,8 +17,38 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         
-  
+
         <style>
+            #questionContainer .flex.items-center p,
+            #questionContainer .flex.items-start p {
+                display: inline !important;
+                margin: 0;
+            }
+
+            /* Pastikan container opsinya menggunakan flex-start agar huruf A sejajar di atas */
+            .option-item {
+                display: flex;
+                align-items: flex-start; /* Sejajar dengan baris pertama teks */
+                gap: 8px;
+            }
+
+
+
+            .ql-container {
+                height: auto !important;
+                min-height: 60px;
+            }
+
+            /* Tambahkan padding di bawah modal SweetAlert agar tombol konfirmasi tidak menutupi editor */
+            .swal2-html-container {
+                margin-bottom: 20px !important;
+            }
+
+            /* Mengatur agar toolbar tetap rapi */
+            .ql-toolbar.ql-snow {
+                border-radius: 5px 5px 0 0;
+                padding: 2px !important;
+            }
 
             body {
                 /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
@@ -147,8 +174,6 @@
             .snap-mandatory {
                 scroll-behavior: smooth;
             }
-        </style>
-        <style>
             /* ... style lainnya ... */
 
             /* Pastikan SweetAlert selalu di atas Loading Overlay */
@@ -161,8 +186,6 @@
                 transition: 0.1s filter;
                 filter: blur(3px); /* Efek blur keren di background saat popup muncul */
             }
-        </style>
-        <style>
             /* Reset Margin */
             body { margin: 0; padding: 0; background-color: #fff; }
 
@@ -219,9 +242,8 @@
             @media (max-width: 768px) {
                 .waves { height: 85px; min-height: 85px; }
             }
+            @view-transition { navigation: auto; }
         </style>
-        <style>@view-transition { navigation: auto; }</style>
-        <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
     </head>
     <body class="h-full">
         <div class="header-waves">
@@ -348,6 +370,34 @@
             function updateFilter(key, value) {
                 filterState[key] = value;
                 renderResultsSection(); // Render ulang tampilan dengan data yang difilter
+            }
+
+            async function compressImage(base64Str, maxWidth = 800, quality = 0.7) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.src = base64Str;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Hitung rasio agar gambar tidak penyet
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Ubah kembali ke Base64 dengan format JPEG (lebih ringan dari PNG)
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressedBase64);
+                    };
+                });
             }
             
             // --- PILIHAN 9: 3D CUBE LOGIC ---
@@ -1057,27 +1107,6 @@
                 // --- MULAI KODE ANIMASI VANTA JS ---
                 // Cek jika ada animasi sebelumnya, hapus dulu agar tidak berat
                 if (window.vantaEffect) window.vantaEffect.destroy();
-
-                try {
-                    window.vantaEffect = VANTA.NET({
-                        el: "#login-animasi",      // ID yang kita buat di Langkah 2
-                        mouseControls: true,
-                        touchControls: true,
-                        gyroControls: false,
-                        minHeight: 200.00,
-                        minWidth: 200.00,
-                        scale: 1.00,
-                        scaleMobile: 1.00,
-                        color: 0x3b82f6,           // Warna Jaringan (Biru Muda)
-                        backgroundColor: 0x0f172a, // Warna Latar (Biru Gelap Malam)
-                        points: 15.00,             // Jumlah titik
-                        maxDistance: 22.00,        // Jarak garis antar titik
-                        spacing: 18.00             // Kerapatan
-                    });
-                } catch (error) {
-                    console.log("Vanta JS gagal dimuat:", error);
-                }
-                // --- SELESAI KODE ANIMASI ---
                 
                 document.getElementById('username').addEventListener('input', checkUserRole);
                 document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -1098,7 +1127,7 @@
             }
 
             function checkUserRole() {
-                const username = document.getElementById('username').value;
+                const username = document.getElementById('username').value.trim();
                 const user = allUsers.find(u => u.username === username);
                 
                 if (user && user.role === 'siswa') {
@@ -1152,8 +1181,8 @@
             async function handleLogin(e) {
                 e.preventDefault();
                 
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
                 const subject = document.getElementById('subject').value;
                 
                 const user = allUsers.find(u => u.username === username && u.password === password);
@@ -1225,32 +1254,6 @@
                     showError('Gagal memuat data soal. Coba lagi.');
                     return;
                 }
-
-                if (user.role === 'siswa' && examSettings.limit_one_attempt) {
-                    // Cek apakah siswa ini sudah pernah punya nilai di mapel yang dipilih
-                    // Kita cek berdasarkan NAMA dan MAPEL
-                    const hasTaken = allExamResults.some(result => 
-                        result.student_name === user.name && 
-                        result.exam_subject === subject
-                    );
-
-                    if (hasTaken) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Akses Ditolak',
-                            text: 'Anda hanya diperbolehkan mengerjakan ujian ini satu kali!',
-                            confirmButtonColor: '#d33'
-                        }).then(() => {
-                            // Logout paksa
-                            currentUser = null;
-                            sessionStorage.clear();
-                            localStorage.clear();
-                            window.location.reload();
-                        });
-                        return; // Berhenti di sini, jangan lanjut masuk
-                    }
-                }
-
                 // TAMBAHKAN KODE INI DI SINI
                 if (user.role === 'siswa') {
                 activateFullscreen();
@@ -1469,25 +1472,47 @@
                 const statusDiv = document.getElementById('connection-status');
                 const statusText = document.getElementById('status-text');
 
+                // 1. PENGAMAN (PENTING!): Cek apakah elemen ada?
+                // Jika tidak ada (misal di halaman login), stop fungsi agar tidak error.
+                if (!statusDiv || !statusText) {
+                    return;
+                }
+
                 if (navigator.onLine) {
-                    // Jika Online
-                    statusDiv.classList.remove('bg-red-500', 'text-white');
+                    // --- JIKA KEMBALI ONLINE ---
+                    
+                    // 2. Pastikan notifikasi MUNCUL dulu (Hapus 'hidden')
+                    statusDiv.classList.remove('hidden');
+                    
+                    // Atur warna Hijau
+                    statusDiv.classList.remove('bg-red-500');
                     statusDiv.classList.add('bg-green-500', 'text-white');
                     statusText.innerText = "🌐 Akhirnya online lagi 🤗";
-            
-                    // Sembunyikan pesan setelah 2 detik
-                    setTimeout(() => {
+
+                    // 3. Sembunyikan pesan setelah 3 detik
+                    // (Disimpan ke variabel agar tidak bentrok jika internet putus nyambung cepat)
+                    clearTimeout(window.connectionTimeout); 
+                    window.connectionTimeout = setTimeout(() => {
                         statusDiv.classList.add('hidden');
-                    }, 2000);
+                    }, 3000);
+
                 } else {
-                    // Jika Offline
-                    statusDiv.classList.remove('hidden', 'bg-green-500');
+                    // --- JIKA OFFLINE ---
+                    
+                    // Batalkan timer sembunyi (agar pesan offline tidak hilang tiba-tiba)
+                    if (window.connectionTimeout) clearTimeout(window.connectionTimeout);
+
+                    // Pastikan notifikasi MUNCUL
+                    statusDiv.classList.remove('hidden');
+                    
+                    // Atur warna Merah
+                    statusDiv.classList.remove('bg-green-500');
                     statusDiv.classList.add('bg-red-500', 'text-white');
                     statusText.innerText = "🚫 Koneksi Terputus! Jangan Refresh Halaman🥹";
                 }
             }
 
-            // Pasang pendengar kejadian (event listeners)
+            // Pastikan Event Listener dipasang
             window.addEventListener('online', updateConnectionStatus);
             window.addEventListener('offline', updateConnectionStatus);
 
@@ -1699,12 +1724,19 @@
                 return `
                     <div class="space-y-3">
                         ${question.options.map((option, idx) => `
-                            <label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition ${currentAnswer === option ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}">
-                                <input type="radio" name="answer" value="${option}" 
+                            <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition ${currentAnswer === option ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}">
+                                <input type="radio" name="answer" value="${option.replace(/"/g, '&quot;')}" 
                                     ${currentAnswer === option ? 'checked' : ''}
-                                    onchange="saveAnswer('${option.replace(/'/g, "\\'")}')"
-                                    class="w-5 h-5 text-blue-600 flex-shrink-0">
-                                <span class="ml-3 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word;">${String.fromCharCode(65 + idx)}. ${option}</span>
+                                    onchange="saveAnswer(${idx})"
+                                    class="mt-1 w-5 h-5 text-blue-600 flex-shrink-0">
+                                
+                                <div class="ml-3 flex-1 flex items-start gap-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">
+                                    <span class="font-bold flex-shrink-0">${String.fromCharCode(65 + idx)}.</span>
+                                    
+                                    <div class="quill-content-render break-words w-full" style="word-break: break-word; overflow-wrap: break-word;">
+                                        ${option}
+                                    </div>
+                                </div>
                             </label>
                         `).join('')}
                     </div>
@@ -1718,21 +1750,46 @@
                 const baseSize = config.font_size || defaultConfig.font_size;
                 const textColor = config.text_color || defaultConfig.text_color;
                 
-                const currentAnswer = studentAnswers[currentQuestionIndex] || [];
-                const selectedOptions = typeof currentAnswer === 'string' ? currentAnswer.split(',') : currentAnswer;
+                const currentAnswer = studentAnswers[currentQuestionIndex] || "";
+                
+                let selectedOptions = [];
+                if (Array.isArray(currentAnswer)) {
+                    selectedOptions = currentAnswer;
+                } else if (typeof currentAnswer === 'string' && currentAnswer.trim() !== "") {
+                    selectedOptions = currentAnswer.split(',');
+                }
                 
                 return `
                     <div class="space-y-3">
-                        <p class="text-sm text-gray-600 mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Pilih semua jawaban yang benar</p>
-                        ${question.options.map((option, idx) => `
-                            <label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition ${selectedOptions.includes(option) ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}">
-                                <input type="checkbox" value="${option}" 
-                                    ${selectedOptions.includes(option) ? 'checked' : ''}
-                                    onchange="saveComplexAnswer(this)"
-                                    class="w-5 h-5 text-blue-600 rounded flex-shrink-0">
-                                <span class="ml-3 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word;">${String.fromCharCode(65 + idx)}. ${option}</span>
-                            </label>
-                        `).join('')}
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded-r-lg">
+                            <p class="text-sm font-bold text-blue-800" style="font-family: ${customFont}, ${baseFontStack};">
+                                💡 Pilih semua jawaban yang menurut Anda benar.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3">
+                            ${question.options.filter(opt => opt && opt.trim() !== "").map((option, idx) => {
+                                const isChecked = selectedOptions.includes(option);
+                                return `
+                                    <label class="group flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 
+                                        ${isChecked ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}">
+                                        
+                                        <div class="flex items-center justify-center flex-shrink-0">
+                                            <input type="checkbox" value="${option.replace(/"/g, '&quot;')}" 
+                                                ${isChecked ? 'checked' : ''}
+                                                onchange="saveComplexAnswer(this)"
+                                                class="w-6 h-6 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                                        </div>
+
+                                        <div class="ml-4 flex-grow">
+                                            <div class="break-words leading-relaxed" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">
+                                                ${option}
+                                            </div>
+                                        </div>
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
                 `;
             }
@@ -1746,13 +1803,22 @@
                 const currentAnswer = studentAnswers[currentQuestionIndex] || '';
                 
                 return `
-                    <div>
-                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Jawaban Anda:</label>
-                        <input type="text" value="${currentAnswer}" 
-                            oninput="saveAnswer(this.value)"
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
-                            placeholder="Ketik jawaban Anda di sini">
+                    <div class="mt-4">
+                        <label class="block text-blue-700 font-bold mb-3 uppercase tracking-wide" 
+                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">
+                            ✍️ Tulis Jawaban Singkat:
+                        </label>
+                        
+                        <input type="text" 
+                            id="input-isian-${currentQuestionIndex}"
+                            oninput="saveAnswer(this.value)" 
+                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl shadow-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-800"
+                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.1}px;"
+                            placeholder="Ketik jawaban di sini..."
+                            value="${currentAnswer.replace(/"/g, '&quot;')}"
+                            autocomplete="off">
+                            
+                        <p class="mt-2 text-xs text-gray-400 font-medium">*Jawaban tersimpan otomatis saat Anda mengetik.</p>
                     </div>
                 `;
             }
@@ -1764,41 +1830,82 @@
                 const baseSize = config.font_size || defaultConfig.font_size;
                 const textColor = config.text_color || defaultConfig.text_color;
                 
-                const currentAnswer = studentAnswers[currentQuestionIndex] || {};
-                const answers = typeof currentAnswer === 'string' ? JSON.parse(currentAnswer || '{}') : currentAnswer;
+                // Ambil jawaban saat ini dari array studentAnswers
+                const currentAnswer = studentAnswers[currentQuestionIndex] || "";
                 
                 return `
-                    <div class="space-y-4">
-                        ${question.options.map((statement, idx) => `
-                            <div class="border-2 border-gray-300 rounded-lg p-4">
-                                <p class="mb-3 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word;">${idx + 1}. ${statement}</p>
-                                <div class="flex gap-4">
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="radio" name="statement_${idx}" value="Benar" 
-                                            ${answers[idx] === 'Benar' ? 'checked' : ''}
-                                            onchange="saveTrueFalseAnswer(${idx}, 'Benar')"
-                                            class="w-4 h-4 text-green-600">
-                                        <span class="ml-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Benar</span>
-                                    </label>
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="radio" name="statement_${idx}" value="Salah" 
-                                            ${answers[idx] === 'Salah' ? 'checked' : ''}
-                                            onchange="saveTrueFalseAnswer(${idx}, 'Salah')"
-                                            class="w-4 h-4 text-red-600">
-                                        <span class="ml-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Salah</span>
-                                    </label>
-                                </div>
+                    <div class="mt-6">
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6 shadow-sm">
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                                
+                                <label class="w-full sm:w-1/2 flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all 
+                                    ${currentAnswer === 'Benar' ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-white hover:bg-gray-50'}">
+                                    <input type="radio" name="true_false_choice" value="Benar" 
+                                        ${currentAnswer === 'Benar' ? 'checked' : ''}
+                                        onchange="saveAnswerDirect('Benar')"
+                                        class="w-6 h-6 text-green-600 border-gray-300 focus:ring-green-500">
+                                    <span class="ml-3 font-bold text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">BENAR</span>
+                                </label>
+
+                                <label class="w-full sm:w-1/2 flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all 
+                                    ${currentAnswer === 'Salah' ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white hover:bg-gray-50'}">
+                                    <input type="radio" name="true_false_choice" value="Salah" 
+                                        ${currentAnswer === 'Salah' ? 'checked' : ''}
+                                        onchange="saveAnswerDirect('Salah')"
+                                        class="w-6 h-6 text-red-600 border-gray-300 focus:ring-red-500">
+                                    <span class="ml-3 font-bold text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">SALAH</span>
+                                </label>
+
                             </div>
-                        `).join('')}
+                        </div>
                     </div>
                 `;
             }
 
-            function saveAnswer(answer) {
-                studentAnswers[currentQuestionIndex] = answer;
-                sessionStorage.setItem('studentAnswers', JSON.stringify(studentAnswers));
-                localStorage.setItem('studentAnswers', JSON.stringify(studentAnswers)); // Tambahkan ini
+            function saveAnswerDirect(value) {
+                // 1. Simpan langsung teksnya (Benar/Salah) ke array
+                studentAnswers[currentQuestionIndex] = value;
+
+                // 2. Simpan ke storage
+                const encodedAnswers = JSON.stringify(studentAnswers);
+                sessionStorage.setItem('studentAnswers', encodedAnswers);
+                localStorage.setItem('studentAnswers', encodedAnswers);
+
+                // 3. Update navigasi dan tampilan
                 renderQuestionNav();
+                renderQuestion(); 
+            }
+
+            function saveAnswer(indexOrText) {
+                const currentQuestion = examQuestions[currentQuestionIndex];
+                let finalAnswer;
+
+                // 1. Logika Penentuan Jawaban
+                if (currentQuestion.question_type === 'isian_singkat' || currentQuestion.question_type === 'benar_salah') {
+                    // Ambil nilai teks langsung (Benar/Salah atau hasil ketikan)
+                    finalAnswer = indexOrText;
+                } else {
+                    // Ambil dari array options berdasarkan index (Pilihan Ganda)
+                    finalAnswer = currentQuestion.options[indexOrText];
+                }
+
+                // 2. Simpan ke array jawaban siswa
+                studentAnswers[currentQuestionIndex] = finalAnswer;
+
+                // 3. Simpan ke storage (Local & Session)
+                const encodedAnswers = JSON.stringify(studentAnswers);
+                sessionStorage.setItem('studentAnswers', encodedAnswers);
+                localStorage.setItem('studentAnswers', encodedAnswers);
+
+                // 4. Update warna navigasi nomor soal
+                renderQuestionNav();
+
+                // 5. LOGIKA RENDER ULANG (CRITICAL)
+                // Kita HANYA memblokir render ulang jika tipenya 'isian_singkat'.
+                // Selain itu (pilihan ganda, benar_salah, kompleks), WAJIB render ulang agar UI berubah.
+                if (currentQuestion.question_type !== 'isian_singkat') {
+                    renderQuestion();
+                }
             }
 
             function saveComplexAnswer(checkbox) {
@@ -1885,50 +1992,104 @@
 
             function startTimer() {
                 if (examTimer) clearInterval(examTimer);
+
+                // Kunci unik untuk memori localStorage agar tidak tertukar
+                const timerKey = `timer_${currentUser.name}_${currentExam.subject}`;
                 
+                // 1. Cek apakah sudah ada target waktu selesai di memori (lanjutkan ujian)
+                let targetEndTime = localStorage.getItem(timerKey);
+                
+                // 2. Jika belum ada (ujian baru dimulai), buat target waktu baru
+                if (!targetEndTime) {
+                    // Durasi ujian diambil dari examSettings (dikalikan 60 ribu untuk jadi milidetik)
+                    targetEndTime = Date.now() + (examSettings.exam_duration * 60 * 1000);
+                    localStorage.setItem(timerKey, targetEndTime);
+                }
+
+                // 3. Jalankan Interval
                 examTimer = setInterval(() => {
-                    remainingTime--;
-                    sessionStorage.setItem('remainingTime', remainingTime.toString());
-                    localStorage.setItem('remainingTime', JSON.stringify(remainingTime)); // Tambahkan ini
-                    
-                    const minutes = Math.floor(remainingTime / 60);
-                    const seconds = remainingTime % 60;
-                    const timerElement = document.getElementById('timer');
-                    
-                    if (timerElement) {
-                        timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                        
-                        if (remainingTime <= 300) {
-                            timerElement.classList.add('timer-warning');
-                        }
-                    }
-                    
-                    if (remainingTime <= 0) {
+                    const now = Date.now();
+                    const distance = targetEndTime - now; // Hitung sisa waktu aktual
+
+                    if (distance <= 0) {
+                        // JIKA WAKTU HABIS
                         clearInterval(examTimer);
-                        submitExam();
+                        document.getElementById('timer').innerText = "00:00";
+                        
+                        // Hapus rekaman memori timer
+                        localStorage.removeItem(timerKey); 
+                        
+                        // Tampilkan pop-up dan kumpulkan jawaban otomatis
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Waktu Habis!',
+                            text: 'Jawaban Anda akan dikumpulkan secara otomatis.',
+                            allowOutsideClick: false,
+                            confirmButtonColor: '#3b82f6'
+                        }).then(() => {
+                            submitExam(); // Memanggil fungsi kirim ujian Anda
+                        });
+                        
+                    } else {
+                        // JIKA WAKTU MASIH ADA (Konversi milidetik ke Menit & Detik)
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                        // Tambahkan angka 0 di depan jika di bawah 10 (contoh: 09:05)
+                        const displayMinutes = minutes < 10 ? "0" + minutes : minutes;
+                        const displaySeconds = seconds < 10 ? "0" + seconds : seconds;
+
+                        // Tampilkan ke elemen timer di layar
+                        const timerDisplay = document.getElementById('timer');
+                        if (timerDisplay) {
+                            timerDisplay.innerText = `${displayMinutes}:${displaySeconds}`;
+                            
+                            // Tambahkan efek kedap-kedip (pulse) jika waktu sisa <= 5 menit
+                            if (minutes < 5) {
+                                timerDisplay.classList.add('text-red-500', 'animate-pulse');
+                            } else {
+                                timerDisplay.classList.remove('text-red-500', 'animate-pulse');
+                            }
+                        }
                     }
                 }, 1000);
             }
 
             async function submitExam() {
-
                 if (!navigator.onLine) {
                     alert("Gagal mengirim! Koneksi internet Anda terputus. Silakan cari sinyal dan coba lagi."); //nottif offline
                     return; // Hentikan proses pengiriman
                 }
 
+                // --- MULAI PERUBAHAN PENGECEKAN WAKTU MINIMAL ---
+                const timerKey = `timer_${currentUser.name}_${currentExam.subject}`;
+                let distance = 0; // Sisa waktu dalam milidetik
+                let remainingSeconds = 0; // Sisa waktu dalam detik
+                
+                // Ambil target waktu selesai dari memori
+                const targetEndTime = localStorage.getItem(timerKey);
+                
+                if (targetEndTime) {
+                    distance = targetEndTime - Date.now();
+                    remainingSeconds = Math.floor(distance / 1000);
+                }
+                
                 // Cek apakah sisa waktu masih di atas minimum yang diizinkan
                 const minTimeInSeconds = minTimeToSubmit * 60;
-        
-                if (remainingTime > minTimeInSeconds && minTimeToSubmit > 0) {
-                    const remainingMinutes = Math.floor(remainingTime / 60);
-                    const remainingSeconds = remainingTime % 60;
-                    showSubmitWarning(remainingMinutes, remainingSeconds, minTimeToSubmit);
+
+                if (remainingSeconds > minTimeInSeconds && minTimeToSubmit > 0) {
+                    const remainingMinutesToShow = Math.floor(remainingSeconds / 60);
+                    const remainingSecondsToShow = remainingSeconds % 60;
+                    showSubmitWarning(remainingMinutesToShow, remainingSecondsToShow, minTimeToSubmit);
                     return;
                 }
-                if (examTimer) clearInterval(examTimer);
+                // --- AKHIR PERUBAHAN PENGECEKAN WAKTU MINIMAL ---
 
                 if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
+                
+                // Matikan interval timer
+                if (examTimer) clearInterval(examTimer);
+                
                 showLoading();
                 // Tambahkan delay acak antara 1 hingga 10 detik agar tidak serentak
                 const randomDelay = Math.floor(Math.random() * 3000);
@@ -1943,8 +2104,6 @@
                     await laporKeAdmin(); 
                 }
 
-                
-                
                 const score = calculateScore();
                 const answersString = JSON.stringify(studentAnswers);
                 const examData = {
@@ -1956,6 +2115,10 @@
                     final_score: score,
                     violations: violationCount
                 };
+
+                // --- MULAI PENAMBAHAN PENGHAPUSAN MEMORI TIMER ---
+                localStorage.removeItem(timerKey); // <--- INI KODE BARU YANG DITAMBAHKAN
+                // --- AKHIR PENAMBAHAN ---
 
                 // HAPUS data ujian dari penyimpanan lokal agar siswa bisa login ulang untuk ujian baru
                 localStorage.removeItem('studentAnswers');
@@ -1985,44 +2148,81 @@
                 }
             }
 
+            // Fungsi pembantu untuk membersihkan HTML dan spasi (Letakkan di luar calculateScore)
+            function normalizeText(input) {
+                if (!input) return "";
+                // Jika input berupa array (untuk PG Kompleks), bersihkan setiap elemennya
+                if (Array.isArray(input)) return input.map(i => normalizeText(i)).sort().join(',');
+                
+                // Jika input berupa string/HTML
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = input;
+                return tempDiv.textContent || tempDiv.innerText || "";
+            }
+
             function calculateScore() {
                 let correctAnswers = 0;
-                
-                examQuestions.forEach((question, idx) => {
-                    //const studentAnswer = studentAnswers[idx]; 
-                    //let answerKey = atob(question.security_token);
+                if (!examQuestions || examQuestions.length === 0) return 0;
 
-                    // Versi paling aman untuk angka maupun huruf
-                    const studentAnswer = String(studentAnswers[idx] || "").trim();
-                    const answerKey = String(atob(question.security_token) || "").trim();
-                
+                examQuestions.forEach((question, idx) => {
+                    const rawStudent = studentAnswers[idx];
+                    let answerKey;
+
+                    // 1. Dekode dan Parsing Kunci Jawaban
                     try {
-                        answerKey = JSON.parse(answerKey);
+                        const decodedKey = atob(question.security_token || "");
+                        answerKey = JSON.parse(decodedKey);
                     } catch {
-                        // answerKey is already a string or not JSON
+                        answerKey = atob(question.security_token || "");
                     }
-                    
-                    if (question.question_type === 'pilihan_ganda' || question.question_type === 'isian_singkat') {
-                        if (studentAnswer === answerKey) {
-                            correctAnswers++;
-                        }
-                    } else if (question.question_type === 'pilihan_ganda_kompleks') {
-                        const studentAns = Array.isArray(studentAnswer) ? studentAnswer : [];
-                        const correctAns = Array.isArray(answerKey) ? answerKey : [];
+
+                    // 2. Validasi: Jangan hitung jika siswa tidak menjawab
+                    if (rawStudent === undefined || rawStudent === null || rawStudent === "" || (Array.isArray(rawStudent) && rawStudent.length === 0)) {
+                        return;
+                    }
+
+                    // 3. Logika Perbandingan Per Tipe Soal
+                    const type = question.question_type;
+
+                    if (type === 'pilihan_ganda' || type === 'benar_salah' || type === 'isian_singkat') {
+                        // Bandingkan teks murni, abaikan spasi depan/belakang dan huruf besar/kecil
+                        const sAns = normalizeText(rawStudent).trim().toLowerCase();
+                        const kAns = normalizeText(answerKey).trim().toLowerCase();
                         
-                        if (JSON.stringify(studentAns.sort()) === JSON.stringify(correctAns.sort())) {
-                            correctAnswers++;
+                        if (sAns === kAns) correctAnswers++;
+                    } 
+                    else if (type === 'pilihan_ganda_kompleks') {
+                        // 1. Pastikan jawaban siswa jadi Array, bersihkan HTML, dan urutkan
+                        let sArray = Array.isArray(rawStudent) ? rawStudent : [rawStudent];
+                        let sNormalized = sArray
+                            .map(item => normalizeText(item).trim().toUpperCase())
+                            .filter(item => item !== "") // Buang jika ada string kosong
+                            .sort();
+
+                        // 2. Pastikan kunci jawaban jadi Array, bersihkan HTML, dan urutkan
+                        let kArray = [];
+                        if (Array.isArray(answerKey)) {
+                            kArray = answerKey;
+                        } else {
+                            // Jika kunci berupa string "A,C" atau "A, C", pecah jadi array
+                            kArray = String(answerKey).split(',');
                         }
-                    } else if (question.question_type === 'benar_salah') {
-                        const studentAns = typeof studentAnswer === 'object' ? studentAnswer : {};
-                        const correctAns = typeof answerKey === 'object' ? answerKey : {};
-                        
-                        if (JSON.stringify(studentAns) === JSON.stringify(correctAns)) {
+
+                        let kNormalized = kArray
+                            .map(item => normalizeText(item).trim().toUpperCase())
+                            .filter(item => item !== "")
+                            .sort();
+
+                        // 3. Bandingkan isi array yang sudah jadi string murni
+                        const sFinal = sNormalized.join(',');
+                        const kFinal = kNormalized.join(',');
+
+                        if (sFinal !== "" && sFinal === kFinal) {
                             correctAnswers++;
                         }
                     }
                 });
-                
+
                 return Math.round((correctAnswers / examQuestions.length) * 100);
             }
 
@@ -2386,79 +2586,6 @@
                     });
                 }
             }
-            
-            function updateResultsTable() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                
-                const tbody = document.getElementById('resultsTableBody');
-                const mobileView = document.getElementById('resultsMobileView');
-                
-                if (tbody) {
-                    tbody.innerHTML = allExamResults.map(result => {
-                        
-                        return `
-                        <tr class="border-b border-gray-200 hover:bg-gray-50">
-                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
-                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_class}</td>
-                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
-                            <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${new Date(result.exam_time).toLocaleString('id-ID')}</td>
-                            <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.final_score}</td>
-                            <td class="p-3">
-                                <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                    ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
-                                </span>
-                            </td>
-                        </tr>
-                    `}).join('');
-                }
-                
-                if (mobileView) {
-                    mobileView.innerHTML = allExamResults.length > 0 ? allExamResults.map(result => {
-                        
-                        return `
-                        <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex-1">
-                                    <h3 class="font-bold text-base mb-1" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.student_name}</h3>
-                                    <p class="text-sm text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${result.student_class}</p>
-                                </div>
-                                <div class="text-right flex gap-2 items-center">
-                                    <div>
-                                        <div class="text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 80 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</div>
-                                        <p class="text-xs text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">Nilai</p>
-                                    </div>
-                                    <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack};">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="pt-3 border-t border-gray-200">
-                                <div class="flex items-center justify-between text-xs mb-2">
-                                    <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">📚 Mata Pelajaran:</span>
-                                    <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_subject}</span>
-                                </div>
-                                <div class="flex items-center justify-between text-xs mb-2">
-                                    <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🕐 Waktu:</span>
-                                    <span class="font-medium" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
-                                </div>
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">⚠️ Pelanggaran:</span>
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                        ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ Tidak Ada'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    `}).join('') : `
-                        <div class="text-center py-12">
-                            <p class="text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
-                        </div>
-                    `;
-                }
-            }
 
             function showAdminSection(section) {
                 currentAdminTab = section;
@@ -2598,6 +2725,14 @@
                 const baseSize = config.font_size || defaultConfig.font_size;
                 const textColor = config.text_color || defaultConfig.text_color;
                 const primaryColor = config.primary_color || defaultConfig.primary_color;
+                // Filter soal: Harus cocok Mapel DAN Kelas yang diajar guru
+                const teacherQuestions = allQuestions.filter(q => {
+                    const isRightSubject = q.subject === currentUser.subject;
+                    const teachesThisGrade = currentUser.class && currentUser.class.includes(q.question_class.charAt(0)); 
+                    return isRightSubject && teachesThisGrade;
+                });
+
+                const teacherTotalQuestions = teacherQuestions.length;
                 
                 
                 
@@ -2615,7 +2750,7 @@
                 
                 document.getElementById('guruContent').innerHTML = `
                     <div class="space-y-4 md:space-y-6">
-                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                        <div class="grid grid-cols-2 lg:grid-cols-2 gap-2 md:gap-4">
                             
                             <div class="bg-white rounded-xl shadow p-4 md:p-5">
                                 <div class="flex items-center justify-between mb-2">
@@ -2624,6 +2759,9 @@
                                 </div>
                                 <p class="font-bold text-green-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</p>
                                 <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Soal Tersedia</p>
+                                <p class="font-bold text-green-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${teacherTotalQuestions}</p>
+                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</p>
+                                
                             </div>
                             
                             <div class="bg-white rounded-xl shadow p-4 md:p-5">
@@ -2633,15 +2771,6 @@
                                 </div>
                                 <p class="font-bold text-purple-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</p>
                                 <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Total Ujian</p>
-                            </div>
-                            
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata</h3>
-                                    <span class="text-xl md:text-2xl">⭐</span>
-                                </div>
-                                <p class="font-bold text-yellow-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${avgScore}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Nilai Rata-rata</p>
                             </div>
                         </div>
                         
@@ -2668,6 +2797,7 @@
                     </div>
                 `;
             }
+            
 
             function renderUsersSection() {
                 const config = window.elementSdk?.config || defaultConfig;
@@ -2727,8 +2857,8 @@
                                                 </td>
                                                 <td class="p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${user.name}</td>
                                                 <td class="p-4">
-                                                    <span class="px-3 py-1 rounded-full text-sm font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                                        ${user.role === 'admin' ? '👨‍💼 Admin' : '👨‍🎓 Siswa'}
+                                                    <span class="px-3 py-1 rounded-full text-sm font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'guru' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
+                                                        ${user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'guru' ? '👨‍🏫 Guru' : '👨‍🎓 Siswa'}
                                                     </span>
                                                 </td>
                                                 <td class="p-4">
@@ -3092,93 +3222,6 @@
                 }
             }
 
-
-            function filterResults() {
-                const filterClass = document.getElementById('filterClass').value;
-                const filterSubject = document.getElementById('filterSubject').value;
-                
-                let filtered = allExamResults;
-                
-                if (filterClass) {
-                    filtered = filtered.filter(r => r.student_class === filterClass);
-                }
-                
-                if (filterSubject) {
-                    filtered = filtered.filter(r => r.exam_subject === filterSubject);
-                }
-                
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                
-                // Update Desktop Table
-                document.getElementById('resultsTableBody').innerHTML = filtered.map(result => {
-                    
-                    return `
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
-                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_class}</td>
-                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
-                        <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
-                        <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.final_score}</td>
-                        
-                        <td class="p-3">
-                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                ${result.violations > 0 ? `⚠️ ${result.violations}x` : '✅ 0'}
-                            </span>
-                        </td>
-                    </tr>
-                `}).join('');
-                
-                // Update Mobile Cards
-                const mobileView = document.getElementById('resultsMobileView');
-                if (mobileView) {
-                    mobileView.innerHTML = filtered.length > 0 ? filtered.map(result => {
-                        
-                        return `
-                        <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex-1">
-                                    <h3 class="font-bold text-base mb-1" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.student_name}</h3>
-                                    <p class="text-sm text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${result.student_class}</p>
-                                </div>
-                                <div class="text-right flex gap-2 items-center">
-                                    <div>
-                                        <div class="text-2xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 80 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</div>
-                                        <p class="text-sm text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">Nilai</p>
-                                    </div>
-                                    <div class="px-3 py-2 rounded-lg text-white font-bold text-xl" style="font-family: ${customFont}, ${baseFontStack};">
-            
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="pt-3 border-t border-gray-200">
-                                <div class="flex items-center justify-between text-sxs mb-2">
-                                    <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">📚 Mata Pelajaran:</span>
-                                    <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_subject}</span>
-                                </div>
-                                <div class="flex items-center justify-between text-xs mb-2">
-                                    <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">🕐 Waktu:</span>
-                                    <span class="font-medium" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</span>
-                                </div>
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">⚠️ Pelanggaran:</span>
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                        ${result.violations > 0 ? `${result.violations}x` : '✅ Tidak Ada'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    `}).join('') : `
-                        <div class="text-center py-12">
-                            <p class="text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
-                        </div>
-                    `;
-                }
-            }
-
             function downloadExcel() {
                 if (!allExamResults || allExamResults.length === 0) {
                     showToast('Tidak ada data untuk didownload', 'error');
@@ -3272,18 +3315,22 @@
                                     </div>
                                     <div class="space-y-2" id="questionsList${grade}">
                                         ${questionsByGrade[grade].length > 0 ? questionsByGrade[grade].map(q => `
-                                            <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition">
+                                            <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})' 
+                                                class="border border-gray-200 rounded-lg p-3 hover:bg-blue-50 cursor-pointer transition">
                                                 <div class="flex justify-between items-start gap-3">
                                                     <div class="flex-1 min-w-0">
                                                         <div class="flex gap-2 mb-2 flex-wrap">
-                                                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold" style="font-family: ${customFont}, ${baseFontStack};">${q.subject}</span>
-                                                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold" style="font-family: ${customFont}, ${baseFontStack};">${getQuestionTypeLabel(q.question_type)}</span>
+                                                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">${q.subject}</span>
+                                                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                                         </div>
-                                                        <p class="text-gray-800 text-sm break-words" style="font-family: ${customFont}, ${baseFontStack}; word-break: break-word; overflow-wrap: break-word;">${q.question_text}</p>
+                                                        <p class="text-gray-800 text-sm line-clamp-2">${q.question_text.replace(/<[^>]*>/g, '')}</p>
                                                     </div>
-                                                    <button onclick="deleteQuestion('${q.id}')" 
-                                                        class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex-shrink-0"
-                                                        style="font-family: ${customFont}, ${baseFontStack};">
+                                                    <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
+                                                        class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center gap-1 shadow-sm">
+                                                        ✏️ <span class="hidden sm:inline">Edit</span>
+                                                    </button>
+                                                    <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" 
+                                                        class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex-shrink-0">
                                                         🗑️ Hapus
                                                     </button>
                                                 </div>
@@ -3355,7 +3402,8 @@
                                             const isOwner = isRightSubject && teachesThisGrade;
             
                                             return `
-                                                <div class="border border-gray-200 rounded-lg p-3 ${isOwner ? 'hover:bg-gray-50' : 'bg-gray-50/50'} transition">
+                                            <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})'
+                                                class="border border-gray-200 rounded-lg p-3 ${isOwner ? 'hover:bg-gray-50' : 'bg-gray-50/50'} transition cursor-pointer">
                                                     <div class="flex justify-between items-start gap-3">
                                                         <div class="flex-1 min-w-0">
                                                             <div class="flex gap-2 mb-2 flex-wrap">
@@ -3370,7 +3418,11 @@
                                                         </div>
                         
                                                         ${isOwner ? `
-                                                            <button onclick="deleteQuestion('${q.id}')" 
+                                                            <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
+                                                                class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center gap-1 shadow-sm">
+                                                                ✏️ <span class="hidden sm:inline">Edit</span>
+                                                            </button>
+                                                            <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" 
                                                                 class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex-shrink-0">
                                                                 🗑️ Hapus
                                                             </button>
@@ -3391,320 +3443,924 @@
                 `;
             }
 
-            function showAddQuestionForm() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                
-                const container = document.getElementById('questionFormContainer');
-                container.style.display = 'block';
-                container.innerHTML = `
-                    <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Soal Baru</h3>
-                    <form id="addQuestionForm" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Jenjang Kelas</label>
-                                <select id="qClass" required
-                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                    <option value="">Pilih Jenjang</option>
-                                    <option value="7">Kelas 7 (Semua Kelas 7)</option>
-                                    <option value="8">Kelas 8 (Semua Kelas 8)</option>
-                                    <option value="9">Kelas 9 (Semua Kelas 9)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
-                                <select id="qSubject" required
-                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                    <option value="">Pilih Mapel</option>
-                                    ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Tipe Soal</label>
-                            <select id="qType" required onchange="updateQuestionForm()"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                <option value="">Pilih Tipe</option>
-                                <option value="pilihan_ganda">Pilihan Ganda</option>
-                                <option value="pilihan_ganda_kompleks">Pilihan Ganda Kompleks</option>
-                                <option value="isian_singkat">Isian Singkat</option>
-                                <option value="benar_salah">Benar/Salah</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Teks Soal</label>
-                            <div class="bg-white rounded-lg border-2 border-gray-300 overflow-hidden">
-                                <div id="editor-container" style="height: 200px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></div>
-                            </div>
-                            <input type="hidden" id="qText" name="qText">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">URL Gambar (Opsional)</label>
-                            <input type="url" id="qImage"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                        </div>
-                        
-                        <div id="optionsContainer"></div>
-                        <div id="answerContainer"></div>
-                        
-                        <div class="flex gap-3">
-                            <button type="submit" 
-                                class="px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
-                                style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                Simpan Soal
-                            </button>
-                            <button type="button" onclick="hideAddQuestionForm()" 
-                                class="px-6 py-2 bg-gray-500 rounded-lg text-white font-semibold hover:bg-gray-600 transition"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                Batal
-                            </button>
-                        </div>
-                    </form>
-                `;
+            function showQuestionDetail(q) {
+                // 1. AMBIL DAN DECODE KUNCI JAWABAN
+                let kunciRaw = '';
+                try {
+                    kunciRaw = q.security_token ? atob(q.security_token).trim() : String(q.correct_answer || q.answer_key || '').trim();
+                } catch (e) { 
+                    kunciRaw = String(q.correct_answer || '').trim(); 
+                }
 
-                // === INISIALISASI QUILL EDITOR ===
-                var quill = new Quill('#editor-container', {
-                    theme: 'snow',
-                    placeholder: 'Tulis pertanyaan di sini...',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'], // Format huruf
-                            [{ 'script': 'sub'}, { 'script': 'super' }], // Pangkat atas/bawah
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'align': [] }],
-                            [{ 'color': [] }, { 'background': [] }],
-                            ['link', 'image', 'formula'], // 'formula' untuk simbol MTK
-                            ['clean']
-                        ]
-                    },
-                    
-                });
+                // 2. FUNGSI PEMBERSIH BARU (LEBIH AMAN)
+                const cleanText = (str) => {
+                    if (str === null || str === undefined) return "";
+                    str = String(str);
+                    let tmp = document.createElement("DIV");
+                    tmp.innerHTML = str;
+                    let text = tmp.textContent || tmp.innerText || "";
+                    return text.toUpperCase().replace(/\s+/g, ' ').trim();
+                };
 
-                // Sinkronisasi otomatis: Saat mengetik di Quill, update input tersembunyi 'qText'
-                quill.on('text-change', function() {
-                    var html = quill.root.innerHTML;
-                    document.getElementById('qText').value = html;
-                });
+                const kunciBersihTotal = cleanText(kunciRaw);
+                const daftarKunciArray = kunciBersihTotal.split(',').map(k => k.trim());
 
-                // Panggil updateOptions() pertama kali agar form jawaban muncul
-                setTimeout(() => {
-                    if(typeof updateOptions === 'function') updateOptions();
-                }, 100);
-
-                // 5. EVENT LISTENER YANG AMAN (PENCEGAH LOGOUT/RELOAD)
-                const form = document.getElementById('addQuestionForm');
-                
-                // Hapus listener lama jika ada (untuk menghindari duplikasi, meski opsional di sini)
-                // Kita buat listener baru yang membungkus logika simpan
-                form.addEventListener('submit', function(e) {
-                    // PENTING: Baris ini mencegah halaman reload (logout)
-                    e.preventDefault(); 
-                    
-                    // Cek apakah editor kosong? (Opsional)
-                    if (quill.root.innerHTML === '<p><br></p>') {
-                        alert('Pertanyaan tidak boleh kosong!');
-                        return;
+                // 3. PROSES OPSI JAWABAN
+                let optionsArray = [];
+                try {
+                    if (typeof q.options === 'string' && q.options.trim() !== '') {
+                        optionsArray = JSON.parse(q.options);
+                    } else if (Array.isArray(q.options)) {
+                        optionsArray = q.options;
                     }
+                } catch (e) { optionsArray = []; }
 
-                    // Salin isi dari Quill ke input hidden 'qText'
-                    // agar fungsi addQuestion bisa membacanya
-                    document.getElementById('qText').value = quill.root.innerHTML;
+                let contentHtml = '';
+
+                // CASE A: JIKA SOAL PILIHAN GANDA / KOMPLEKS
+                if (optionsArray && optionsArray.length > 0) {
+                    contentHtml += '<div class="space-y-2 mt-3 text-left">';
                     
-                    // Panggil fungsi penyimpanan asli
-                    addQuestion(e);
+                    // LOGIKA BARU: Cek apakah ada opsi yang identik 100% dengan kunci jawaban (Mencegah bug 23,5 vs 23)
+                    const hasExactTextMatch = optionsArray.some(opt => cleanText(opt) === kunciBersihTotal);
+
+                    optionsArray.forEach((opt, idx) => {
+                        const label = String.fromCharCode(65 + idx).toUpperCase(); 
+                        const opsiBersih = cleanText(opt);
+                        
+                        let isCorrect = false;
+                        
+                        if (opsiBersih !== "") {
+                            if (hasExactTextMatch) {
+                                // Jika ada match 100%, JANGAN gunakan pecahan koma. Fokus ke Exact Match!
+                                if (opsiBersih === kunciBersihTotal) {
+                                    isCorrect = true;
+                                }
+                            } else {
+                                // Mode Fleksibel: Digunakan HANYA jika kuncinya format "A, B" atau "1, 2"
+                                if (daftarKunciArray.includes(opsiBersih)) {
+                                    isCorrect = true;
+                                } else if (kunciBersihTotal === label || daftarKunciArray.includes(label)) {
+                                    isCorrect = true;
+                                } else if (daftarKunciArray.includes(String(idx)) || daftarKunciArray.includes(String(idx + 1))) {
+                                    isCorrect = true;
+                                }
+                            }
+                        }
+
+                        contentHtml += `
+                            <div class="px-3 py-2 rounded border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 bg-white'}">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md font-bold text-xs ${isCorrect ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}">
+                                        ${label}
+                                    </span>
+                                    <div class="flex-1 text-sm ${isCorrect ? 'text-green-900 font-bold' : 'text-gray-700'}">
+                                        ${opt}
+                                    </div>
+                                    ${isCorrect ? '<b class="text-green-600 ml-2 text-xl">✓</b>' : ''}
+                                </div>
+                            </div>`;
+                    });
+                    contentHtml += '</div>';
+                } 
+                // CASE B: JIKA SOAL ISIAN SINGKAT
+                else {
+                    contentHtml = `
+                        <div class="mt-4">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Jawaban Benar:</div>
+                            <div class="p-4 bg-green-100 border-2 border-green-500 rounded-xl text-green-900 font-bold text-lg text-center shadow-inner">
+                                ${kunciRaw}
+                            </div>
+                        </div>`;
+                }
+
+                // 4. TAMPILKAN MODAL
+                Swal.fire({
+                    title: '<div class="text-lg font-bold text-gray-700">Detail Soal</div>',
+                    html: `
+                        <div class="text-left">
+                            <div class="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+                                <div class="text-[10px] font-bold text-blue-400 uppercase mb-1">Pertanyaan:</div>
+                                <div class="text-gray-800 text-sm leading-relaxed" style="white-space: pre-wrap;">${q.question_text}</div>
+                                ${q.question_image ? `<img src="${q.question_image}" class="mt-3 rounded-lg max-w-full h-auto mx-auto border shadow-sm block">` : ''}
+                            </div>                            
+                            
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Opsi Jawaban:</div>
+                                <div class="text-[9px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase">Kunci: ${kunciRaw}</div>
+                            </div>
+
+                            ${contentHtml}
+
+                            <div class="mt-4 p-2 bg-gray-50 rounded border border-gray-100 text-[10px] text-gray-500 flex justify-between uppercase font-bold tracking-tighter">
+                                <span>Kelas: ${q.question_class || '-'}</span>
+                                <span>Mapel: ${q.subject || '-'}</span>
+                            </div>
+                        </div>`,
+                    width: '550px',
+                    confirmButtonText: 'Tutup',
+                    confirmButtonColor: '#2563eb',
+                    heightAuto: false
+                });
+            }
+
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7GPdsc6CXcY31ZSA1XjnL7NobL1mDYkVg-ewMptXMqCXm001ri7a9mgNBQcG52Bgq/exec";
+            async function editQuestion(id) {
+                const q = allQuestions.find(x => x.id === id);
+                if (!q) { 
+                    Swal.fire('Error', 'Data soal tidak ditemukan.', 'error'); 
+                    return; 
+                }
+
+                // 1. Identifikasi Kunci Jawaban
+                let rawKey = q.correct_answer || q.security_token || q.answer_key || q.key || "";
+                rawKey = String(rawKey).trim();
+
+                // 2. Decode Base64
+                let decodedKey = rawKey;
+                try {
+                    if (/^[A-Za-z0-9+/=]+$/.test(rawKey) && rawKey.length % 4 === 0 && rawKey.length > 0) {
+                        decodedKey = decodeURIComponent(escape(window.atob(rawKey)));
+                    }
+                } catch (e) { decodedKey = rawKey; }
+
+                // 3. Parsing Opsi
+                let parsedOptions = ["", "", "", ""];
+                try {
+                    if (Array.isArray(q.options)) {
+                        parsedOptions = q.options;
+                    } else if (typeof q.options === 'string') {
+                        let cleanOpt = q.options.trim();
+                        if (cleanOpt.startsWith('[')) parsedOptions = JSON.parse(cleanOpt);
+                    }
+                } catch (e) { }
+
+                const safeText = q.question_text || "";
+
+                Swal.fire({
+                    title: '✏️ Edit Soal',
+                    width: '800px',
+                    html: `
+                        <style>
+                            .editor-container { cursor: text; transition: all 0.2s; border-width: 2px !important; }
+                            .editor-container:focus-within { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                            .ql-editor { min-height: 80px; font-size: 15px; }
+                            .ql-container.ql-snow { border: none !important; }
+                            .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #f0f0f0 !important; background: #fafafa; border-radius: 8px 8px 0 0; }
+                            
+                            /* Warna Identitas */
+                            .box-soal { border-color: #3b82f6 !important; background-color: #eff6ff; }
+                            .box-a { border-color: #10b981 !important; background-color: #ecfdf5; }
+                            .box-b { border-color: #ef4444 !important; background-color: #fef2f2; }
+                            .box-c { border-color: #f59e0b !important; background-color: #fffbeb; }
+                            .box-d { border-color: #8b5cf6 !important; background-color: #f5f3ff; }
+                            
+                            label.title-opt { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; margin-bottom: 6px; }
+                        </style>
+
+                        <div class="text-left space-y-6" style="max-height: 75vh; overflow-y: auto; padding: 15px;">
+                            <div class="grid grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl shadow-sm">
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
+                                    <select id="edit-class" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+                                        <option value="7" ${q.question_class == '7' ? 'selected' : ''}>Kelas 7</option>
+                                        <option value="8" ${q.question_class == '8' ? 'selected' : ''}>Kelas 8</option>
+                                        <option value="9" ${q.question_class == '9' ? 'selected' : ''}>Kelas 9</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
+                                    <select id="edit-subject" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+                                        ${(typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN', 'IPS', 'Informatika']).map(s => 
+                                            `<option value="${s}" ${s === q.subject ? 'selected' : ''}>${s}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-purple-600 uppercase mb-1">Tipe Soal</label>
+                                    <select id="edit-type" class="w-full p-2 border-2 border-purple-200 rounded-lg shadow-sm font-bold focus:border-purple-500">
+                                        <option value="pilihan_ganda" ${q.question_type === 'pilihan_ganda' ? 'selected' : ''}>Pilihan Ganda</option>
+                                        <option value="pilihan_ganda_kompleks" ${q.question_type === 'pilihan_ganda_kompleks' ? 'selected' : ''}>PG Kompleks</option>
+                                        <option value="benar_salah" ${q.question_type === 'benar_salah' ? 'selected' : ''}>Benar / Salah</option>
+                                        <option value="isian_singkat" ${q.question_type === 'isian_singkat' ? 'selected' : ''}>Isian</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="title-opt bg-blue-600 text-xs font-bold uppercase">Pertanyaan</label>
+                                <div id="edit-q-text" class="editor-container box-soal bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="min-height: 120px;"></div>
+                            </div>
+                            
+                            <div id="edit-options-wrapper" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="title-opt bg-amber-500 text-xs font-bold uppercase">Opsi A</label>
+                                        <div id="edit-opt-0" class="editor-container box-c bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 100px;"></div>
+                                    </div>
+                                    <div>
+                                        <label class="title-opt bg-amber-500 text-xs font-bold uppercase">Opsi B</label>
+                                        <div id="edit-opt-1" class="editor-container box-c bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 100px;"></div>
+                                    </div>
+                                    <div>
+                                        <label class="title-opt bg-amber-500 text-xs font-bold uppercase">Opsi C</label>
+                                        <div id="edit-opt-2" class="editor-container box-c bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 100px;"></div>
+                                    </div>
+                                    <div>
+                                        <label class="title-opt bg-amber-500 text-xs font-bold uppercase">Opsi D</label>
+                                        <div id="edit-opt-3" class="editor-container box-c bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 100px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-4 border-t-2 border-green-500 bg-green-50 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div class="flex-shrink-0">
+                                    <label class="text-sm font-black text-green-700 flex items-center">
+                                        <span class="mr-2 text-lg">✅</span> KUNCI JAWABAN:
+                                    </label>
+                                </div>
+
+                                <div id="edit-key-dropdown-container" class="flex-grow max-w-xs">
+                                    <select id="edit-correct-opt" class="w-full p-2 border-2 border-green-300 rounded-lg text-lg font-black text-green-800 shadow-sm focus:border-green-500 outline-none">
+                                        <option value="0">A</option><option value="1">B</option>
+                                        <option value="2">C</option><option value="3">D</option>
+                                    </select>
+                                </div>
+
+                                <div id="edit-key-manual-container" class="flex-grow max-w-md" style="display: none;">
+                                    <input type="text" id="edit-manual-key" class="w-full p-2 border-2 border-gray-300 rounded-lg font-bold focus:border-blue-500 shadow-sm" value="${decodedKey.replace(/"/g, '&quot;')}" placeholder="Ketik jawaban...">
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    didOpen: () => {
+                        const configMini = { modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], ['clean']] }, theme: 'snow' };
+
+                        window.editEditors = {
+                            question: new Quill('#edit-q-text', configMini),
+                            opt0: new Quill('#edit-opt-0', configMini),
+                            opt1: new Quill('#edit-opt-1', configMini),
+                            opt2: new Quill('#edit-opt-2', configMini),
+                            opt3: new Quill('#edit-opt-3', configMini)
+                        };
+
+                        window.editEditors.question.root.innerHTML = safeText;
+                        window.editEditors.opt0.root.innerHTML = parsedOptions[0] || '';
+                        window.editEditors.opt1.root.innerHTML = parsedOptions[1] || '';
+                        window.editEditors.opt2.root.innerHTML = parsedOptions[2] || '';
+                        window.editEditors.opt3.root.innerHTML = parsedOptions[3] || '';
+
+                        // Klik fokus otomatis pada kotak
+                        Object.keys(window.editEditors).forEach(key => {
+                            window.editEditors[key].container.addEventListener('click', () => { window.editEditors[key].focus(); });
+                        });
+
+                        // Logika Dropdown Otomatis (Tetap Sama)
+                        if (['pilihan_ganda', 'benar_salah'].includes(q.question_type)) {
+                            const normalize = (str) => {
+                                if (!str) return "";
+                                let tmp = document.createElement("DIV");
+                                tmp.innerHTML = str;
+                                return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, '').toLowerCase();
+                            };
+
+                            const targetDecoded = normalize(decodedKey);
+                            const targetRaw = normalize(rawKey);
+                            let foundIndex = -1;
+
+                            for (let i = 0; i < 4; i++) {
+                                const optNorm = normalize(parsedOptions[i] || "");
+                                if ((optNorm === targetDecoded && targetDecoded.length > 0) || (optNorm === targetRaw && targetRaw.length > 0)) {
+                                    foundIndex = i; break;
+                                }
+                            }
+
+                            if (foundIndex === -1) {
+                                if (['0','1','2','3'].includes(decodedKey)) foundIndex = parseInt(decodedKey);
+                                else if (['A','B','C','D'].includes(decodedKey.toUpperCase())) foundIndex = decodedKey.toUpperCase().charCodeAt(0) - 65;
+                            }
+                            document.getElementById('edit-correct-opt').value = (foundIndex === -1) ? 0 : foundIndex;
+                        }
+
+                        const typeSelect = document.getElementById('edit-type');
+                        const toggleUI = () => {
+                            const val = typeSelect.value;
+                            const isBS = val === 'benar_salah'; // Identifikasi tipe Benar/Salah
+                            const isSimple = ['pilihan_ganda', 'benar_salah'].includes(val);
+                            
+                            // 1. Sembunyikan Opsi C dan D jika tipe Benar/Salah
+                            // Cari elemen pembungkus Opsi C dan D (index 2 dan 3)
+                            const optContainers = [
+                                document.getElementById('edit-opt-0').parentElement,
+                                document.getElementById('edit-opt-1').parentElement,
+                                document.getElementById('edit-opt-2').parentElement,
+                                document.getElementById('edit-opt-3').parentElement
+                            ];
+
+                            if (isBS) {
+                                optContainers[2].style.display = 'none'; // Sembunyikan C
+                                optContainers[3].style.display = 'none'; // Sembunyikan D
+                            } else {
+                                optContainers[2].style.display = 'block';
+                                optContainers[3].style.display = 'block';
+                            }
+
+                            // 2. Sembunyikan pilihan C dan D di Dropdown Kunci Jawaban
+                            const dropOptions = document.getElementById('edit-correct-opt').options;
+                            dropOptions[2].style.display = isBS ? 'none' : 'block';
+                            dropOptions[3].style.display = isBS ? 'none' : 'block';
+
+                            // Logika original Anda tetap berjalan
+                            document.getElementById('edit-options-wrapper').style.display = (isSimple || val === 'pilihan_ganda_kompleks') ? 'block' : 'none';
+                            document.getElementById('edit-key-dropdown-container').style.display = isSimple ? 'block' : 'none';
+                            document.getElementById('edit-key-manual-container').style.display = isSimple ? 'none' : 'block';
+                        };
+
+                        typeSelect.addEventListener('change', toggleUI);
+                        toggleUI();
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: '💾 Update',
+                    confirmButtonColor: '#10B981',
+                    preConfirm: async () => {
+                        const qClass = document.getElementById('edit-class').value;
+                        const qSubject = document.getElementById('edit-subject').value;
+                        const qType = document.getElementById('edit-type').value;
+
+                        const processEditor = async (editorInstance) => {
+                            const images = editorInstance.root.querySelectorAll('img');
+                            for (let img of images) {
+                                if (img.src.startsWith('data:image') && typeof compressImage === 'function') {
+                                    img.src = await compressImage(img.src);
+                                }
+                            }
+                            return editorInstance.root.innerHTML;
+                        };
+
+                        Swal.showLoading();
+
+                        try {
+                            const qText = await processEditor(window.editEditors.question);
+                            let finalOptions = [];
+                            let finalKey = "";
+
+                            // 1. Ambil semua input dari 4 editor terlebih dahulu
+                            let rawOptions = [
+                                await processEditor(window.editEditors.opt0),
+                                await processEditor(window.editEditors.opt1),
+                                await processEditor(window.editEditors.opt2),
+                                await processEditor(window.editEditors.opt3)
+                            ];
+
+                            if (['pilihan_ganda', 'benar_salah'].includes(qType)) {
+                                // PERBAIKAN: Jika benar_salah, potong array agar hanya sisa index 0 dan 1 (A & B)
+                                finalOptions = (qType === 'benar_salah') ? rawOptions.slice(0, 2) : rawOptions;
+                                
+                                // Ambil kunci berdasarkan index dropdown
+                                finalKey = finalOptions[document.getElementById('edit-correct-opt').value];
+                            } else {
+                                if (qType === 'pilihan_ganda_kompleks') {
+                                    finalOptions = rawOptions;
+                                    let rawIn = document.getElementById('edit-manual-key').value;
+                                    finalKey = rawIn.toUpperCase().replace(/\s+/g, '').split(',').filter(k => k !== '').join(',');
+                                } else {
+                                    // Isian Singkat
+                                    finalKey = document.getElementById('edit-manual-key').value.trim();
+                                }
+                            }
+
+                            const payload = {
+                                action: 'updateQuestion',
+                                id: id,
+                                question_text: qText,
+                                question_class: qClass,
+                                subject: qSubject,
+                                question_type: qType,
+                                options: JSON.stringify(finalOptions), // Sekarang hanya mengirim 2 opsi jika Benar/Salah
+                                answer_key: finalKey 
+                            };
+
+                            const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                            const result = await response.json();
+                            
+                            if (!result.success) throw new Error(result.message || "Gagal update");
+
+                            return { ...payload, security_token: result.token || btoa(unescape(encodeURIComponent(finalKey))) };
+                        } catch (error) {
+                            Swal.showValidationMessage(`Gagal: ${error.message}`);
+                        }
+                    }
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        const idx = allQuestions.findIndex(x => x.id === id);
+                        if (idx !== -1) {
+                            const val = result.value;
+                            allQuestions[idx] = {
+                                ...allQuestions[idx],
+                                question_text: val.question_text,
+                                question_class: val.question_class,
+                                subject: val.subject,
+                                question_type: val.question_type,
+                                options: JSON.parse(val.options),
+                                correct_answer: val.answer_key, 
+                                security_token: val.security_token
+                            };
+                        }
+                        Swal.fire('Sukses', 'Data berhasil diperbarui', 'success')
+                        .then(() => { 
+                            if (typeof renderGuruQuestionsSection === 'function') {
+                                renderGuruQuestionsSection('question');
+                            } else if (typeof renderQuestionsSection === 'function') {
+                                renderQuestionsSection('question');
+                            }
+                        });
+                    }
                 });
                 
-                //document.getElementById('addQuestionForm').addEventListener('submit', addQuestion);
+            }
+            // Fungsi untuk Encode Base64 yang aman untuk karakter unik/emoji/simbol
+            function utoa(str) {
+                return btoa(unescape(encodeURIComponent(str)));
+            }
+
+            // Fungsi untuk Decode Base64 yang aman
+            function atou(str) {
+                try {
+                    return decodeURIComponent(escape(atob(str)));
+                } catch (e) {
+                    return atob(str); // Fallback jika bukan UTF-8 encoded
+                }
+            }
+
+            async function showAddQuestionForm() {
+                const newId = "question_" + Date.now();
+
+                Swal.fire({
+                    title: '➕ Tambah Soal Baru',
+                    width: '800px',
+                    html: `
+                        <style>
+                            .editor-container { cursor: text; transition: all 0.2s; border-width: 2px !important; }
+                            .editor-container:focus-within { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                            .ql-editor { min-height: 100px; font-size: 15px; }
+                            .ql-container.ql-snow { border: none !important; }
+                            .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #f0f0f0 !important; background: #fafafa; border-radius: 8px 8px 0 0; }
+                            .box-soal { border-color: #3b82f6 !important; background-color: #eff6ff; }
+                            .box-a { border-color: #10b981 !important; background-color: #ecfdf5; }
+                            label.title-opt { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; margin-bottom: 6px; }
+                        </style>
+
+                        <div class="text-left space-y-6" style="max-height: 75vh; overflow-y: auto; padding: 15px;">
+                            <div class="grid grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
+                                    <select id="add-class" class="w-full p-2 border-0 rounded-lg shadow-sm text-sm">
+                                        <option value="7">Kelas 7</option><option value="8">Kelas 8</option><option value="9">Kelas 9</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
+                                    <select id="add-subject" class="w-full p-2 border-0 rounded-lg shadow-sm text-sm">
+                                        ${(typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}">${s}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-purple-600 uppercase mb-1">Tipe Soal</label>
+                                    <select id="add-type" class="w-full p-2 border-2 border-purple-200 rounded-lg shadow-sm font-bold text-sm">
+                                        <option value="pilihan_ganda">Pilihan Ganda</option>
+                                        <option value="pilihan_ganda_kompleks">PG Kompleks</option>
+                                        <option value="benar_salah">Benar / Salah</option>
+                                        <option value="isian_singkat">Isian / Essai</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="title-opt bg-blue-600 text-xs font-bold uppercase">Pertanyaan Utama</label>
+                                <div id="add-q-text" class="editor-container box-soal bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="min-height: 140px;"></div>
+                            </div>
+                            
+                            <div id="options-wrapper" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div id="cont-opt-0">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi A</label>
+                                        <div id="add-opt-0" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                    <div id="cont-opt-1">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi B</label>
+                                        <div id="add-opt-1" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                    <div id="cont-opt-2">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi C</label>
+                                        <div id="add-opt-2" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                    <div id="cont-opt-3">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi D</label>
+                                        <div id="add-opt-3" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-4 border-t-2 border-green-500 bg-green-50 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div class="flex-shrink-0">
+                                    <label class="text-sm font-black text-green-700 flex items-center">
+                                        <span class="mr-2 text-lg">✅</span> KUNCI JAWABAN:
+                                    </label>
+                                </div>
+
+                                <div id="key-dropdown-container" class="flex-grow max-w-xs">
+                                    <select id="select-correct-opt" class="w-full p-2 border-2 border-green-300 rounded-lg text-lg font-black text-green-800 outline-none">
+                                        <option value="0">A</option><option value="1">B</option>
+                                        <option id="drop-opt-2" value="2">C</option><option id="drop-opt-3" value="3">D</option>
+                                    </select>
+                                </div>
+
+                                <div id="key-manual-container" class="flex-grow max-w-md" style="display: none;">
+                                    <input type="text" id="manual-key-input" class="w-full p-2 border-2 border-gray-300 rounded-lg font-bold" placeholder="Ketik jawaban...">
+                                </div>
+                                
+                                <div class="flex-shrink-0">
+                                    <p class="text-[10px] text-green-600 font-medium italic" id="key-hint-text">*Pilih huruf jawaban benar</p>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    didOpen: () => {
+                        const config = { 
+                            modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
+                            theme: 'snow', 
+                            placeholder: 'Ketik di sini...' 
+                        };
+                        
+                        window.addEditors = {
+                            question: new Quill('#add-q-text', config),
+                            opt0: new Quill('#add-opt-0', config),
+                            opt1: new Quill('#add-opt-1', config),
+                            opt2: new Quill('#add-opt-2', config),
+                            opt3: new Quill('#add-opt-3', config)
+                        };
+
+                        const typeSelect = document.getElementById('add-type');
+                        const handleUIChange = () => {
+                            const type = typeSelect.value;
+                            const isBS = type === 'benar_salah';
+                            const isPG = type === 'pilihan_ganda';
+                            const isComplex = type === 'pilihan_ganda_kompleks';
+                            const isEssay = type === 'isian_singkat';
+
+                            // Kontrol visibilitas Opsi C dan D
+                            document.getElementById('cont-opt-2').style.display = (isPG || isComplex) ? 'block' : 'none';
+                            document.getElementById('cont-opt-3').style.display = (isPG || isComplex) ? 'block' : 'none';
+                            document.getElementById('drop-opt-2').style.display = isPG ? 'block' : 'none';
+                            document.getElementById('drop-opt-3').style.display = isPG ? 'block' : 'none';
+                            document.getElementById('options-wrapper').style.display = isEssay ? 'none' : 'block';
+
+                            const useDropdown = isPG || isBS;
+                            document.getElementById('key-dropdown-container').style.display = useDropdown ? 'block' : 'none';
+                            document.getElementById('key-manual-container').style.display = useDropdown ? 'none' : 'block';
+
+                            // Auto-fill Benar/Salah
+                            if (isBS) {
+                                window.addEditors.opt0.root.innerHTML = '<p>Benar</p>';
+                                window.addEditors.opt1.root.innerHTML = '<p>Salah</p>';
+                            }
+
+                            document.getElementById('key-hint-text').textContent = isComplex ? "*Gunakan koma (Contoh: A, C)" : (isEssay ? "*Ketik jawaban singkat" : "*Pilih huruf jawaban benar");
+                        };
+
+                        typeSelect.addEventListener('change', handleUIChange);
+                        handleUIChange();
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: '💾 Simpan Soal',
+                    confirmButtonColor: '#10B981',
+                    preConfirm: async () => {
+                        try {
+                            const type = document.getElementById('add-type').value;
+                            const processEditor = async (ed) => {
+                                const imgs = ed.root.querySelectorAll('img');
+                                for (let img of imgs) {
+                                    if (img.src.startsWith('data:image') && typeof compressImage === 'function') {
+                                        img.src = await compressImage(img.src);
+                                    }
+                                }
+                                return ed.root.innerHTML;
+                            };
+
+                            Swal.showLoading();
+                            const qText = await processEditor(window.addEditors.question);
+                            let finalOptions = [], key = "";
+
+                            if (type !== 'isian_singkat') {
+                                // Ambil semua input mentah
+                                const rawOptions = [
+                                    await processEditor(window.addEditors.opt0),
+                                    await processEditor(window.addEditors.opt1),
+                                    await processEditor(window.addEditors.opt2),
+                                    await processEditor(window.addEditors.opt3)
+                                ];
+
+                                // --- LOGIKA UTAMA: Potong Opsi jika Benar/Salah ---
+                                if (type === 'benar_salah') {
+                                    finalOptions = rawOptions.slice(0, 2); // Hanya simpan A dan B
+                                } else {
+                                    finalOptions = rawOptions; // Simpan semua A, B, C, D
+                                }
+
+                                // Penentuan Kunci
+                                if (type === 'pilihan_ganda' || type === 'benar_salah') {
+                                    const selectedIdx = document.getElementById('select-correct-opt').value;
+                                    key = finalOptions[selectedIdx]; 
+                                } else if (type === 'pilihan_ganda_kompleks') {
+                                    key = document.getElementById('manual-key-input').value.toUpperCase().replace(/\s+/g, '').split(',').filter(k => k !== '').join(',');
+                                    if (!key) throw new Error("Kunci jawaban kompleks harus diisi");
+                                } else {
+                                    key = document.getElementById('manual-key-input').value;
+                                }
+                            } else {
+                                key = document.getElementById('manual-key-input').value.trim();
+                            }
+
+                            const payload = {
+                                action: 'addQuestion',
+                                id: newId,
+                                question_text: qText,
+                                question_class: document.getElementById('add-class').value,
+                                subject: document.getElementById('add-subject').value,
+                                question_type: type,
+                                options: JSON.stringify(finalOptions), // Hanya berisi 2 data jika B/S
+                                answer_key: key
+                            };
+
+                            const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                            const resJson = await response.json();
+                            if (!resJson.success) throw new Error(resJson.message);
+
+                            return { ...payload, security_token: btoa(unescape(encodeURIComponent(key))) };
+                        } catch (err) {
+                            Swal.showValidationMessage(`Gagal: ${err.message}`);
+                        }
+                    }
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        allQuestions.push({
+                            ...result.value,
+                            options: JSON.parse(result.value.options),
+                            correct_answer: result.value.answer_key
+                        });
+                        Swal.fire('Tersimpan!', 'Soal berhasil ditambahkan.', 'success').then(() => {
+                            if(typeof renderQuestionsSection === 'function') renderQuestionsSection();
+                        });
+                    }
+                });
             }
 
             function showGuruAddQuestionForm() { //guru nambah soal
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                
-                const container = document.getElementById('questionFormContainer');
-                container.style.display = 'block';
+                const newId = "question_" + Date.now();
+
                 const isGuru = currentUser.role === 'GURU' || currentUser.role === 'guru';
-                // Logika Filter Kelas: Jika guru, hanya tampilkan kelas yang sesuai
-                let classOptions = `
-                    <option value="">Pilih Jenjang</option>
-                    <option value="7">Kelas 7</option>
-                    <option value="8">Kelas 8</option>
-                    <option value="9">Kelas 9</option>
-                `;
+                // Tentukan opsi kelas (Jika guru punya kelas, kunci ke kelas itu saja)
+                let classOptions = "";
                 if (isGuru && currentUser.class) {
-                    // Jika guru memiliki data class, hanya tampilkan kelas tersebut
                     classOptions = `<option value="${currentUser.class}">Kelas ${currentUser.class}</option>`;
+                } else {
+                    classOptions = `<option value="7">Kelas 7</option><option value="8">Kelas 8</option><option value="9">Kelas 9</option>`;
                 }
-                container.innerHTML = `
-                    <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Soal Baru</h3>
-                    <form id="addQuestionForm" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Jenjang Kelas</label>
-                                <select id="qClass" required
-                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                    ${isGuru ? 'disabled' : ''}> 
-                                    ${classOptions}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
-                                <select id="qSubject" required
-                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                    ${isGuru ? 'disabled' : ''}> <option value="${isGuru ? currentUser.subject : ''}">${isGuru ? currentUser.subject : 'Pilih Mapel'}</option> 
-                                </select>
-                                ${isGuru ? `<input type="hidden" id="qSubjectHidden" value="${currentUser.subject}">` : ''}
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Tipe Soal</label>
-                            <select id="qType" required onchange="updateQuestionForm()"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                <option value="">Pilih Tipe</option>
-                                <option value="pilihan_ganda">Pilihan Ganda</option>
-                                <option value="pilihan_ganda_kompleks">Pilihan Ganda Kompleks</option>
-                                <option value="isian_singkat">Isian Singkat</option>
-                                <option value="benar_salah">Benar/Salah</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Teks Soal</label>
-                            <div class="bg-white rounded-lg border-2 border-gray-300 overflow-hidden">
-                                <div id="editor-container" style="height: 200px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></div>
-                            </div>
-                            <input type="hidden" id="qText" name="qText">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">URL Gambar (Opsional)</label>
-                            <input type="url" id="qImage"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                        </div>
-                        
-                        <div id="optionsContainer"></div>
-                        <div id="answerContainer"></div>
-                        
-                        <div class="flex gap-3">
-                            <button type="submit" 
-                                class="px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
-                                style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                Simpan Soal
-                            </button>
-                            <button type="button" onclick="hideAddQuestionForm()" 
-                                class="px-6 py-2 bg-gray-500 rounded-lg text-white font-semibold hover:bg-gray-600 transition"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                Batal
-                            </button>
-                        </div>
-                    </form>
-                `;
 
-                // === INISIALISASI QUILL EDITOR ===
-                var quill = new Quill('#editor-container', {
-                    theme: 'snow',
-                    placeholder: 'Tulis pertanyaan di sini...',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'], // Format huruf
-                            [{ 'script': 'sub'}, { 'script': 'super' }], // Pangkat atas/bawah
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'align': [] }],
-                            [{ 'color': [] }, { 'background': [] }],
-                            ['link', 'image', 'formula'], // 'formula' untuk simbol MTK
-                            ['clean']
-                        ]
+                // Tentukan opsi mapel (Kunci ke mapel guru)
+                const subjectOptions = isGuru 
+                    ? `<option value="${currentUser.subject}">${currentUser.subject}</option>` 
+                    : (typeof SUBJECTS !== 'undefined' ? SUBJECTS : []).map(s => `<option value="${s}">${s}</option>`).join('');
+
+                Swal.fire({
+                    title: '➕ Tambah Soal Baru',
+                    width: '800px',
+                    html: `
+                        <style>
+                            .editor-container { cursor: text; transition: all 0.2s; border-width: 2px !important; }
+                            .editor-container:focus-within { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                            .ql-editor { min-height: 100px; font-size: 15px; }
+                            .ql-container.ql-snow { border: none !important; }
+                            .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #f0f0f0 !important; background: #fafafa; border-radius: 8px 8px 0 0; }
+                            .box-soal { border-color: #3b82f6 !important; background-color: #eff6ff; }
+                            .box-a { border-color: #10b981 !important; background-color: #ecfdf5; }
+                            label.title-opt { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; margin-bottom: 6px; }
+                        </style>
+
+                        <div class="text-left space-y-6" style="max-height: 75vh; overflow-y: auto; padding: 15px;">
+                            <div class="grid grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
+                                    <select id="add-class" class="w-full p-2 border-0 rounded-lg shadow-sm bg-gray-200 text-sm" ${isGuru ? 'disabled' : ''}>
+                                        ${classOptions}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
+                                    <select id="add-subject" class="w-full p-2 border-0 rounded-lg shadow-sm bg-gray-200 text-sm" ${isGuru ? 'disabled' : ''}>
+                                        ${subjectOptions}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-purple-600 uppercase mb-1">Tipe Soal</label>
+                                    <select id="add-type" class="w-full p-2 border-2 border-purple-200 rounded-lg shadow-sm font-bold text-sm">
+                                        <option value="pilihan_ganda">Pilihan Ganda</option>
+                                        <option value="pilihan_ganda_kompleks">PG Kompleks</option>
+                                        <option value="benar_salah">Benar / Salah</option>
+                                        <option value="isian_singkat">Isian / Essai</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="title-opt bg-blue-600 text-xs font-bold uppercase">Pertanyaan Utama</label>
+                                <div id="add-q-text" class="editor-container box-soal bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="min-height: 140px;"></div>
+                            </div>
+                            
+                            <div id="options-wrapper" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div id="cont-opt-0">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi A</label>
+                                        <div id="add-opt-0" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                    <div id="cont-opt-1">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi B</label>
+                                        <div id="add-opt-1" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                    <div id="cont-opt-2">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi C</label>
+                                        <div id="add-opt-2" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                    <div id="cont-opt-3">
+                                        <label class="title-opt bg-emerald-500 text-xs font-bold uppercase">Opsi D</label>
+                                        <div id="add-opt-3" class="editor-container box-a bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="height: 110px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-4 border-t-2 border-green-500 bg-green-50 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div class="flex-shrink-0">
+                                    <label class="text-sm font-black text-green-700 flex items-center">
+                                        <span class="mr-2 text-lg">✅</span> KUNCI JAWABAN:
+                                    </label>
+                                </div>
+
+                                <div id="key-dropdown-container" class="flex-grow max-w-xs">
+                                    <select id="select-correct-opt" class="w-full p-2 border-2 border-green-300 rounded-lg text-lg font-black text-green-800 outline-none">
+                                        <option value="0">A</option><option value="1">B</option>
+                                        <option id="drop-opt-2" value="2">C</option><option id="drop-opt-3" value="3">D</option>
+                                    </select>
+                                </div>
+
+                                <div id="key-manual-container" class="flex-grow max-w-md" style="display: none;">
+                                    <input type="text" id="manual-key-input" class="w-full p-2 border-2 border-gray-300 rounded-lg font-bold" placeholder="Ketik jawaban...">
+                                </div>
+                                
+                                <div class="flex-shrink-0">
+                                    <p class="text-[10px] text-green-600 font-medium italic" id="key-hint-text">*Pilih huruf jawaban benar</p>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    didOpen: () => {
+                        const config = { 
+                            modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
+                            theme: 'snow', 
+                            placeholder: 'Ketik di sini...' 
+                        };
+                        
+                        window.addEditors = {
+                            question: new Quill('#add-q-text', config),
+                            opt0: new Quill('#add-opt-0', config),
+                            opt1: new Quill('#add-opt-1', config),
+                            opt2: new Quill('#add-opt-2', config),
+                            opt3: new Quill('#add-opt-3', config)
+                        };
+
+                        const typeSelect = document.getElementById('add-type');
+                        const handleUIChange = () => {
+                            const type = typeSelect.value;
+                            const isBS = type === 'benar_salah';
+                            const isPG = type === 'pilihan_ganda';
+                            const isComplex = type === 'pilihan_ganda_kompleks';
+                            const isEssay = type === 'isian_singkat';
+
+                            // Kontrol visibilitas Opsi C dan D
+                            document.getElementById('cont-opt-2').style.display = (isPG || isComplex) ? 'block' : 'none';
+                            document.getElementById('cont-opt-3').style.display = (isPG || isComplex) ? 'block' : 'none';
+                            document.getElementById('drop-opt-2').style.display = isPG ? 'block' : 'none';
+                            document.getElementById('drop-opt-3').style.display = isPG ? 'block' : 'none';
+                            document.getElementById('options-wrapper').style.display = isEssay ? 'none' : 'block';
+
+                            const useDropdown = isPG || isBS;
+                            document.getElementById('key-dropdown-container').style.display = useDropdown ? 'block' : 'none';
+                            document.getElementById('key-manual-container').style.display = useDropdown ? 'none' : 'block';
+
+                            // Auto-fill Benar/Salah
+                            if (isBS) {
+                                window.addEditors.opt0.root.innerHTML = '<p>Benar</p>';
+                                window.addEditors.opt1.root.innerHTML = '<p>Salah</p>';
+                            }
+
+                            document.getElementById('key-hint-text').textContent = isComplex ? "*Gunakan koma (Contoh: A, C)" : (isEssay ? "*Ketik jawaban singkat" : "*Pilih huruf jawaban benar");
+                        };
+
+                        typeSelect.addEventListener('change', handleUIChange);
+                        handleUIChange();
                     },
-                    
-                });
+                    showCancelButton: true,
+                    confirmButtonText: '💾 Simpan Soal',
+                    confirmButtonColor: '#10B981',
+                    preConfirm: async () => {
 
-                // Sinkronisasi otomatis: Saat mengetik di Quill, update input tersembunyi 'qText'
-                quill.on('text-change', function() {
-                    var html = quill.root.innerHTML;
-                    document.getElementById('qText').value = html;
-                });
+                        const qClass = isGuru ? currentUser.class : document.getElementById('add-class').value;
+                        const qSubject = isGuru ? currentUser.subject : document.getElementById('add-subject').value;
+                        try {
+                            const type = document.getElementById('add-type').value;
+                            const processEditor = async (ed) => {
+                                const imgs = ed.root.querySelectorAll('img');
+                                for (let img of imgs) {
+                                    if (img.src.startsWith('data:image') && typeof compressImage === 'function') {
+                                        img.src = await compressImage(img.src);
+                                    }
+                                }
+                                return ed.root.innerHTML;
+                            };
 
-                // Panggil updateOptions() pertama kali agar form jawaban muncul
-                setTimeout(() => {
-                    if(typeof updateOptions === 'function') updateOptions();
-                }, 100);
+                            Swal.showLoading();
+                            const qText = await processEditor(window.addEditors.question);
+                            let finalOptions = [], key = "";
 
-                // 5. EVENT LISTENER YANG AMAN (PENCEGAH LOGOUT/RELOAD)
-                const form = document.getElementById('addQuestionForm');
-                
-                // Hapus listener lama jika ada (untuk menghindari duplikasi, meski opsional di sini)
-                // Kita buat listener baru yang membungkus logika simpan
-                form.addEventListener('submit', function(e) {
-                    // PENTING: Baris ini mencegah halaman reload (logout)
-                    e.preventDefault(); 
-                    
-                    // Cek apakah editor kosong? (Opsional)
-                    if (quill.root.innerHTML === '<p><br></p>') {
-                        alert('Pertanyaan tidak boleh kosong!');
-                        return;
+                            if (type !== 'isian_singkat') {
+                                // Ambil semua input mentah
+                                const rawOptions = [
+                                    await processEditor(window.addEditors.opt0),
+                                    await processEditor(window.addEditors.opt1),
+                                    await processEditor(window.addEditors.opt2),
+                                    await processEditor(window.addEditors.opt3)
+                                ];
+
+                                // --- LOGIKA UTAMA: Potong Opsi jika Benar/Salah ---
+                                if (type === 'benar_salah') {
+                                    finalOptions = rawOptions.slice(0, 2); // Hanya simpan A dan B
+                                } else {
+                                    finalOptions = rawOptions; // Simpan semua A, B, C, D
+                                }
+
+                                // Penentuan Kunci
+                                if (type === 'pilihan_ganda' || type === 'benar_salah') {
+                                    const selectedIdx = document.getElementById('select-correct-opt').value;
+                                    key = finalOptions[selectedIdx]; 
+                                } else if (type === 'pilihan_ganda_kompleks') {
+                                    key = document.getElementById('manual-key-input').value.toUpperCase().replace(/\s+/g, '').split(',').filter(k => k !== '').join(',');
+                                    if (!key) throw new Error("Kunci jawaban kompleks harus diisi");
+                                } else {
+                                    key = document.getElementById('manual-key-input').value;
+                                }
+                            } else {
+                                key = document.getElementById('manual-key-input').value.trim();
+                            }
+
+                            const payload = {
+                                action: 'addQuestion',
+                                id: newId,
+                                question_text: qText,
+                                question_class: qClass, //document.getElementById('add-class').value,
+                                subject: qSubject, //document.getElementById('add-subject').value,
+                                question_type: type,
+                                options: JSON.stringify(finalOptions), // Hanya berisi 2 data jika B/S
+                                answer_key: key
+                            };
+
+                            const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                            const resJson = await response.json();
+                            if (!resJson.success) throw new Error(resJson.message);
+
+                            return { ...payload, security_token: btoa(unescape(encodeURIComponent(key))) };
+                        } catch (err) {
+                            Swal.showValidationMessage(`Gagal: ${err.message}`);
+                        }
                     }
+                }).then(result => {
+                    if (result.isConfirmed && result.value) {
+                        // 1. MASUKKAN soal baru ke dalam array lokal agar langsung tampil
+                        if (typeof allQuestions !== 'undefined') {
+                            allQuestions.push(result.value);
+                        }
 
-                    // Salin isi dari Quill ke input hidden 'qText'
-                    // agar fungsi addQuestion bisa membacanya
-                    document.getElementById('qText').value = quill.root.innerHTML;
-                    
-                    // Panggil fungsi penyimpanan asli
-                    addQuestion(e);
-                });
-                
-                //document.getElementById('addQuestionForm').addEventListener('submit', addQuestion);
-                // Otomatis set nilai jika guru
-                if (isGuru) {
-                    document.getElementById('qSubject').value = currentUser.subject;
-                    // Jika guru mengajar di kelas spesifik, buka komen kode di bawah:
-                    document.getElementById('qClass').value = currentUser.class;
-                }
-            }
+                        // 2. Jalankan Toast sukses
+                        showToast('Soal berhasil ditambahkan!', 'success');
 
-            // Simpan instance editor opsi jawaban agar bisa diambil nilainya nanti
-            let optionQuills = [];
-
-            // Fungsi untuk mengaktifkan Quill pada 5 kotak opsi (A-E)
-            function initOptionQuills() {
-                optionQuills = []; // Reset array
-                const labels = ['A', 'B', 'C', 'D', 'E'];
-                
-                labels.forEach((label, index) => {
-                    // Cek apakah elemennya ada di layar
-                    const containerId = `#quill-option-${index}`;
-                    if (document.querySelector(containerId)) {
-                        const quill = new Quill(containerId, {
-                            theme: 'snow',
-                            modules: {
-                                toolbar: [
-                                    ['bold', 'italic', 'underline'],
-                                    ['formula'], // Tombol Rumus Matematika
-                                    ['image', 'code-block']
-                                ]
-                            },
-                            placeholder: `Tulis jawaban opsi ${label} disini...`
-                        });
-                        optionQuills.push(quill);
+                        // 3. Panggil fungsi render berdasarkan role (seperti logika hapus tadi)
+                        if (typeof currentUser !== 'undefined' && currentUser.role === 'guru') {
+                            if (typeof renderGuruQuestionsSection === 'function') {
+                                renderGuruQuestionsSection();
+                            }
+                        } else {
+                            if (typeof renderQuestionsSection === 'function') {
+                                renderQuestionsSection();
+                            }
+                        }
                     }
                 });
             }
@@ -3828,17 +4484,17 @@
             }
 
             async function deleteQuestion(questionId) {
-                const question = allQuestions.find(q => q.id === questionId);
-                if (!question) return;
-                
+                // Membuat modal konfirmasi manual
                 const confirmDiv = document.createElement('div');
-                confirmDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                confirmDiv.id = 'delete-modal'; 
+                confirmDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]';
                 confirmDiv.innerHTML = `
-                    <div class="bg-white rounded-lg p-6 max-w-sm">
-                        <p class="mb-4">Yakin ingin menghapus soal ini?</p>
-                        <div class="flex gap-3">
-                            <button onclick="confirmDeleteQuestion('${questionId}')" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Hapus</button>
-                            <button onclick="this.closest('div.fixed').remove()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Batal</button>
+                    <div class="bg-white rounded-lg p-6 max-w-sm shadow-xl transform transition-all">
+                        <h3 class="text-lg font-bold mb-2 text-gray-800">Konfirmasi Hapus</h3>
+                        <p class="mb-5 text-gray-600">Yakin ingin menghapus soal ini? Tindakan ini tidak dapat dibatalkan.</p>
+                        <div class="flex justify-end gap-3">
+                            <button onclick="this.closest('#delete-modal').remove()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-semibold">Batal</button>
+                            <button onclick="confirmDeleteQuestion('${questionId}')" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold shadow-sm">Hapus Soal</button>
                         </div>
                     </div>
                 `;
@@ -3846,13 +4502,34 @@
             }
 
             async function confirmDeleteQuestion(questionId) {
-                document.querySelector('div.fixed').remove();
+                // 1. Hapus popup segera
+                const modal = document.getElementById('delete-modal');
+                if (modal) modal.remove();
                 
+                // 2. Proses hapus ke database
                 const success = await deleteQuestionFromSheet(questionId);
                 
                 if (success) {
+                    // 3. Update memori lokal
+                    allQuestions = allQuestions.filter(q => String(q.id) !== String(questionId));
+                    
                     showToast('Soal berhasil dihapus!', 'success');
-                    renderQuestionsSection();
+
+                    // 4. LOGIKA RENDER BERDASARKAN ROLE
+                    // Asumsi: Variabel currentUser.role menyimpan 'admin' atau 'guru'
+                    if (typeof currentUser !== 'undefined' && currentUser.role === 'guru') {
+                        // Jika guru, render section khusus guru
+                        if (typeof renderGuruQuestionsSection === 'function') {
+                            renderGuruQuestionsSection();
+                        }
+                    } else {
+                        // Jika admin (atau default), render section admin
+                        if (typeof renderQuestionsSection === 'function') {
+                            renderQuestionsSection();
+                        }
+                    }
+                } else {
+                    showToast('Gagal menghapus soal. Coba lagi.', 'error');
                 }
             }
 
