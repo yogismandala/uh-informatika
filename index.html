@@ -51,16 +51,6 @@
                 padding: 2px !important;
             }
 
-            body {
-                /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
-                overscroll-behavior-y: contain; 
-                /* Mencegah pemilihan teks (opsional untuk keamanan) */
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                user-select: none;
-                box-sizing: border-box;
-            }
             /* Efek Glassmorphism untuk Form Login */
             .glass-panel {
                 background: rgba(255, 255, 255, 0.2); /* Transparansi putih */
@@ -191,11 +181,21 @@
             body {
                 margin: 0;
                 padding: 0;
-                top: 0; 
-                left: 0; 
+                width: 100%;
                 min-height: 100vh;
                 background-color:#1e3a8a;
-                overflow-x: hidden; }
+                overflow-x: hidden; 
+            
+            
+            /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
+                overscroll-behavior-y: contain; 
+                /* Mencegah pemilihan teks (opsional untuk keamanan) */
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                box-sizing: border-box;
+            }
 
             .header-waves {
                 position: absolute;
@@ -251,6 +251,22 @@
                 .waves { height: 85px; min-height: 85px; }
             }
             @view-transition { navigation: auto; }
+            #app {
+                width: 100%;
+                /* Gunakan min-height: 100vh agar responsif menyesuaikan layar mobile */
+                min-height: 100vh; 
+                
+                /* Gunakan flexbox agar isi di dalamnya (header, konten) tersusun rapi */
+                display: flex;
+                flex-direction: column;
+                
+                /* Menerapkan smooth scrolling untuk perangkat sentuh */
+                -webkit-overflow-scrolling: touch;
+                
+                /* Properti bawaan Anda sebelumnya */
+                position: relative;
+                z-index: 10;
+            }
         </style>
     </head>
     <body class="h-full">
@@ -271,7 +287,7 @@
                 </svg>
             </div>
         </div>
-        <div id="app" class="h-full w-full overflow-auto" style="position: relative; z-index: 10;"></div>
+        <div id="app" class="min-h-screen w-full flex flex-col" style="position: relative; z-index: 10;"></div>
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
             <div class="text-center">
             </div>
