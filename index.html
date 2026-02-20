@@ -188,7 +188,7 @@
                 filter: blur(3px); /* Efek blur keren di background saat popup muncul */
             }
             /* Reset Margin */
-            body { margin: 0; padding: 0; background-color: #fff; }
+            body { margin: 0; padding: 0; background-color: #0f172a; min-height: 100dvh; }
 
             .header-waves {
                 position: fixed;
@@ -406,6 +406,20 @@
                     };
                 });
             }
+
+            // Skrip untuk menangani resize akibat keyboard di HP
+            window.visualViewport.addEventListener('resize', () => {
+                const layoutViewport = document.documentElement;
+                // Setel tinggi elemen utama sesuai dengan tinggi visual yang tersedia
+                document.body.style.height = window.visualViewport.height + 'px';
+                
+                // Opsional: Scroll ke elemen aktif agar tidak tertutup keyboard
+                if (document.activeElement.tagName === 'INPUT') {
+                    setTimeout(() => {
+                        document.activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            });
             
             // --- PILIHAN 9: 3D CUBE LOGIC ---
 
@@ -1059,7 +1073,7 @@
                 //const bgImage = "https://i.ibb.co.com/vvgwB7rL/yo.png";
                 
                 document.getElementById('app').innerHTML = `
-                    <div id="login-animasi" class="min-h-full flex items-center justify-center p-4">
+                    <<div id="login-animasi" class="main-container items-center justify-center p-4 relative z-10">
                         <div class="w-full max-w-md">
                             <div class="glass-panel p-8 shadow-2xl">
                                 <div class="text-center mb-8">
@@ -1093,9 +1107,9 @@
                                         <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Pilih Ujian</label>
                                         <select id="subject" 
                                             class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition appearance-none"
-                                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: black;">
-                                            <option value="">Pilih Mata Pelajaran</option>
-                                            ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
+                                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: white; background-color: rgba(0,0,0,0.3);">
+                                            <option value="" style="color: black;">Pilih Mata Pelajaran</option>
+                                            ${SUBJECTS.map(s => `<option value="${s}" style="color: black;">${s}</option>`).join('')}
                                         </select>
                                     </div>
                             
