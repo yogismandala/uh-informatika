@@ -16,6 +16,7 @@
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         
 
         <style>
@@ -243,6 +244,12 @@
                 .waves { height: 85px; min-height: 85px; }
             }
             @view-transition { navigation: auto; }
+
+            .main-container {
+                min-height: 100dvh;
+                display: flex;
+                flex-direction: column;
+            }
         </style>
     </head>
     <body class="h-full">
@@ -1145,6 +1152,11 @@
                             subjectSelect.innerHTML += `<option value="${subject}">${subject}</option>`;
                         });
                     }
+
+                    // Memberi jeda sedikit agar browser selesai merender elemen sebelum digulir
+                    setTimeout(() => {
+                        subjectSelectContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
                 } else {
                     document.getElementById('subjectSelect').style.display = 'none';
                 }
