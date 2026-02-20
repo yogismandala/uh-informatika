@@ -283,6 +283,34 @@
                 // Memaksa keyboard menjadi overlay (terapung)
                 navigator.virtualKeyboard.overlaysContent = true;
             }
+            // Konfigurasi Wake Lock (Penahan Layar)
+                let wakeLock = null;
+
+                async function requestWakeLock() {
+                    try {
+                        if ('wakeLock' in navigator) {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                            console.log('Layar ditahan agar tetap menyala.');
+                        }
+                    } catch (err) {
+                        console.error('Fitur Wake Lock gagal/tidak didukung:', err);
+                    }
+                }
+
+                // Menyalakan kembali penahan layar jika siswa sempat pindah tab lalu kembali lagi
+                document.addEventListener('visibilitychange', () => {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        requestWakeLock();
+                    }
+                });
+
+            // Catatan penting: Wake lock otomatis terlepas oleh browser jika siswa 
+            // meminimalkan browser atau pindah tab. Kita harus menyalakannya kembali saat mereka kembali.
+            document.addEventListener('visibilitychange', () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    requestWakeLock();
+                }
+            });
             // ============================================
             // KONFIGURASI GOOGLE SHEETS
             // ============================================
@@ -1480,6 +1508,7 @@
                 renderQuestionNav();
                 renderNavigationButtons();
                 setupViolationDetection();
+                requestWakeLock();
             }
 
             function updateConnectionStatus() {
@@ -2038,15 +2067,17 @@
                             icon: 'info',
                             title: 'Waktu Habis!',
                             text: 'Sistem sedang mengirim jawaban Anda ke server...',
+                            timer: 2500, /* Pop-up akan otomatis hilang dalam 2.5 detik */
+                            timerProgressBar: true,
                             allowOutsideClick: false,
                             showConfirmButton: false,
+                            heightAuto: false,
                             //confirmButtonColor: '#3b82f6'
                             didOpen: () => {
                                 Swal.showLoading(); // Tampilkan animasi muter-muter
                             }
                         });
                             submitExam(true); // langsung eksekusi kirim
-                        
                         
                     } else {
                         // JIKA WAKTU MASIH ADA (Konversi milidetik ke Menit & Detik)
@@ -2103,10 +2134,19 @@
                 }
                 // --- AKHIR PERUBAHAN PENGECEKAN WAKTU MINIMAL ---
 
-                if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
+                if (!isAutoSubmit) {
+                    if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian?')) return;
+                }
                 
                 // Matikan interval timer
                 if (examTimer) clearInterval(examTimer);
+                
+                if (wakeLock !== null) {
+                    wakeLock.release().then(() => {
+                        wakeLock = null;
+                        console.log('Wake Lock dilepas, layar bisa mati otomatis kembali.');
+                    }).catch((err) => console.error('Gagal melepas Wake Lock:', err));
+                }
                 
                 showLoading();
                 // Tambahkan delay acak antara 1 hingga 10 detik agar tidak serentak
