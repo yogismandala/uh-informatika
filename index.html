@@ -2313,7 +2313,7 @@
                 const textColor = config.text_color || defaultConfig.text_color;
                         
                 document.getElementById('app').innerHTML = `
-                    <div class="min-h-full flex items-center justify-center p-4 gradient-bg">
+                    <div class="fixed inset-0 z-[100] min-h-screen w-full flex items-center justify-center p-4 gradient-bg overflow-y-auto">
                         <div class="max-w-2xl w-full bg-white rounded-2xl shadow-custom p-8 text-center">
                             <div class="mb-6">
                                 <div class="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
