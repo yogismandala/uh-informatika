@@ -188,15 +188,26 @@
                 filter: blur(3px); /* Efek blur keren di background saat popup muncul */
             }
             /* Reset Margin */
-            body { margin: 0; padding: 0; background-color: #fff; }
+            html, body {
+                margin: 0; 
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                position: fixed; /* Mencegah iOS mengangkat seluruh halaman */
+                top: 0;
+                left: 0;
+                overflow: hidden; /* Matikan scroll utama */
+                background-color: #1e3a8a; /* Ubah warna putih menjadi biru gelap sesuai warna dasar ombak */
+            }
 
             .header-waves {
-                position: fixed;
+                position: absolute; /* Ubah fixed menjadi absolute */
                 top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: linear-gradient(60deg, #0f172a 0%, #1e3a8a 100%); /* Warna Laut Dalam */
+                width: 100%; 
+                height: 100vh; /* Gunakan vh penuh */
+                background: linear-gradient(60deg, #0f172a 0%, #1e3a8a 100%); 
                 color: white;
-                z-index: 0; /* Di belakang layar */
+                z-index: 0; 
                 overflow: hidden;
             }
 
@@ -207,6 +218,17 @@
                 height: 45vh; /* Tinggi ombak 15% dari layar */
                 min-height: 100px;
                 max-height: 200px;
+            }
+            #app {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                overflow-y: auto;
+                /* Perintah khusus agar scroll di iOS tetap mulus/lancar */
+                -webkit-overflow-scrolling: touch; 
+                z-index: 10;
             }
 
             /* Animasi Gerakan Ombak */
@@ -233,7 +255,7 @@
                 animation-duration: 20s;
                 fill: #1e3a8a; /* Warna Dasar Ombak (Biru Laut Malam) */
             }
-
+            
             @keyframes move-forever {
                 0% { transform: translate3d(-90px,0,0); }
                 100% { transform: translate3d(85px,0,0); }
@@ -270,6 +292,10 @@
             </div>
         </div>
         <script>
+            if ('virtualKeyboard' in navigator) {
+                // Memaksa keyboard menjadi overlay (terapung)
+                navigator.virtualKeyboard.overlaysContent = true;
+            }
             // ============================================
             // KONFIGURASI GOOGLE SHEETS
             // ============================================
@@ -5220,10 +5246,6 @@
             }
 
             init();
-            if ('virtualKeyboard' in navigator) {
-                // Memaksa keyboard menjadi overlay (terapung)
-                navigator.virtualKeyboard.overlaysContent = true;
-            }
         </script>
     </body>
  </html>
