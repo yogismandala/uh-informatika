@@ -1479,7 +1479,7 @@
                         <div class="gradient-header text-white px-3 md:px-6 py-3 md:py-4 shadow-lg" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div class="flex items-center gap-3 md:gap-4 w-full sm:w-auto">
-                                    <img src="assets/foto/${currentUser.username}.jpg" alt="Foto Siswa" class="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white object-cover flex-shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <img src="/assets/foto_siswa/${currentUser.username}.jpg" alt="Foto Siswa" class="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white object-cover flex-shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                     <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xl md:text-2xl flex-shrink-0" style="display:none;">👤</div>
                                     <div class="flex-1 min-w-0">
                                         <h2 class="font-bold text-sm md:text-base truncate" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</h2>
@@ -2919,7 +2919,7 @@
                                         ${allUsers.map(user => `
                                             <tr class="border-b border-gray-200 hover:bg-blue-50 transition">
                                                 <td class="p-4">
-                                                    <img src="/assets/foto/${user.username}.jpg" alt="${user.name}" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                    <img src="/assets/foto_siswa/${user.username}.jpg" alt="${user.name}" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                                     <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xl" style="display:none;">👤</div>
                                                 </td>
                                                 <td class="p-4">
