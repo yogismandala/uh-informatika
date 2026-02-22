@@ -1481,7 +1481,7 @@
                 const backgroundColor = config.background_color || defaultConfig.background_color;
                 
                 document.getElementById('app').innerHTML = `
-                    <div class="min-h-full flex items-center justify-center p-4" style="background: linear-gradient(135deg, ${backgroundColor} 0%, #bfdbfe 100%);">
+                    <div class="fixed inset-0 z-[100] min-h-screen w-full flex items-center justify-center p-4 gradient-bg overflow-y-auto">
                         <div class="max-w-md w-full bg-white rounded-2xl shadow-custom p-8 text-center">
                             <div class="mb-6">
                                 <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -3413,27 +3413,46 @@
                 const textColor = config.text_color || defaultConfig.text_color;
                 const primaryColor = config.primary_color || defaultConfig.primary_color;
                 
+                const uniqueSubjects = [...new Set(allQuestions.map(q => q.subject))].filter(Boolean);
+
+                // 2. Terapkan filter berdasarkan Mapel jika ada yang dipilih
+                let filteredQuestions = allQuestions;
+                if (window.selectedBankSoalSubject) {
+                    filteredQuestions = allQuestions.filter(q => q.subject === window.selectedBankSoalSubject);
+                }
+
+                // 3. Kelompokkan soal yang sudah difilter berdasarkan Kelas
                 const questionsByGrade = {
-                    '7': allQuestions.filter(q => q.question_class.startsWith('7')),
-                    '8': allQuestions.filter(q => q.question_class.startsWith('8')),
-                    '9': allQuestions.filter(q => q.question_class.startsWith('9'))
+                    '7': filteredQuestions.filter(q => q.question_class.startsWith('7')),
+                    '8': filteredQuestions.filter(q => q.question_class.startsWith('8')),
+                    '9': filteredQuestions.filter(q => q.question_class.startsWith('9'))
                 };
                 
                 document.getElementById('adminContent').innerHTML = `
                     <div class="space-y-4">
-                        <div class="flex justify-between items-center">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
-                            <div class="flex gap-2">
-                                <button onclick="showAddQuestionForm()" 
-                                    class="px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm"
-                                    style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
-                                    ➕ Tambah Soal
-                                </button>
-                                <button onclick="refreshTarget('questions')" 
-                                    class="px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm"
-                                    style="font-family: ${customFont}, ${baseFontStack};">
-                                    🔄 Refresh
-                                </button>
+                            <div class="flex flex-col sm:flex-row w-full md:w-auto gap-2">
+                                <select id="filterMapelBankSoal" 
+                                        onchange="window.selectedBankSoalSubject = this.value; renderQuestionsSection()" 
+                                        class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                                    <option value="">Semua Mata Pelajaran</option>
+                                    ${uniqueSubjects.map(sub => `
+                                        <option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>
+                                    `).join('')}
+                                </select>
+                                <div class="flex w-full sm:w-auto gap-2">
+                                    <button onclick="showAddQuestionForm()" 
+                                        class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap"
+                                        style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
+                                        ➕ Tambah Soal
+                                    </button>
+                                    <button onclick="refreshTarget('questions')" 
+                                        class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap"
+                                        style="font-family: ${customFont}, ${baseFontStack};">
+                                        🔄 Refresh
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         
@@ -3498,16 +3517,16 @@
                 
                 document.getElementById('guruContent').innerHTML = `
                     <div class="space-y-4">
-                        <div class="flex justify-between items-center">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
-                            <div class="flex gap-2">
+                            <div class="flex w-full sm:w-auto gap-2">
                                 <button onclick="showGuruAddQuestionForm()" 
-                                    class="px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm"
+                                    class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap"
                                     style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
                                     ➕ Tambah Soal
                                 </button>
                                 <button onclick="refreshTarget('questions')" 
-                                    class="px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm"
+                                    class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap"
                                     style="font-family: ${customFont}, ${baseFontStack};">
                                     🔄 Refresh
                                 </button>
