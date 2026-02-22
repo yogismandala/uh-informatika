@@ -1241,163 +1241,179 @@
             }
 
             async function handleLogin(e) {
-                e.preventDefault();
-                
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('password').value.trim();
-                const subject = document.getElementById('subject').value;
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const subject = document.getElementById('subject').value;
 
-                if (!username || !password) {
-                    showError('Username dan password wajib diisi!');
-                    return;
-                }
+    if (!username || !password) {
+        showError('Username dan password wajib diisi!');
+        return;
+    }
 
-                // Tampilkan notifikasi loading (Opsional, agar user tahu sistem sedang memproses)
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Mencocokkan data...',
-                        allowOutsideClick: false,
-                        didOpen: () => { Swal.showLoading(); }
-                    });
-                }
+    // Tampilkan notifikasi loading
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Mencocokkan data...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+    }
 
-                let user = null;
+    let user = null;
 
-                try {
-                    // --- PROSES LOGIN BARU MENGGUNAKAN FETCH POST ---
-                    const response = await fetch(GOOGLE_SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            action: 'login',
-                            username: username,
-                            password: password
-                        })
-                    });
+    try {
+        // --- PROSES LOGIN BARU MENGGUNAKAN FETCH POST ---
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'login',
+                username: username,
+                password: password
+            })
+        });
 
-                    const result = await response.json();
+        const result = await response.json();
 
-                    // Tutup loading Swal
-                    if (typeof Swal !== 'undefined') Swal.close();
+        // Tutup loading Swal
+        if (typeof Swal !== 'undefined') Swal.close();
 
-                    // Jika username/password salah, hentikan
-                    if (!result.success) {
-                        showError(result.message || 'Username atau password salah!');
-                        return;
-                    }
+        // Jika username/password salah, hentikan
+        if (!result.success) {
+            showError(result.message || 'Username atau password salah!');
+            return;
+        }
 
-                    // Ambil data user dari respon server
-                    user = result.user;
+        // Ambil data user dari respon server
+        user = result.user;
 
-                    // Update settings (opsional agar selalu realtime tiap login)
-                    if (result.settings) {
-                        examSettings = result.settings;
-                    }
+        // Update settings
+        if (result.settings) {
+            examSettings = result.settings;
+        }
 
-                } catch (error) {
-                    if (typeof Swal !== 'undefined') Swal.close();
-                    console.error("Error saat login:", error);
-                    showError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-                    return;
-                }
+    } catch (error) {
+        if (typeof Swal !== 'undefined') Swal.close();
+        console.error("Error saat login:", error);
+        showError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+        return;
+    }
 
-                // ==========================================
-                // LOGIKA SETELAH LOGIN SUKSES
-                // ==========================================
-                
-                if (user.role === 'siswa' && !subject) {
-                    showError('Silakan pilih mata pelajaran!');
-                    return;
-                }
-                
-                // Validasi apakah mata pelajaran aktif berdasarkan setting dari server
-                if (user.role === 'siswa') {
-                    const activeSubjects = examSettings.active_subjects || [];
-                    if (activeSubjects.length > 0 && !activeSubjects.includes(subject)) {
-                        showError('Mata pelajaran ini tidak sedang dalam jadwal ujian!');
-                        return;
-                    }
-                }
-                
-                // Set identitas siswa yang berhasil masuk
-                currentUser = user;
-                sessionStorage.setItem('currentUser', JSON.stringify(user));
-                localStorage.setItem('currentUser', JSON.stringify(user));
+    // ==========================================
+    // LOGIKA SETELAH LOGIN SUKSES
+    // ==========================================
+    
+    // --- VALIDASI MATA PELAJARAN (YANG DIPERBAIKI) ---
+    if (user.role === 'siswa') {
+        if (!subject) {
+            showError('Silakan pilih mata pelajaran!');
+            return;
+        }
+        
+        let activeSubjects = typeof getActiveSubjects === 'function' ? getActiveSubjects() : [];
+        
+        // Jika fungsi kosong, fallback ke settings server
+        if (!activeSubjects || activeSubjects.length === 0) {
+            activeSubjects = (typeof examSettings !== 'undefined' && examSettings.active_subjects) ? examSettings.active_subjects : [];
+        }
 
-                // Lakukan download Soal & Nilai (Berat, tapi hanya dilakukan 1x setelah sukses login)
-                const examDataLoaded = await loadExamData();
-                
-                // Pengecekan jika siswa hanya boleh ujian 1 kali
-                if (user.role === 'siswa' && examSettings.limit_one_attempt) {
-                    const hasTakenExam = allExamResults.some(result => 
-                        result.student_name === user.name && 
-                        result.exam_subject === subject
-                    );
+        // Pastikan berbentuk Array
+        if (typeof activeSubjects === 'string') {
+            try { activeSubjects = JSON.parse(activeSubjects); } catch(e) { activeSubjects = []; }
+        }
 
-                    if (hasTakenExam) {
-                        hideLoading();
-                        if (typeof Swal !== 'undefined') {
-                            await Swal.fire({
-                                icon: 'warning',
-                                title: 'Akses Ditolak',
-                                text: 'Anda sudah mengerjakan ujian ini. Kesempatan hanya 1 kali.',
-                                confirmButtonColor: '#d33',
-                                confirmButtonText: 'Kembali',
-                                heightAuto: false,
-                                backdrop: `rgba(0,0,123,0.4) left top no-repeat`,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false
-                            });
-                        } else {
-                            alert("Anda sudah mengerjakan ujian ini!");
-                        }
-                        currentUser = null;
-                        sessionStorage.removeItem('currentUser');
-                        localStorage.removeItem('currentUser');
-                        document.getElementById('loginForm').reset();
-                        renderLoginPage();
-                        return;
-                    }
-                }
-                
-                if (!examDataLoaded) {
-                    showError('Gagal memuat data soal. Coba lagi.');
-                    return;
-                }
-                
-                if (user.role === 'siswa') {
-                    activateFullscreen();
-                }
-                
-                // Mengarahkan tampilan sesuai role pengguna
-                if (user.role === 'admin') {
-                    renderAdminDashboard();
-                } else if (user.role === 'guru') {
-                    e.subject = user.subject;
-                    e.question_class = user.class;
-                    renderGuruDashboard();
-                } else {
-                    currentExam = { subject: subject };
-                    sessionStorage.setItem('currentExam', JSON.stringify(currentExam));
-                    localStorage.setItem('currentExam', JSON.stringify(currentExam));
-                    
-                    const gradeLevel = user.class.charAt(0);
-                    const availableQuestions = allQuestions.filter(q => 
-                        q.question_class === gradeLevel && 
-                        q.subject === subject
-                    );
-                    
-                    if (availableQuestions.length === 0) {
-                        renderNoQuestionsPage();
-                        return;
-                    }
-                    
-                    await loadExamQuestions();
-                    if (typeof mulaiPelaporanSiswa === "function") {
-                        mulaiPelaporanSiswa();
-                    }
-                    renderExamPage();
-                }
+        // Pengecekan kebal huruf besar/kecil dan spasi
+        if (activeSubjects && activeSubjects.length > 0) {
+            const subjectIsActive = activeSubjects.some(s => s.trim().toLowerCase() === subject.trim().toLowerCase());
+            
+            if (!subjectIsActive) {
+                showError('Mata pelajaran ini tidak sedang dalam jadwal ujian!'); 
+                return;
             }
+        }
+    }
+    
+    // Set identitas siswa yang berhasil masuk
+    currentUser = user;
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+    localStorage.setItem('currentUser', JSON.stringify(user));
+
+    // Lakukan download Soal & Nilai
+    const examDataLoaded = await loadExamData();
+    
+    // Pengecekan jika siswa hanya boleh ujian 1 kali
+    if (user.role === 'siswa' && examSettings.limit_one_attempt) {
+        const hasTakenExam = allExamResults.some(result => 
+            result.student_name === user.name && 
+            result.exam_subject === subject
+        );
+
+        if (hasTakenExam) {
+            if (typeof hideLoading === 'function') hideLoading();
+            if (typeof Swal !== 'undefined') {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Akses Ditolak',
+                    text: 'Anda sudah mengerjakan ujian ini. Kesempatan hanya 1 kali.',
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Kembali',
+                    heightAuto: false,
+                    backdrop: `rgba(0,0,123,0.4) left top no-repeat`,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+            } else {
+                alert("Anda sudah mengerjakan ujian ini!");
+            }
+            currentUser = null;
+            sessionStorage.removeItem('currentUser');
+            localStorage.removeItem('currentUser');
+            document.getElementById('loginForm').reset();
+            renderLoginPage();
+            return;
+        }
+    }
+    
+    if (!examDataLoaded) {
+        showError('Gagal memuat data soal. Coba lagi.');
+        return;
+    }
+    
+    if (user.role === 'siswa') {
+        if (typeof activateFullscreen === 'function') activateFullscreen();
+    }
+    
+    // Mengarahkan tampilan sesuai role pengguna
+    if (user.role === 'admin') {
+        renderAdminDashboard();
+    } else if (user.role === 'guru') {
+        e.subject = user.subject;
+        e.question_class = user.class;
+        renderGuruDashboard();
+    } else {
+        currentExam = { subject: subject };
+        sessionStorage.setItem('currentExam', JSON.stringify(currentExam));
+        localStorage.setItem('currentExam', JSON.stringify(currentExam));
+        
+        const gradeLevel = user.class.charAt(0);
+        const availableQuestions = allQuestions.filter(q => 
+            q.question_class === gradeLevel && 
+            q.subject === subject
+        );
+        
+        if (availableQuestions.length === 0) {
+            renderNoQuestionsPage();
+            return;
+        }
+        
+        await loadExamQuestions();
+        if (typeof mulaiPelaporanSiswa === "function") {
+            mulaiPelaporanSiswa();
+        }
+        renderExamPage();
+    }
+}
 
             function showError(message) {
                 const errorDiv = document.getElementById('errorMessage');
