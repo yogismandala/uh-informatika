@@ -300,33 +300,26 @@
                 navigator.virtualKeyboard.overlaysContent = true;
             }
             // Konfigurasi Wake Lock (Penahan Layar)
-                let wakeLock = null;
+            let wakeLock = null;
 
-                async function requestWakeLock() {
-                    try {
-                        if ('wakeLock' in navigator) {
-                            wakeLock = await navigator.wakeLock.request('screen');
-                            console.log('Layar ditahan agar tetap menyala.');
-                        }
-                    } catch (err) {
-                        console.error('Fitur Wake Lock gagal/tidak didukung:', err);
+            async function requestWakeLock() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        console.log('Layar ditahan agar tetap menyala.');
                     }
+                } catch (err) {
+                    console.error('Fitur Wake Lock gagal/tidak didukung:', err);
                 }
+            }
 
-                // Menyalakan kembali penahan layar jika siswa sempat pindah tab lalu kembali lagi
-                document.addEventListener('visibilitychange', () => {
-                    if (wakeLock !== null && document.visibilityState === 'visible') {
-                        requestWakeLock();
-                    }
-                });
-
-            // Catatan penting: Wake lock otomatis terlepas oleh browser jika siswa 
-            // meminimalkan browser atau pindah tab. Kita harus menyalakannya kembali saat mereka kembali.
+            // Menyalakan kembali penahan layar jika siswa sempat pindah tab lalu kembali lagi
             document.addEventListener('visibilitychange', () => {
                 if (wakeLock !== null && document.visibilityState === 'visible') {
                     requestWakeLock();
                 }
             });
+
             // ============================================
             // KONFIGURASI GOOGLE SHEETS
             // ============================================
@@ -1166,9 +1159,6 @@
                         </div>
                     </div>
                 `;
-                // --- MULAI KODE ANIMASI VANTA JS ---
-                // Cek jika ada animasi sebelumnya, hapus dulu agar tidak berat
-                if (window.vantaEffect) window.vantaEffect.destroy();
                 
                 document.getElementById('username').addEventListener('input', checkUserRole);
                 document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -2668,11 +2658,6 @@
                         <nav class="bg-white shadow-md border-b border-gray-200">
                             <div class="px-4 md:px-6">
                                 <div class="flex overflow-x-auto gap-1 md:gap-2 scrollbar-hide py-2">
-                                    <button onclick="showGuruSection('dashboard')" id="nav-dashboard"
-                                        class="px-4 py-2.5 text-sm md:text-base rounded-lg transition whitespace-nowrap flex-shrink-0 touch-manipulation"
-                                        style="font-family: ${customFont}, ${baseFontStack}; min-width: 130px; -webkit-tap-highlight-color: transparent;">
-                                        📊 Dashboard
-                                    </button>
                                     <button onclick="showGuruSection('questions')" id="nav-questions"
                                         class="px-4 py-2.5 text-sm md:text-base rounded-lg transition whitespace-nowrap flex-shrink-0 touch-manipulation"
                                         style="font-family: ${customFont}, ${baseFontStack}; min-width: 130px; -webkit-tap-highlight-color: transparent;">
@@ -2688,7 +2673,7 @@
                     </div>
                 `;
                 
-                showGuruSection('dashboard');
+                showGuruSection('questions');
 
             }
             
@@ -2766,8 +2751,7 @@
                 activeBtn.style.color = primaryColor;
                 activeBtn.classList.add('font-semibold');
                 
-                if (section === 'dashboard') renderDashboardGuruSection();
-                else if (section === 'questions') renderGuruQuestionsSection();
+                if (section === 'questions') renderGuruQuestionsSection();
             }
 
 
@@ -2854,88 +2838,7 @@
                         </div>
                     </div>
                 `;
-            }
-
-            function renderDashboardGuruSection() { //tampilan dashboard
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                // Filter soal: Harus cocok Mapel DAN Kelas yang diajar guru
-                const teacherQuestions = allQuestions.filter(q => {
-                    const isRightSubject = q.subject === currentUser.subject;
-                    const teachesThisGrade = currentUser.class && currentUser.class.includes(q.question_class.charAt(0)); 
-                    return isRightSubject && teachesThisGrade;
-                });
-
-                const teacherTotalQuestions = teacherQuestions.length;
-                
-                
-                
-                const totalQuestions = allQuestions.length;
-                const totalExams = allExamResults.length;
-                
-                
-                const avgScore = allExamResults.length > 0 
-                    ? Math.round(allExamResults.reduce((sum, r) => sum + r.final_score, 0) / allExamResults.length)
-                    : 0;
-                
-                const recentResults = [...allExamResults]
-                    .reverse() //sort((a, b) => new Date(b.exam_time) - new Date(a.exam_time))
-                    .slice(0, 5);
-                
-                document.getElementById('guruContent').innerHTML = `
-                    <div class="space-y-4 md:space-y-6">
-                        <div class="grid grid-cols-2 lg:grid-cols-2 gap-2 md:gap-4">
-                            
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
-                                    <span class="text-xl md:text-2xl">📝</span>
-                                </div>
-                                <p class="font-bold text-green-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Soal Tersedia</p>
-                                <p class="font-bold text-green-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${teacherTotalQuestions}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</p>
-                                
-                            </div>
-                            
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
-                                    <span class="text-xl md:text-2xl">📊</span>
-                                </div>
-                                <p class="font-bold text-purple-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Total Ujian</p>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-white rounded-xl shadow p-6">
-                            <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor};">🏆 Hasil Ujian Terbaru</h3>
-                            <div class="space-y-2">
-                                ${recentResults.length > 0 ? recentResults.map((result) => `
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                                        <div>
-                                            <p class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</p>
-                                            <p class="text-gray-500 text-xs" style="font-family: ${customFont}, ${baseFontStack};">${result.exam_subject} - Kelas ${result.student_class}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 80 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</p>
-                                        </div>
-                                    </div>
-                                `).join('') : `
-                                    <div class="text-center py-8 text-gray-400">
-                                        <p style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
-                                    </div>
-                                `}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
+            }           
 
             function renderUsersSection() {
                 const config = window.elementSdk?.config || defaultConfig;
@@ -3501,7 +3404,7 @@
                 `;
             }
 
-            function renderGuruQuestionsSection() { // tambah soal
+            function renderGuruQuestionsSection() {
                 const config = window.elementSdk?.config || defaultConfig;
                 const customFont = config.font_family || defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
@@ -3509,6 +3412,18 @@
                 const textColor = config.text_color || defaultConfig.text_color;
                 const primaryColor = config.primary_color || defaultConfig.primary_color;
                 
+                // --- TAMBAHAN LOGIKA UNTUK MENGHITUNG SOAL ---
+                // 1. Total semua soal di sistem
+                const totalSemuaSoal = allQuestions.length;
+                
+                // 2. Total soal milik guru (Sesuai Mapel dan Kelas yang diajar)
+                const totalSoalGuru = allQuestions.filter(q => {
+                    // Ambil karakter pertama dari kelas (misal "7A" jadi "7")
+                    const grade = q.question_class ? q.question_class.charAt(0) : ''; 
+                    return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                }).length;
+                // ---------------------------------------------
+
                 const questionsByGrade = {
                     '7': allQuestions.filter(q => q.question_class.startsWith('7')),
                     '8': allQuestions.filter(q => q.question_class.startsWith('8')),
@@ -3516,24 +3431,43 @@
                 };
                 
                 document.getElementById('guruContent').innerHTML = `
-                    <div class="space-y-4">
+                    <div class="space-y-4 md:space-y-6">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
                             <div class="flex w-full sm:w-auto gap-2">
                                 <button onclick="showGuruAddQuestionForm()" 
-                                    class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap"
+                                    class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrapv shadow-sm"
                                     style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
                                     ➕ Tambah Soal
                                 </button>
                                 <button onclick="refreshTarget('questions')" 
-                                    class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap"
+                                    class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm"
                                     style="font-family: ${customFont}, ${baseFontStack};">
                                     🔄 Refresh
                                 </button>
                             </div>
                         </div>
                         
-                        <div id="questionFormContainer" style="display: none;" class="bg-white rounded-lg shadow p-4"></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Total Keseluruhan Soal</h3>
+                                    <span class="p-2.5 bg-blue-50 rounded-lg">📚</span>
+                                </div>
+                                <p class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSemuaSoal}</p>
+                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Semua Mapel & Kelas</p>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</h3>
+                                    <span class="p-2.5 bg-blue-50 rounded-lg">📝</span>
+                                </div>
+                                <p class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
+                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.subject || 'Mapel Anda'}</p>
+                            </div>
+                        </div>
+                        <div id="questionFormContainer" style="display: none;" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6"></div>
                         
                         <div class="space-y-4">
                             ${['7', '8', '9'].map(grade => `
@@ -3549,11 +3483,10 @@
                                             // 1. Cek Mapel: Apakah mapel soal sama dengan mapel guru?
                                             const isRightSubject = q.subject === currentUser.subject;
                                             // 2. Cek Kelas: Apakah grade saat ini ada dalam daftar kelas yang diajar guru?
-                                            // Asumsi: currentUser.class berisi string seperti "7" atau array ["7", "8"]
                                             const teachesThisGrade = currentUser.class && currentUser.class.includes(grade);
                                             // Tombol hapus HANYA muncul jika Mapel cocok DAN Guru memang mengajar kelas tersebut
                                             const isOwner = isRightSubject && teachesThisGrade;
-            
+
                                             return `
                                             <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})'
                                                 class="border border-gray-200 rounded-lg p-3 ${isOwner ? 'hover:bg-gray-50' : 'bg-gray-50/50'} transition cursor-pointer">
@@ -3569,16 +3502,18 @@
                                                             </div>
                                                             <p class="text-gray-800 text-sm break-words">${q.question_text}</p>
                                                         </div>
-                        
+                                
                                                         ${isOwner ? `
-                                                            <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
-                                                                class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center gap-1 shadow-sm">
-                                                                🖋️ <span class="hidden sm:inline">Edit</span>
-                                                            </button>
-                                                            <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" 
-                                                                class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex items-center gap-1 shadow-sm">
-                                                                🗑️ <span class="hidden sm:inline">Hapus</span>
-                                                            </button>
+                                                            <div class="flex flex-col gap-2">
+                                                                <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
+                                                                    class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center justify-center gap-1 shadow-sm">
+                                                                    🖋️ <span class="hidden sm:inline">Edit</span>
+                                                                </button>
+                                                                <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" 
+                                                                    class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex items-center justify-center gap-1 shadow-sm">
+                                                                    🗑️ <span class="hidden sm:inline">Hapus</span>
+                                                                </button>
+                                                            </div>
                                                         ` : '<span class="text-xs text-gray-400 italic self-center">Read Only</span>'}
                                                     </div>
                                                 </div>
@@ -4030,19 +3965,6 @@
                     }
                 });
                 
-            }
-            // Fungsi untuk Encode Base64 yang aman untuk karakter unik/emoji/simbol
-            function utoa(str) {
-                return btoa(unescape(encodeURIComponent(str)));
-            }
-
-            // Fungsi untuk Decode Base64 yang aman
-            function atou(str) {
-                try {
-                    return decodeURIComponent(escape(atob(str)));
-                } catch (e) {
-                    return atob(str); // Fallback jika bukan UTF-8 encoded
-                }
             }
 
             async function showAddQuestionForm() {
@@ -4522,69 +4444,6 @@
                         }
                     }
                 });
-            }
-
-            function updateQuestionForm() {
-                const type = document.getElementById('qType').value;
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                
-                const optionsContainer = document.getElementById('optionsContainer');
-                const answerContainer = document.getElementById('answerContainer');
-                
-                if (type === 'pilihan_ganda' || type === 'pilihan_ganda_kompleks') {
-                    optionsContainer.innerHTML = `
-                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Opsi Jawaban (pisahkan dengan enter)</label>
-                        <textarea id="qOptions" required rows="5"
-                            placeholder="Opsi A&#10;Opsi B&#10;Opsi C&#10;Opsi D"
-                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></textarea>
-                    `;
-                    
-                    if (type === 'pilihan_ganda') {
-                        answerContainer.innerHTML = `
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Kunci Jawaban</label>
-                            <input type="text" id="qAnswer" required
-                                placeholder="Masukkan jawaban yang benar"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                        `;
-                    } else {
-                        answerContainer.innerHTML = `
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Kunci Jawaban (pisahkan dengan koma)</label>
-                            <input type="text" id="qAnswer" required
-                                placeholder="Opsi A,Opsi C"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                        `;
-                    }
-                } else if (type === 'isian_singkat') {
-                    optionsContainer.innerHTML = '';
-                    answerContainer.innerHTML = `
-                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Kunci Jawaban</label>
-                        <input type="text" id="qAnswer" required
-                            placeholder="Jawaban yang benar"
-                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                    `;
-                } else if (type === 'benar_salah') {
-                    optionsContainer.innerHTML = `
-                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Pernyataan (pisahkan dengan enter)</label>
-                        <textarea id="qOptions" required rows="5"
-                            placeholder="Pernyataan 1&#10;Pernyataan 2&#10;Pernyataan 3"
-                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"></textarea>
-                    `;
-                    answerContainer.innerHTML = `
-                        <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Kunci Jawaban (format: 0:Benar,1:Salah,2:Benar)</label>
-                        <input type="text" id="qAnswer" required
-                            placeholder="0:Benar,1:Salah,2:Benar"
-                            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                    `;
-                }
             }
 
             async function addQuestion(e) {
