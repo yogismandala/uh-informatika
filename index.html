@@ -865,13 +865,13 @@
                 let nomorUrut = row ? row.querySelector('.row-number').textContent : "1";
 
                 const htmlContent = `
-                    <td class="row-number p-3 border-b text-center text-gray-600 font-medium">${nomorUrut}</td>
-                    <td class="p-3 border-b font-medium text-gray-800">${data.nama || "No Name"}</td>
-                    <td class="p-3 border-b text-gray-600">${data.kelas || "-"}</td>
-                    <td class="p-3 border-b text-blue-600 font-medium text-sm">${mapelSiswa}</td>
-                    <td class="p-3 border-b text-center ${statusClass}">${statusText}</td>
-                    <td class="p-3 border-b text-center font-mono text-sm">${data.progress || "0"}</td>
-                    <td class="p-3 border-b text-right text-xs text-gray-400">${waktuUpdate}</td>
+                    <td class="row-number p-3 border-b text-center text-gray-600 font-medium whitespace-nowrap">${nomorUrut}</td>
+                    <td class="p-3 border-b font-medium text-gray-800 whitespace-nowrap">${data.nama || "No Name"}</td>
+                    <td class="p-3 border-b text-gray-600 whitespace-nowrap">${data.kelas || "-"}</td>
+                    <td class="p-3 border-b text-blue-600 font-medium text-sm whitespace-nowrap">${mapelSiswa}</td>
+                    <td class="p-3 border-b text-center whitespace-nowrap ${statusClass}">${statusText}</td>
+                    <td class="p-3 border-b text-center font-mono text-sm whitespace-nowrap">${data.progress || "0"}</td>
+                    <td class="p-3 border-b text-right text-xs text-gray-400 whitespace-nowrap">${waktuUpdate}</td>
                 `;
 
                 if (row) {
@@ -1565,6 +1565,21 @@
                     showError('Gagal memuat data soal dari server. Coba lagi.');
                     return;
                 }
+                // ✅ RESET STATUS UJIAN (Agar di Admin terbaca "Mengerjakan")
+                hasSubmitted = false;
+                examSubmitted = false;
+                localStorage.removeItem('hasSubmitted'); 
+
+                // ✅ PERTAHANKAN JAWABAN (Agar bisa lanjut jika ke-refresh)
+                const savedAnswers = localStorage.getItem('studentAnswers');
+                if (savedAnswers) {
+                    // Jika ada jawaban tersimpan di memori HP/Komputer, muat kembali!
+                    window.studentAnswers = JSON.parse(savedAnswers);
+                    console.log("Memulihkan jawaban sebelumnya...");
+                } else {
+                    // Jika benar-benar baru pertama kali mulai, baru dikosongkan
+                    window.studentAnswers = {}; 
+                }
 
                 // Filter soal yang sesuai dengan jenjang kelas dan mapel
                 const gradeLevel = user.class.charAt(0); 
@@ -1691,6 +1706,7 @@
             function backToLogin() {
                 if (examTimer) clearInterval(examTimer);
                 examSubmitted = false;
+                hasSubmitted = false; //reset monitoring
                 currentUser = null;
                 currentExam = null;
                 examQuestions = [];
@@ -1713,47 +1729,52 @@
                 
                 const app = document.getElementById('app');
                 app.innerHTML = `
-                    <div class="h-full flex flex-col">
-                        <div class="gradient-header text-white px-3 md:px-6 py-3 md:py-4 shadow-lg" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div class="flex items-center gap-3 md:gap-4 w-full sm:w-auto">
-                                    <img src="/assets/foto_siswa/${currentUser.username}.jpg" loading="lazy" alt="Foto Siswa" class="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white object-cover flex-shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xl md:text-2xl flex-shrink-0" style="display:none;">👤</div>
+                    <div class="absolute inset-0 flex flex-col overflow-hidden">
+                        
+                        <div class="gradient-header flex-none text-white px-3 md:px-5 py-1.5 md:py-2 shadow-md" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
+                                    <img src="/assets/foto_siswa/${currentUser.username}.jpg" loading="lazy" alt="Foto Siswa" class="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white object-cover flex-shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-lg md:text-xl flex-shrink-0" style="display:none;">👤</div>
                                     <div class="flex-1 min-w-0">
-                                        <h2 class="font-bold text-sm md:text-base truncate" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</h2>
-                                        <p class="text-xs md:text-sm opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - INFORMATIKA ${currentExam.subject}</p>
+                                        <h2 class="font-bold text-xs md:text-sm truncate" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</h2>
+                                        <p class="text-[11px] md:text-xs opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - INFORMATIKA ${currentExam.subject}</p>
                                     </div>
                                 </div>
 
-                                <!-- posisi notif online/offline -->
-                                <div id="connection-status" class="fixed top-4 right-4 z-50 px-4 py-2 rounded-full text-sm font-bold hidden shadow-lg transition-all duration-300">
+                                <div id="connection-status" class="fixed top-3 right-3 z-50 px-3 py-1.5 rounded-full text-xs font-bold hidden shadow-lg transition-all duration-300">
                                     <span id="status-text"></span>
                                 </div>
-                                <div class="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                    <div class="flex items-center gap-2 px-2 py-1 rounded-lg" style="background-color: ${violationCount > 0 ? '#fee2e2' : '#dcfce7'};">
-                                        <span class="text-lg md:text-xl">${violationCount > 0 ? '🚨' : '✅'}</span>
-                                        <span class="text-sm md:text-base font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${violationCount > 0 ? '#dc2626' : '#16a34a'};">
+                                <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                    <div class="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg" style="background-color: ${violationCount > 0 ? '#fee2e2' : '#dcfce7'};">
+                                        <span class="text-base md:text-lg">${violationCount > 0 ? '🚨' : '✅'}</span>
+                                        <span class="text-xs md:text-sm font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${violationCount > 0 ? '#dc2626' : '#16a34a'};">
                                             Pelanggaran: <span id="violationCount">${violationCount}</span>
                                         </span>
                                     </div>
-                                    <div id="timer" class="text-xl md:text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack};"></div>
+                                    <div id="timer" class="text-lg md:text-xl font-bold" style="font-family: ${customFont}, ${baseFontStack};"></div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="flex-1 overflow-auto p-3 md:p-6">
+                        <div class="flex-1 overflow-y-auto p-2 md:p-4">
                             <div class="max-w-4xl mx-auto">
-                                <div id="questionContainer" class="bg-white rounded-xl shadow-custom p-4 md:p-8 mb-4 md:mb-6"></div>
+                                <div id="questionContainer" class="bg-white rounded-xl shadow-custom p-3 md:p-5 mb-3 md:mb-4"></div>
                                 
-                                <div id="navigationButtons" class="flex flex-wrap gap-2 md:gap-3 justify-center mb-4 md:mb-6">
+                                <div id="navigationButtons" class="flex flex-wrap gap-2 justify-center mb-3 md:mb-4">
                                 </div>
                                 
-                                <div class="bg-white rounded-xl shadow-custom p-4 md:p-6">
-                                    <h3 class="font-bold mb-3 md:mb-4 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Navigasi Soal</h3>
-                                    <div id="questionNav" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2"></div>
+                                <div class="bg-white rounded-xl shadow-custom p-3 md:p-4 mb-4">
+                                    <h3 class="font-bold mb-2 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Navigasi Soal</h3>
+                                    <div id="questionNav" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="flex-none text-white text-center py-0.1 px-4 text-[11px] shadow-[0_-2px_4px_rgba(0,0,0,0.05)]" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${primaryColor}; filter: brightness(90%);">
+                            <span class="opacity-80 font-medium">SMPN 11 TANGERANG</span>
+                        </div>
+
                     </div>
                 `;
                 
@@ -1824,12 +1845,11 @@
                         if (document.hidden && !isRefreshing) {
                             // Hanya tambah pelanggaran saat keluar dari tab
                             violationCount++;
-                            sessionStorage.setItem('violationCount', violationCount.toString());
+                            localStorage.setItem('violationCount', violationCount.toString());
                             updateViolationDisplay();
                             showViolationWarning();
                         }
                         // Tidak ada aksi saat kembali ke tab (document.visible)                   
-                        
                     }
                 });
                 
@@ -2675,8 +2695,9 @@
                 }
                 
                 document.getElementById('app').innerHTML = `
-                    <div class="h-full flex flex-col">
-                        <div class="gradient-header text-white shadow-lg" style="background: linear-gradient(90deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
+                    <div class="absolute inset-0 flex flex-col overflow-hidden">
+                        
+                        <div class="flex-none z-50 gradient-header text-white shadow-lg relative" style="background: linear-gradient(90deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
                             <div class="px-4 md:px-6 py-3 md:py-4">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2 md:gap-3">
@@ -2698,7 +2719,7 @@
                             </div>
                         </div>
                         
-                        <nav class="bg-white shadow-md border-b border-gray-200">
+                        <nav class="flex-none z-40 bg-white shadow-md border-b border-gray-200 relative">
                             <div class="px-4 md:px-6">
                                 <div class="flex overflow-x-auto gap-1 md:gap-2 scrollbar-hide py-2">
                                     <button onclick="showAdminSection('dashboard')" id="nav-dashboard"
@@ -2741,35 +2762,42 @@
                             </div>
                         </nav>
                         
-                        <div class="flex-1 overflow-auto p-3 md:p-6 gradient-bg">
+                        <div class="flex-1 overflow-y-auto p-3 md:p-6 gradient-bg pb-20">
                             <div id="adminContent" class="max-w-7xl mx-auto"></div>
                         </div>
+
                         <div id="monitorPanel" class="fixed inset-0 bg-gray-100 z-50 hidden overflow-auto flex flex-col">
                             <div class="bg-white shadow p-4 sticky top-0 z-10">
-                                <div class="max-w-7xl mx-auto flex justify-between items-center">
+                                <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                                    
                                     <div class="flex items-center gap-2">
                                         <span class="animate-pulse text-red-600 text-xl">●</span>
                                         <h2 class="text-xl font-bold text-gray-800">Live Monitoring Siswa</h2>
                                     </div>
-                                    <div class="flex items-center gap-3">
-                                        <button onclick="bersihkanDataMonitoring()" class="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 text-sm transition">
+                                    
+                                    <div class="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 mt-2 sm:mt-0">
+                                        
+                                        <button onclick="bersihkanDataMonitoring()" class="w-full flex justify-center items-center gap-1.5 bg-yellow-600 text-white px-3 py-2 rounded shadow hover:bg-yellow-700 text-sm transition whitespace-nowrap">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                             </svg>
-                                            Bersihkan Data
+                                            Bersihkan
                                         </button>
-                                        <button onclick="ambilDataTerbaru()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 text-sm transition">
+                                        
+                                        <button onclick="ambilDataTerbaru()" class="w-full flex justify-center items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700 text-sm transition whitespace-nowrap">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                             </svg>
-                                            Refresh Data
+                                            Refresh
                                         </button>
-                                        <button onclick="document.getElementById('monitorPanel').classList.add('hidden')" class="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 text-sm transition">
+                                        
+                                        <button onclick="document.getElementById('monitorPanel').classList.add('hidden')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded shadow hover:bg-red-700 text-sm transition whitespace-nowrap">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                             Tutup Monitor
                                         </button>
+                                        
                                     </div>
                                 </div>
                             </div>
@@ -2816,8 +2844,9 @@
                 }
                 
                 document.getElementById('app').innerHTML = `
-                    <div class="h-full flex flex-col">
-                        <div class="gradient-header text-white shadow-lg" style="background: linear-gradient(90deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
+                    <div class="absolute inset-0 flex flex-col overflow-hidden">
+                        
+                        <div class="flex-none z-50 gradient-header text-white shadow-lg relative" style="background: linear-gradient(90deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
                             <div class="px-4 md:px-6 py-3 md:py-4">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2 md:gap-3">
@@ -2839,7 +2868,7 @@
                             </div>
                         </div>
                         
-                        <nav class="bg-white shadow-md border-b border-gray-200">
+                        <nav class="flex-none z-40 bg-white shadow-md border-b border-gray-200 relative">
                             <div class="px-4 md:px-6">
                                 <div class="flex overflow-x-auto gap-1 md:gap-2 scrollbar-hide py-2">
                                     <button onclick="showGuruSection('questions')" id="nav-questions"
@@ -2851,7 +2880,7 @@
                             </div>
                         </nav>
                         
-                        <div class="flex-1 overflow-auto p-3 md:p-6 gradient-bg">
+                        <div class="flex-1 overflow-y-auto p-3 md:p-6 gradient-bg pb-20">
                             <div id="guruContent" class="max-w-7xl mx-auto"></div>
                         </div>
                     </div>
@@ -3597,11 +3626,20 @@
 
                 // 2. Logika Data & Filtering
                 const uniqueSubjects = [...new Set(allQuestions.map(q => q.subject))].filter(Boolean);
+                // Ambil daftar kelas unik (Misal: 7, 8, 9)
+                const uniqueClasses = [...new Set(allQuestions.map(q => q.question_class ? q.question_class.charAt(0) : ''))].filter(Boolean).sort();
                 let questionsToRender = allQuestions;
 
-                // Filter Mapel HANYA berlaku untuk Admin
-                if (isAdmin && window.selectedBankSoalSubject) {
-                    questionsToRender = allQuestions.filter(q => q.subject === window.selectedBankSoalSubject);
+                // Filter Mapel & Kelas HANYA berlaku untuk Admin
+                if (isAdmin) {
+                    if (window.selectedBankSoalSubject) {
+                        questionsToRender = questionsToRender.filter(q => q.subject === window.selectedBankSoalSubject);
+                    }
+                    
+                    // Tambahan filter kelas
+                    if (window.selectedBankSoalClass) {
+                        questionsToRender = questionsToRender.filter(q => q.question_class && q.question_class.startsWith(window.selectedBankSoalClass));
+                    }
                 }
 
                 // 3. Logika Statistik (KHUSUS GURU)
@@ -3624,31 +3662,45 @@
 
                 // 5. BLOK KONTEN SPESIFIK (Agar layout Admin & Guru tidak berubah)
                 const adminControls = `
-                    <select id="filterMapelBankSoal" 
+                    <div class="flex flex-col sm:flex-row gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
+    
+                        <select id="filterKelasBankSoal" 
+                            onchange="window.selectedBankSoalClass = this.value; renderQuestionsSection()" 
+                            class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                            <option value="">Semua Kelas</option>
+                            ${uniqueClasses.map(cls => `
+                                <option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>
+                            `).join('')}
+                        </select>
+
+                        <select id="filterMapelBankSoal" 
                             onchange="window.selectedBankSoalSubject = this.value; renderQuestionsSection()" 
                             class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
-                        <option value="">Semua Mata Pelajaran</option>
-                        ${uniqueSubjects.map(sub => `
-                            <option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>
-                        `).join('')}
-                    </select>
-                    <div class="flex w-full sm:w-auto gap-5">
-                        <button onclick="downloadTemplateSoal()" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">
+                            <option value="">Semua Mata Pelajaran</option>
+                            ${uniqueSubjects.map(sub => `
+                                <option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>
+                            `).join('')}
+                        </select>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 sm:gap-4 mt-3 sm:mt-0">
+                        <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">
                             📄 Template
                         </button>
-                        <button onclick="downloadSoalExcel()" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-sm whitespace-nowrap shadow-sm">
+                        <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-4 py-2 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-sm whitespace-nowrap shadow-sm">
                             📥 Download
                         </button>
-                        <button onclick="triggerUploadSoal()" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-sm whitespace-nowrap shadow-sm">
+                        <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-sm whitespace-nowrap shadow-sm">
                             📤 Upload
                         </button>
                         <button onclick="showAddQuestionForm()" 
-                            class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap"
+                            class="w-full flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm"
                             style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
                             ➕ Tambah Soal
                         </button>
                         <button onclick="refreshTarget('questions')" 
-                            class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap"
+                            class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             🔄 Refresh
                         </button>
@@ -3775,7 +3827,8 @@
                         <div id="questionFormContainer" style="display: none;" class="bg-white ${isAdmin ? 'rounded-lg shadow p-4' : 'rounded-xl shadow-sm border border-gray-100 p-4 md:p-6'}"></div>
                         
                         <div class="space-y-4">
-                            ${['7', '8', '9'].map(grade => `
+                            ${['7', '8', '9'].filter(grade => !window.selectedBankSoalClass || window.selectedBankSoalClass === grade)
+                            .map(grade => `
                                 <div class="bg-white rounded-lg shadow p-4">
                                     <div class="flex items-center justify-between mb-3 pb-2 border-b-2 border-gray-200">
                                         <h3 class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">
