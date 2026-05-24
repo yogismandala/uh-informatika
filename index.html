@@ -425,16 +425,13 @@
                         const canvas = document.createElement('canvas');
                         let width = img.width;
                         let height = img.height;
-
                         // Hitung rasio agar gambar tidak penyet
                         if (width > maxWidth) {
                             height = Math.round((height * maxWidth) / width);
                             width = maxWidth;
                         }
-
                         canvas.width = width;
                         canvas.height = height;
-
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
 
@@ -446,13 +443,10 @@
             }
             
             // --- PILIHAN 9: 3D CUBE LOGIC ---
-
             function showLoading() {
                 const overlay = document.getElementById('loadingOverlay');
                 if (!overlay) return;
                 overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-                
-
                 if (!overlay.innerHTML.includes('cube-loader')) {
                     overlay.innerHTML = `
                         <style>
@@ -530,45 +524,33 @@
                         case 'time_desc': default: return new Date(b.exam_time || 0) - new Date(a.exam_time || 0);
                     }
                 });
-
                 return filtered;
             }
             
             async function loadInitialData() {
                 try {
                     if (typeof showLoading === 'function') showLoading();
-                    
-                    // ==============================================================
-                    // HAPUS QUERY USERS DI SINI
                     // Kita tidak lagi memuat data 1060 siswa ke memori aplikasi di awal
-                    // ==============================================================
                     allUsers = []; 
 
-                    // ==============================================================
                     // AMBIL SETTINGS LANGSUNG DARI SUPABASE (Tetap Dipertahankan)
-                    // ==============================================================
                     const { data: settingsData, error: settingsError } = await dbClient
                         .from('settings')
                         .select('*')
                         .eq('id', 1)
                         .single();
-
                     if (settingsError && settingsError.code !== 'PGRST116') {
                         console.error("Error load settings dari Supabase:", settingsError);
                         if (typeof showToast === 'function') showToast('Gagal memuat pengaturan dari Supabase', 'error');
                         return false;
                     }
-                    
                     if (settingsData) {
-                        console.log("Settings Berhasil Dimuat dari Supabase:", settingsData);
-                        
                         examSettings.exam_duration = parseInt(settingsData.exam_duration) || 60;
                         examSettings.max_questions = parseInt(settingsData.max_questions) || 0;
                         examSettings.shuffle_questions = !!settingsData.shuffle_questions;
                         examSettings.shuffle_answers = !!settingsData.shuffle_answers;
                         examSettings.show_score = settingsData.show_score !== false;
-                        examSettings.limit_one_attempt = !!settingsData.limit_one_attempt;
-                        
+                        examSettings.limit_one_attempt = !!settingsData.limit_one_attempt;   
                         let databaseJadwal = settingsData.jadwal;
                         if (typeof databaseJadwal === 'string') {
                             try { 
@@ -579,7 +561,6 @@
                         }
                         examSettings.active_subjects = Array.isArray(databaseJadwal) ? databaseJadwal : [];
                     }
-
                     return true;
                 } catch (error) {
                     console.error('Gagal terhubung ke server:', error);
@@ -590,25 +571,20 @@
                 }
             }
 
-            // ==========================================
             // 3. FUNGSI MEMUAT DATA SOAL DAN HASIL UJIAN
-            // ==========================================
             async function loadExamData(silent = false) {
                 try {
-                    if (!silent) showLoading();
-                    
+                    if (!silent) showLoading();                    
                     // --- A. AMBIL DATA SOAL DARI SUPABASE ---
                     const { data: questionsData, error: questionsError } = await dbClient
                         .from('questions')
                         .select('*')
                         .order('id', { ascending: true });
-                        
                     if (questionsError) {
                         console.error("Error load questions:", questionsError);
                         showToast('Gagal memuat soal', 'error');
                         return false;
                     }
-
                     // Map data soal untuk mengenkripsi jawaban (security_token)
                     allQuestions = (questionsData || []).map(q => {
                         return {
@@ -616,12 +592,8 @@
                             security_token: btoa(q.answer_key || '')
                         };
                     });
-
-                    // ==============================================================
                     // --- BAGIAN YANG DIUBAH: B & C (OPTIMALISASI FILTER DATABASE) ---
-                    // ==============================================================
-                    const userRole = currentUser ? currentUser.role : null;
-                    
+                    const userRole = currentUser ? currentUser.role : null;                    
                     // Buat query dasar untuk tabel examresult
                     let resultsQuery = dbClient
                         .from('examresult')
@@ -648,10 +620,8 @@
                     }
 
                     // Simpan langsung ke memori karena datanya sudah disaring dengan tepat oleh Supabase
-                    allExamResults = resultsData || [];
-                    
+                    allExamResults = resultsData || []; 
                     return true;
-                    
                 } catch (error) {
                     console.error("Terjadi kesalahan sistem saat memuat data:", error);
                     showToast('Gagal memuat data ujian', 'error');
@@ -659,43 +629,69 @@
                 } finally {
                     if (!silent) hideLoading();
                 }
-            }         
-
-            // ============================================================
+            }      
+            
+            // --- TAMBAHAN KODE: Simpan waktu login di sessionStorage agar tahan refresh ---
+            let waktuLogin = sessionStorage.getItem('waktuLogin');
+            if (!waktuLogin) {
+                waktuLogin = new Date().toLocaleTimeString('id-ID');
+                sessionStorage.setItem('waktuLogin', waktuLogin);
+            }
+            let waktuSelesai = sessionStorage.getItem('waktuSelesai') || "-";
+            
             // 1. BAGIAN SISWA (LAPOR)
-            // ============================================================
-
             async function laporKeAdmin() {
                 // Cek koneksi & user login
                 if (!dbClient || !currentUser) return;
 
                 if (currentUser.class === 'admin' || currentUser.class === 'guru') {
-                    return; // Fungsi langsung dihentikan di sini, tidak ada data yang dikirim
+                    return; // Fungsi langsung dihentikan di sini
                 }
+
+                // Ambil Nama Mapel
+                let namaMapel = "Ujian"; 
+                if (typeof currentExam !== 'undefined' && currentExam && currentExam.subject) {
+                    namaMapel = currentExam.subject;
+                }
+
+                // PERBAIKAN: Gunakan 1 Kunci Memori yang Konstan
+                // Tidak akan bocor ke mapel 2 karena sudah ada sessionStorage.clear() saat logout
+                let waktuLogin = sessionStorage.getItem('waktuLogin');
+                if (!waktuLogin) {
+                    waktuLogin = new Date().toLocaleTimeString('id-ID');
+                    sessionStorage.setItem('waktuLogin', waktuLogin);
+                }
+
+                let waktuSelesai = sessionStorage.getItem('waktuSelesai') || "-";
+                // =========================================================
 
                 let statusSiswa = "Mengerjakan";
                 if (document.hidden) statusSiswa = "MENCURIGAKAN (Minimize)";
-                if (typeof hasSubmitted !== 'undefined' && hasSubmitted) statusSiswa = "Selesai";
+                
+                // Set Waktu Selesai jika siswa menekan tombol submit
+                if (typeof hasSubmitted !== 'undefined' && hasSubmitted) {
+                    statusSiswa = "Selesai";
+                    if (waktuSelesai === "-") {
+                        waktuSelesai = new Date().toLocaleTimeString('id-ID');
+                        sessionStorage.setItem('waktuSelesai', waktuSelesai);
+                    }
+                }
 
                 let progressCount = 0;
                 if (typeof studentAnswers !== 'undefined') {
                     progressCount = Object.keys(studentAnswers).length;
                 }
 
-                // Ambil Nama Mapel (Dengan pengecekan aman)
-                let namaMapel = "Ujian"; 
-                if (typeof currentExam !== 'undefined' && currentExam && currentExam.subject) {
-                    namaMapel = currentExam.subject;
-                }
-
                 const payload = {
-                    id: currentUser.username, // Sesuaikan dengan kolom PK di database (nisn/id)
+                    id: currentUser.username, 
                     nama: currentUser.name,
                     kelas: currentUser.class,
                     mapel: namaMapel,
                     status: statusSiswa,
                     progress: progressCount + " Soal Terjawab",
-                    last_update: new Date().toLocaleTimeString('id-ID') // Penting untuk kolom Last Update di Admin
+                    last_update: new Date().toLocaleTimeString('id-ID'),
+                    waktu_login: waktuLogin, // Waktu awal kali laporKeAdmin jalan
+                    waktu_selesai: waktuSelesai 
                 };
 
                 // Kirim ke Database
@@ -717,13 +713,54 @@
                 // 2. Lapor Instan saat Pindah Tab (Anti-Curang)
                 // Langsung lapor jika siswa mencoba minimize atau pindah tab browser
                 document.addEventListener("visibilitychange", laporKeAdmin);
+                pantauResetAdmin();
             }
 
+            // FITUR AUTO-LOGOUT JIKA AKUN DIRESET ADMIN
+            let resetChannel = null;
+            function pantauResetAdmin() {
+                if (!dbClient || !currentUser) return;
+                if (currentUser.role === 'admin' || currentUser.role === 'guru') return;
 
-            // ============================================================
+                // 🛡️ ANTI-DUPLIKAT: Jika channel sudah aktif dari sesi sebelumnya, putuskan dulu!
+                if (resetChannel) {
+                    dbClient.removeChannel(resetChannel);
+                    resetChannel = null;
+                }
+
+                console.log("🛡️ Pemantauan reset aktif untuk ID:", currentUser.username);
+
+                resetChannel = dbClient
+                    .channel('pemantau-reset-' + currentUser.username)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'DELETE',
+                            schema: 'public',
+                            table: 'monitoring'
+                        },
+                        (payload) => {
+                            if (payload.old && payload.old.id === currentUser.username) {
+                                console.warn("⚠️ Akun direset oleh Admin! Memaksa logout...");
+                                alert("⚠️ Sesi ujian Anda telah direset oleh Pengawas.\nAnda akan dikeluarkan dari sistem.");
+                                
+                                // Bersihkan semua memori
+                                localStorage.clear();
+                                sessionStorage.clear();
+                                
+                                if (typeof logout === 'function') {
+                                    logout();
+                                } else {
+                                    window.location.reload();
+                                }
+                            }
+                        }
+                    );
+                    
+                resetChannel.subscribe();
+            }
+
             // 2. BAGIAN ADMIN (MONITORING REALTIME SUPABASE)
-            // ============================================================
-
             // Variabel channel realtime admin
             let realtimeChannel = null;
 
@@ -760,7 +797,6 @@
                 if (realtimeChannel) return; 
 
                 const loadingText = document.getElementById('loadingText');
-
                 realtimeChannel = dbClient
                     .channel('monitoring-ujian')
                     .on(
@@ -826,6 +862,27 @@
                 });
             }
 
+            async function resetAkunSiswa(idSiswa) {
+                const konfirmasi = confirm(`⚠️ Yakin ingin mereset sesi ujian untuk siswa dengan ID: ${idSiswa}?`);
+                if (!konfirmasi) return;
+
+                const { error } = await dbClient
+                    .from('monitoring')
+                    .delete()
+                    .eq('id', idSiswa);
+
+                if (error) {
+                    alert("❌ Gagal mereset: " + error.message);
+                } else {
+                    const rowYangDireset = document.getElementById('row-' + idSiswa);
+                    if (rowYangDireset) {
+                        rowYangDireset.remove();
+                        updateNomorUrut();
+                    }
+                    alert("✅ Sesi berhasil direset! Perangkat siswa akan otomatis logout.");
+                }
+            }
+
             function updateBarisTabel(data) {
                 const tbody = document.getElementById('monitorTableBody');
                 if (!tbody) return;
@@ -861,8 +918,13 @@
                     }
                 }
 
+                // --- VARIABEL BARU UNTUK TAMPILAN ---
+                const tampilWaktuLogin = data.waktu_login || "-";
+                const tampilWaktuSelesai = data.waktu_selesai || "-";
+                
                 let nomorUrut = row ? row.querySelector('.row-number').textContent : "1";
 
+                // --- SISIPKAN 2 TAG <td> BARU KE DALAM TABEL ---
                 const htmlContent = `
                     <td class="row-number p-3 border-b text-center text-gray-600 font-medium whitespace-nowrap">${nomorUrut}</td>
                     <td class="p-3 border-b font-medium text-gray-800 whitespace-nowrap">${data.nama || "No Name"}</td>
@@ -870,14 +932,20 @@
                     <td class="p-3 border-b text-blue-600 font-medium text-sm whitespace-nowrap">${mapelSiswa}</td>
                     <td class="p-3 border-b text-center whitespace-nowrap ${statusClass}">${statusText}</td>
                     <td class="p-3 border-b text-center font-mono text-sm whitespace-nowrap">${data.progress || "0"}</td>
+                    <td class="p-3 border-b text-center text-xs text-gray-500 whitespace-nowrap">${tampilWaktuLogin}</td>
+                    <td class="p-3 border-b text-center text-xs text-gray-500 whitespace-nowrap">${tampilWaktuSelesai}</td>
                     <td class="p-3 border-b text-right text-xs text-gray-400 whitespace-nowrap">${waktuUpdate}</td>
+                    <td class="p-3 border-b text-center whitespace-nowrap">
+                        <button onclick="resetAkunSiswa('${uniqueId}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm transition-all">
+                            Reset
+                        </button>
+                    </td>
                 `;
 
                 if (row) {
                     if (row.innerHTML !== htmlContent) {
                         row.innerHTML = htmlContent;
                         row.className = bgClass;
-                        // Efek kedip kuning
                         row.style.backgroundColor = "#fffbeb";
                         setTimeout(() => { row.style.backgroundColor = ""; }, 500);
                     }
@@ -958,9 +1026,7 @@
                 }
             }
 
-            // ==========================================
             // 2. FUNGSI MENGHAPUS SOAL
-            // ==========================================
             async function deleteQuestionFromSheet(questionId) {
                 try {
                     // Tutup popup konfirmasi secara paksa jika ada (menghindari error popup menumpuk)
@@ -1001,9 +1067,7 @@
                 }
             }
             
-            // ==========================================
             // 1. FUNGSI MENYIMPAN HASIL UJIAN KE SUPABASE
-            // ==========================================
             async function saveExamResultToSheet(examData, retries = 3) {
                 for (let i = 0; i < retries; i++) {
                     try {
@@ -1041,15 +1105,11 @@
                         const waitTime = (i + 1) * 2000; // 2s, 4s...
                         await new Promise(resolve => setTimeout(resolve, waitTime));
                     }
-                }
-                
+                }                
                 return false; // Gagal total setelah semua percobaan
             }
 
-            // ============================================
             // INITIALIZATION
-            // ============================================
-
             // Mendeteksi jika user menekan tombol refresh atau menutup halaman
             window.onbeforeunload = function() {
                 isRefreshing = true;
@@ -1139,13 +1199,10 @@
                     currentUser = null;
                     currentExam = null;
                     renderLoginPage();
-                }
-                
+                }                
             }
 
-            // ============================================
             // LOGIN PAGE
-            // ============================================
             function renderLoginPage() {
                 const config = window.elementSdk?.config || defaultConfig;
                 const customFont = config.font_family || defaultConfig.font_family;
@@ -1153,9 +1210,6 @@
                 const baseSize = config.font_size || defaultConfig.font_size;
                 const primaryColor = config.primary_color || defaultConfig.primary_color;
                 const textColor = config.text_color || defaultConfig.text_color;
-
-                // Ganti URL ini dengan gambar latar belakang pilihan Anda
-                //const bgImage = "https://i.ibb.co.com/vvgwB7rL/yo.png";
                 
                 document.getElementById('app').innerHTML = `
                     <div id="login-animasi" class="min-h-screen flex items-center justify-center p-4">
@@ -1242,8 +1296,7 @@
                             activeSubjects.push(item.subject);
                         }
                     }
-                });
-                
+                });                
                 return activeSubjects;
             }
 
@@ -1265,9 +1318,7 @@
                         didOpen: () => { Swal.showLoading(); }
                     });
                 }
-
                 let user = null;
-
                 try {
                     // --- PROSES LOGIN AMAN DAN SPESIFIK MENGGUNAKAN SUPABASE ---
                     const { data: userData, error } = await dbClient
@@ -1284,6 +1335,30 @@
                     }
                     user = userData;
 
+                    // PANTAU SINGLE DEVICE LOGIN (HANYA UNTUK SISWA)
+                    if (user.role === 'siswa') {
+                        // Cek apakah username siswa ini sudah ada di tabel monitoring
+                        const { data: sesiAktif, error: errCek } = await dbClient
+                            .from('monitoring')
+                            .select('id')
+                            .eq('id', username)
+                            .maybeSingle();
+
+                        if (sesiAktif) {
+                            if (typeof Swal !== 'undefined') {
+                                // Menggunakan SweetAlert agar tampilan peringatan lebih menarik & serasi
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Akses Ditolak!',
+                                    text: 'Akun Anda sedang login di perangkat lain. Keluarkan dulu perangkat sebelumnya atau lapor ke Pengawas untuk direset.',
+                                    confirmButtonColor: '#ef4444'
+                                });
+                            } else {
+                                showError('Akun Anda sedang login di perangkat lain!');
+                            }
+                            return; // ⛔ HENTIKAN PROSES LOGIN DI SINI
+                        }
+                    }
                 } catch (error) {
                     if (typeof Swal !== 'undefined') Swal.close();
                     console.error("Error saat login:", error);
@@ -1296,9 +1371,7 @@
                 sessionStorage.setItem('currentUser', JSON.stringify(user));
                 localStorage.setItem('currentUser', JSON.stringify(user));
 
-                // ==========================================
                 // TARIK DATA OTOMATIS BERDASARKAN ROLE
-                // ==========================================
                 if (user.role === 'admin') {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -1307,8 +1380,7 @@
                             allowOutsideClick: false,
                             didOpen: () => { Swal.showLoading(); }
                         });
-                    }
-                    
+                    }    
                     try {
                         // Tarik SEMUA DATA secara Paralel (bersamaan) agar jauh lebih cepat
                         const [usersRes, resultsRes, questionsRes] = await Promise.all([
@@ -1323,7 +1395,6 @@
                     } catch (err) {
                         console.error("Gagal memuat data admin:", err);
                     }
-                    
                     if (typeof Swal !== 'undefined') Swal.close();
                     renderAdminDashboard();
                     
@@ -1359,7 +1430,6 @@
                 const app = document.getElementById('app');
                 
                 let activeSubjectsNames = []; 
-
                 if (typeof examSettings !== 'undefined' && examSettings.active_subjects) {
                     const now = new Date();
                     const validSchedules = examSettings.active_subjects.filter(item => {
@@ -1612,9 +1682,7 @@
                 setTimeout(() => errorDiv.classList.add('hidden'), 3000);
             }
 
-            // ============================================
             // EXAM FUNCTIONS
-            // ============================================
             async function loadExamQuestions() {
                 const gradeLevel = currentUser.class.charAt(0);
                 
@@ -1959,8 +2027,7 @@
                             Berikutnya ➡️
                         </button>
                     `;
-                }
-                
+                }                
                 navContainer.innerHTML = buttonsHTML;
             }
 
@@ -2437,6 +2504,8 @@
 
                 const score = calculateScore();
                 const answersString = JSON.stringify(studentAnswers);
+                const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || "-";
+                const waktuSelesaiSiswa = sessionStorage.getItem('waktuSelesai') || new Date().toLocaleTimeString('id-ID');
                 const examData = {
                     student_name: currentUser.name,
                     student_class: currentUser.class,
@@ -2444,7 +2513,9 @@
                     exam_time: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}),
                     answers: answersString,
                     final_score: score,
-                    violations: violationCount
+                    violations: violationCount,
+                    waktu_login: waktuLoginSiswa,
+                    waktu_selesai: waktuSelesaiSiswa
                 };
 
                 // --- MULAI PENAMBAHAN PENGHAPUSAN MEMORI TIMER ---
@@ -2657,7 +2728,28 @@
                 }
             }
 
-            function logout() {
+            async function logout() {
+
+                if (typeof dbClient !== 'undefined' && dbClient && typeof resetChannel !== 'undefined' && resetChannel) {
+                    dbClient.removeChannel(resetChannel);
+                    resetChannel = null;
+                    console.log("Koneksi pemantau reset diputus agar aman untuk login berikutnya.");
+                }
+
+                // ============================================================
+                // 2. HAPUS SESI DARI DATABASE (Fitur Single Device Login)
+                // ============================================================
+                if (dbClient && currentUser && currentUser.class !== 'admin' && currentUser.class !== 'guru') {
+                    try {
+                        await dbClient
+                            .from('monitoring')
+                            .delete()
+                            .eq('id', currentUser.username);
+                    } catch (error) {
+                        console.error("Gagal menghapus sesi database:", error);
+                    }
+                }
+            
                 if (examTimer) clearInterval(examTimer);
                 if (adminRefreshInterval) clearInterval(adminRefreshInterval);
                 isExamActive = false;
@@ -2671,16 +2763,14 @@
                 remainingTime = 0;
                 violationCount = 0;
                 
-                localStorage.removeItem('violationCount');
+                localStorage.clear();
+                sessionStorage.clear();
                 
                 renderLoginPage();
             }
 
-            // ============================================
             // ADMIN DASHBOARD
-            // ============================================
-            let adminRefreshInterval = null;
-            
+            let adminRefreshInterval = null;            
             function renderAdminDashboard() {
                 const config = window.elementSdk?.config || defaultConfig;
                 const customFont = config.font_family || defaultConfig.font_family;
@@ -2813,7 +2903,10 @@
                                                 <th class="px-5 py-3 whitespace-nowrap">Mapel</th>
                                                 <th class="p-3 text-center">Status</th>
                                                 <th class="p-3 text-center">Progress</th>
+                                                <th class="p-3 text-center font-bold text-white-600 tracking-wider">Waktu Login</th>
+                                                <th class="p-3 text-center font-bold text-white-600 tracking-wider">Waktu Selesai</th>
                                                 <th class="p-3 text-right">Update</th>
+                                                <th class="p-3 text-center font-bold text-gray-600 tracking-wider">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody id="monitorTableBody">
@@ -2885,9 +2978,7 @@
                         </div>
                     </div>
                 `;
-                
                 showGuruSection('questions');
-
             }
             
             function updateDashboardStats() {
@@ -3398,6 +3489,8 @@
                                             <th class="text-left p-3">Mapel</th>
                                             <th class="text-left p-3">Waktu</th>
                                             <th class="text-left p-3">Nilai</th>
+                                            <th class="text-left p-3">Waktu Login</th>
+                                            <th class="text-left p-3">Waktu Selesai</th>
                                             <th class="text-left p-3">Pelanggaran</th>
                                         </tr>
                                     </thead>
@@ -3420,8 +3513,16 @@
                 }
 
                 // --- BAGIAN B: UPDATE ISI DATA (Berjalan Terus) ---
-                // Bagian ini hanya menyentuh <tbody> dan div mobile, TIDAK menyentuh Dropdown.
                 // Sehingga dropdown aman dan tidak akan tertutup sendiri.
+
+                const dropClass = document.getElementById('filterClass');
+                if (dropClass && typeof allExamResults !== 'undefined') {
+                    const pilihanSaatIni = dropClass.value; 
+                    const uniqueClassesBaru = [...new Set(allExamResults.map(item => String(item.student_class || "").trim()))].sort();
+                    dropClass.innerHTML = `<option value="">Semua Kelas</option>` + 
+                                        uniqueClassesBaru.map(c => `<option value="${c}">${c}</option>`).join('');
+                    dropClass.value = pilihanSaatIni;
+                }
 
                 const tableBody = document.getElementById('resultsTableBody');
                 const mobileView = document.getElementById('resultsMobileView');
@@ -3429,7 +3530,7 @@
                 // 1. Update Tabel Desktop
                 if (tableBody) {
                     if (filteredData.length === 0) {
-                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400">Data tidak ditemukan</td></tr>`;
+                        tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-gray-400">Data tidak ditemukan</td></tr>`;
                     } else {
                         tableBody.innerHTML = filteredData.map(result => `
                             <tr class="border-b border-gray-200 hover:bg-gray-50">
@@ -3438,6 +3539,8 @@
                                 <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
                                 <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
                                 <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;" style="color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.waktu_login || '-'}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.waktu_selesai || '-'}</td>
                                 <td class="p-3">
                                     <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                                         ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
@@ -3565,9 +3668,12 @@
 
             function downloadExcel() {
                 if (!allExamResults || allExamResults.length === 0) {
-                    showToast('Tidak ada data untuk didownload', 'error');
+                    // Asumsi showToast sudah didefinisikan sebelumnya
+                    if (typeof showToast === 'function') showToast('Tidak ada data untuk didownload', 'error');
+                    else alert('Tidak ada data untuk didownload');
                     return;
                 }
+                
                 const dataToExport = getProcessedData();
                 if (dataToExport.length === 0) {
                     alert("Tidak ada data yang sesuai filter untuk diunduh.");
@@ -3575,18 +3681,28 @@
                 }
 
                 // 1. Siapkan data
-                const formattedData = dataToExport.map((item, index) => ({
-                    "No": index + 1,
-                    "Nama Siswa": item.student_name,
-                    "Kelas": item.student_class,
-                    "Mata Pelajaran": item.exam_subject,
-                    "Skor": item.final_score,
-                    //"Waktu Selesai": item.exam_time ? new Date(item.exam_time).toLocaleString('id-ID') : '-',
-                    "Pelanggaran": item.violations || 0
-                }));
+                const formattedData = dataToExport.map((item, index) => {
+                    // Ambil waktu dari database, beri nilai "-" jika kosong
+                    let jamLogin = item.waktu_login ? item.waktu_login : "-";
+                    
+                    // Untuk waktu selesai, kita prioritaskan item.waktu_selesai. 
+                    // Jika tidak ada, kita fallback mengambil dari item.exam_time (timestamp submit)
+                    let jamSelesai = item.waktu_selesai ? item.waktu_selesai : 
+                                    (item.exam_time ? new Date(item.exam_time).toLocaleTimeString('id-ID') : "-");
+
+                    return {
+                        "No": index + 1,
+                        "Nama Siswa": item.student_name,
+                        "Kelas": item.student_class,
+                        "Mata Pelajaran": item.exam_subject,
+                        "Skor": item.final_score,
+                        "Waktu Login": jamLogin,     // <--- KOLOM BARU DITAMBAHKAN
+                        "Waktu Selesai": jamSelesai, // <--- KOLOM BARU DITAMBAHKAN
+                        "Pelanggaran": item.violations || 0
+                    };
+                });
 
                 // 3. Buat Nama File Dinamis
-                // Contoh: "Hasil_Ujian_7A.xlsx" atau "Hasil_Ujian_Semua.xlsx"
                 let fileName = "Hasil_Ujian";
                 if (filterState.class) fileName += `_Kelas_${filterState.class}`;
                 if (filterState.subject) fileName += `_${filterState.subject}`;
@@ -3596,14 +3712,15 @@
                 const worksheet = XLSX.utils.json_to_sheet(formattedData);
                 const workbook = XLSX.utils.book_new();
 
-                // Mengatur lebar kolom (Opsional, agar rapi)
+                // Mengatur lebar kolom agar rapi (Menambahkan 2 kolom waktu)
                 const wscols = [
                     {wch: 5},  // No
-                    {wch: 30}, // Nama
+                    {wch: 30}, // Nama Siswa
                     {wch: 10}, // Kelas
-                    {wch: 20}, // Mapel
-                    {wch: 10}, // Nilai
-                    //{wch: 25}, // Waktu
+                    {wch: 20}, // Mata Pelajaran
+                    {wch: 10}, // Skor
+                    {wch: 15}, // Waktu Login (Baru)
+                    {wch: 15}, // Waktu Selesai (Baru)
                     {wch: 15}  // Pelanggaran
                 ];
                 worksheet['!cols'] = wscols;
@@ -4513,15 +4630,12 @@
                 });
             }
 
-            // =========================================================================
             // FITUR DOWNLOAD & UPLOAD SOAL EXCEL (URUTAN HEADER BARU & PREMIUM LAYOUT)
-            // =========================================================================
-
             // 1. Download Template Excel yang Sudah Dibuat Manual
             function downloadTemplateSoal() {
                 // Ganti URL di bawah ini dengan URL publik tempat Anda mengupload file Excel manual Anda
                 // Contoh jika file ada di satu folder yang sama: const fileUrl = './Template_Upload_Soal_Resmi.xlsx';
-                const fileUrl = 'link buat download templet'; 
+                const fileUrl = 'link buat download templet disini'; 
                 
                 // Nama file yang akan muncul saat guru mendownload
                 const fileName = 'Template_Upload_Soal.xlsx';
@@ -4679,7 +4793,6 @@
                             });
                         }
                     });
-
                 } catch (error) {
                     console.error("Gagal mendownload excel:", error);
                     Swal.fire('Error', 'Sistem gagal memproses filter download.', 'error');
@@ -5568,12 +5681,9 @@
                 }
             }
 
-            // ==============================================================
             // 1. FUNGSI LOAD SETTINGS DARI SUPABASE (SINKRON)
-            // ==============================================================
             async function loadSupabaseSettings() {
                 try {
-                    console.log("Mengambil pengaturan dari Supabase...");
                     const { data, error } = await dbClient
                         .from('settings')
                         .select('*')
@@ -5586,8 +5696,6 @@
                     }
 
                     if (data) {
-                        console.log("Data Supabase ditemukan:", data);
-                        
                         // Masukkan data pengaturan umum ke memori lokal
                         examSettings.exam_duration = parseInt(data.exam_duration) || 60;
                         examSettings.max_questions = parseInt(data.max_questions) || 0;
@@ -5609,8 +5717,6 @@
                         
                         // PASTIKAN memori lokal diisi data dari database, BUKAN data default aplikasi lagi
                         examSettings.active_subjects = Array.isArray(databaseJadwal) ? databaseJadwal : [];
-                        
-                        console.log("Memori lokal berhasil disinkronkan dengan Supabase.");
                     } else {
                         console.warn("Baris data id=1 belum ada di Supabase. Menggunakan nilai default awal.");
                         examSettings.active_subjects = examSettings.active_subjects || [];
@@ -5633,9 +5739,7 @@
                 }
             }
 
-            // ==============================================================
             // 2. FUNGSI SIMPAN SETTINGS KE SUPABASE
-            // ==============================================================
             async function saveSettings(e) {
                 if (e) e.preventDefault();
                 
@@ -5872,4 +5976,4 @@
             init();
         </script>
     </body>
- </html>
+</html>
