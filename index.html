@@ -398,14 +398,13 @@
                 "SMT GANJIL - UP BAB IV",
                 "SMT GANJIL - UP BAB V",
                 "ULANGAN HARIAN I SMT1",
-                "ULANGAN HARIAN II SMT1",
                 "SMT GENAP - UP BAB I",
                 "SMT GENAP - UP BAB II",
                 "UP TENGAH SEMESTER 2",
                 "SMT GENAP - UP BAB III",
                 "SMT GENAP - UP BAB IV",
                 "ULANGAN HARIAN I SMT2",
-                "ULANGAN HARIAN II SMT2"
+                "REMEDIAL"
             ];
             
             // ============================================
@@ -1449,7 +1448,7 @@
                                     <li>Kerjakan dengan jujur dan teliti.</li>
                                 </ul>
                             </div>
-
+                            
                             <form id="formPilihJadwal">
                                 <div class="mb-5">
                                     <label class="block text-slate-700 text-sm font-semibold mb-2">Mata Pelajaran :</label>
@@ -1513,7 +1512,7 @@
                     }
 
                     if (!isAgreed) {
-                        showError('Anda harus menyetujui tata tertib ujian terlebih dahulu!');
+                        showError('Anda wajib mencentang kotak persetujuan tata tertib ujian untuk memulai.');
                         return;
                     }
                     
