@@ -1555,6 +1555,10 @@
                         } else {
                             alert("Anda sudah mengerjakan ujian ini!");
                         }
+                        //membersihkan saat siswa sudah mengerjakan 1x
+                        localStorage.removeItem('currentUser');
+                        sessionStorage.removeItem('currentUser');
+                        localStorage.removeItem('studentAnswers');
                         if (typeof logout === 'function') logout();
                         return;
                     }
@@ -1587,16 +1591,14 @@
                     q.question_class === gradeLevel && 
                     q.subject === subject
                 );
-                
                 if (availableQuestions.length === 0) {
                     if (typeof hideLoading === 'function') hideLoading();
                     if (typeof renderNoQuestionsPage === 'function') renderNoQuestionsPage();
                     return;
                 }
-
                 // Eksekusi Soal
                 await loadExamQuestions();
-                
+
                 if (typeof hideLoading === 'function') hideLoading();
                 if (typeof activateFullscreen === 'function') activateFullscreen();
                 if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
@@ -1621,7 +1623,6 @@
                     q.question_class === gradeLevel && 
                     q.subject === currentExam.subject
                 );
-                
                 if (examSettings.shuffle_questions) {
                     questions = shuffleArray(questions);
                 }
