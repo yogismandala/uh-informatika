@@ -1177,7 +1177,7 @@
                             <div class="glass-panel p-8 shadow-2xl">
                                 <div class="text-center mb-8">
                                     <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: white;">Selamat Datang</h1>
-                                    <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: rgba(255,255,255,0.8);">Silahkan Login untuk memulai ujian</p>
+                                    <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: rgba(255,255,255,0.8);">Silahkan Login menggunakan NISN Anda</p>
                                 </div>
                         
                                 <form id="loginForm" class="space-y-4">
@@ -1211,7 +1211,7 @@
                                         ${config.login_button_text || defaultConfig.login_button_text}
                                     </button>
                                     <div class="mt-4 text-center text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; opacity: 0.9;">
-                                        Jika lupa NISN Anda klik link ini <a href="https://yogismandala.github.io/ceknisn/" target="_blank" rel="noopener noreferrer" class="font-bold underline hover:text-blue-300 transition-colors">Cek NISN</a>
+                                        Jika lupa NISN klik ini ➔ <a href="https://yogismandala.github.io/ceknisn/" target="_blank" rel="noopener noreferrer" class="font-bold underline hover:text-blue-300 transition-colors">Cek NISN</a>
                                     </div>
                                 </form>
                             </div>
@@ -3342,6 +3342,43 @@
                 `;
             }           
 
+            if (typeof window.currentUserFilter === 'undefined') {
+                window.currentUserFilter = 'all';
+            }
+
+            // Fungsi Reset Massal yang AMAN tanpa merusak tombol tabel satuan
+            async function resetAllOnlineUsers() {
+                const onlineUsers = allUsers.filter(user => user.role === 'siswa' && user.is_login);
+                
+                if (onlineUsers.length === 0) {
+                    alert("Tidak ada siswa yang sedang aktif/online saat ini.");
+                    return;
+                }
+
+                // 1. Konfirmasi hanya muncul 1 KALI di awal untuk seluruh siswa
+                if (confirm(`Apakah Anda yakin ingin meriset login untuk ${onlineUsers.length} siswa yang sedang aktif secara bersamaan?`)) {
+                    
+                    // 2. TRIK JITU: Simpan fungsi confirm asli browser, lalu paksa sementara menjadi selalu bernilai TRUE
+                    const originalConfirm = window.confirm;
+                    window.confirm = () => true; 
+
+                    try {
+                        // 3. Jalankan fungsi asli Anda. Karena konfirmasi sudah di-override, pop-up tidak akan muncul berulang-ulang
+                        for (const user of onlineUsers) {
+                            await resetSiswaLogin(user.username);
+                        }
+                    } catch (error) {
+                        console.error("Gagal meriset beberapa pengguna:", error);
+                    } finally {
+                        // 4. PENTING: Kembalikan fungsi confirm asli browser agar tombol satuan di tabel tetap berfungsi normal
+                        window.confirm = originalConfirm;
+                    }
+
+                    alert("Berhasil meriset status login semua siswa yang aktif.");
+                    renderUsersSection(); // Refresh tabel setelah selesai
+                }
+            }
+
             function renderUsersSection() {
                 const config = window.elementSdk?.config || defaultConfig;
                 const customFont = config.font_family || defaultConfig.font_family;
@@ -3350,20 +3387,58 @@
                 const textColor = config.text_color || defaultConfig.text_color;
                 const primaryColor = config.primary_color || defaultConfig.primary_color;
                 
+                // Hitung jumlah pengguna yang sedang online
+                const totalOnline = allUsers.filter(user => user.role === 'siswa' && user.is_login).length;
+
+                // Filter data berdasarkan pilihan dropdown
+                const filteredUsers = allUsers.filter(user => {
+                    if (window.currentUserFilter === 'online') {
+                        return user.role === 'siswa' && user.is_login;
+                    } else if (window.currentUserFilter === 'offline') {
+                        return user.role === 'siswa' ? !user.is_login : true;
+                    }
+                    return true;
+                });
+
                 document.getElementById('adminContent').innerHTML = `
                     <div class="space-y-6">
-                        <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                            <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.5}px; color: ${textColor};">Data Pengguna</h2>
-                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                        <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+                            <div>
+                                <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.35}px; color: ${textColor};">Data Pengguna</h2>
+                                <p class="text-xs mt-1 text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">
+                                    Siswa Sedang Aktif: <span class="px-2 py-0.5 bg-red-100 text-red-600 font-bold rounded-full text-[11px]">${totalOnline} Online</span>
+                                </p>
+                            </div>
+                            
+                            <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
+                                
+                                <div class="w-full sm:w-auto flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
+                                    <span class="text-[11px] font-semibold px-1.5 text-gray-600 shrink-0">Filter:</span>
+                                    <select onchange="window.currentUserFilter = this.value; renderUsersSection();" 
+                                        class="w-full sm:w-auto bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        style="font-family: ${customFont}, ${baseFontStack};">
+                                        <option value="all" ${window.currentUserFilter === 'all' ? 'selected' : ''}>Semua Pengguna</option>
+                                        <option value="online" ${window.currentUserFilter === 'online' ? 'selected' : ''}>🔴 Sedang Aktif</option>
+                                        <option value="offline" ${window.currentUserFilter === 'offline' ? 'selected' : ''}>🟢 Offline</option>
+                                    </select>
+                                </div>
+
+                                <button onclick="resetAllOnlineUsers()" 
+                                    class="w-full sm:w-auto px-3 py-1.5 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition shadow flex items-center justify-center gap-1.5"
+                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
+                                    🚨 Reset Semua Online
+                                </button>
+
                                 <button onclick="showAddUserForm()" 
-                                    class="w-full sm:w-auto px-4 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2"
-                                    style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
-                                    <span class="text-lg">➕</span>
+                                    class="w-full sm:w-auto px-3 py-1.5 rounded-lg text-white font-semibold hover:opacity-90 transition shadow flex items-center justify-center gap-1.5"
+                                    style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
+                                    <span class="text-xs">➕</span>
                                     <span>Tambah Pengguna</span>
                                 </button>
+                                
                                 <button onclick="refreshTarget('users')" 
-                                    class="w-full sm:w-auto px-4 py-3 bg-gray-600 rounded-xl text-white font-semibold hover:bg-gray-700 transition shadow-lg"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
+                                    class="w-full sm:w-auto px-3 py-1.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition shadow"
+                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
                                     🔄 Refresh
                                 </button>
                             </div>
@@ -3376,53 +3451,53 @@
                                 <table class="w-full min-w-full">
                                     <thead>
                                         <tr class="border-b-2 border-gray-300">
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Foto</th>
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Username</th>
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Nama</th>
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Role</th>
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Kelas</th>
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Status Sesi</th>
-                                            <th class="text-left p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">Aksi</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Foto</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Username</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Nama</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Role</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Kelas</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Status Sesi</th>
+                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="usersTableBody">
-                                        ${allUsers.map(user => `
+                                        ${filteredUsers.map(user => `
                                             <tr class="border-b border-gray-200 hover:bg-blue-50 transition">
-                                                <td class="p-4">
-                                                    <img src="/assets/foto_siswa/${user.username}.jpg" loading="lazy" alt="${user.name}" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xl" style="display:none;">👤</div>
+                                                <td class="p-3 md:p-4">
+                                                    <img src="/assets/foto_siswa/${user.username}.jpg" loading="lazy" alt="${user.name}" class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg" style="display:none;">👤</div>
                                                 </td>
-                                                <td class="p-4">
-                                                    <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${user.username}</span>
+                                                <td class="p-3 md:p-4">
+                                                    <span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.username}</span>
                                                 </td>
-                                                <td class="p-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${user.name}</td>
-                                                <td class="p-4">
-                                                    <span class="px-3 py-1 rounded-full text-sm font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'guru' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
+                                                <td class="p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.name}</td>
+                                                <td class="p-3 md:p-4">
+                                                    <span class="px-2 py-0.5 rounded-full text-[11px] md:text-xs font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'guru' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
                                                         ${user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'guru' ? '👨‍🏫 Guru' : '👨‍🎓 Siswa'}
                                                     </span>
                                                 </td>
-                                                <td class="p-4">
-                                                    <span class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${user.class || '-'}</span>
+                                                <td class="p-3 md:p-4">
+                                                    <span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.class || '-'}</span>
                                                 </td>
-                                                <td class="p-4">
+                                                <td class="p-3 md:p-4">
                                                     ${user.role === 'siswa' ? `
-                                                        <span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-sm">
-                                                            ${user.is_login ? '🔴 Aktif (Sedang Ujian)' : '🟢 Offline'}
+                                                        <span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-[11px] md:text-xs">
+                                                            ${user.is_login ? '🔴 Aktif' : '🟢 Offline'}
                                                         </span>
                                                     ` : '-'}
                                                 </td>
-                                                <td class="p-4 flex gap-2">
+                                                <td class="p-3 md:p-4 flex gap-1.5">
                                                     ${user.role === 'siswa' ? `
                                                         <button onclick="resetSiswaLogin('${user.username}')" 
-                                                            class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition shadow"
-                                                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"
+                                                            class="px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition shadow text-[11px] md:text-xs"
+                                                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;"
                                                             title="Reset Sesi Login Jika Siswa Terkunci">
-                                                            🔓 Reset Login
+                                                            🔓 Reset
                                                         </button>
                                                     ` : ''}
                                                     <button onclick="deleteUser('${user.id}')" 
-                                                        class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition shadow"
-                                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
+                                                        class="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition shadow text-[11px] md:text-xs"
+                                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;">
                                                         🗑️ Hapus
                                                     </button>
                                                 </td>
@@ -3430,9 +3505,9 @@
                                         `).join('')}
                                     </tbody>
                                 </table>
-                                ${allUsers.length === 0 ? `
+                                ${filteredUsers.length === 0 ? `
                                     <div class="text-center py-12">
-                                        <p class="text-gray-400 text-xl" style="font-family: ${customFont}, ${baseFontStack};">Belum ada pengguna</p>
+                                        <p class="text-gray-400 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Tidak ada data pengguna yang sesuai filter</p>
                                     </div>
                                 ` : ''}
                             </div>
