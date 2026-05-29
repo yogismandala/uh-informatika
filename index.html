@@ -1357,7 +1357,7 @@
                     try {
                         // Tarik SEMUA DATA secara Paralel (bersamaan) agar jauh lebih cepat
                         const [usersRes, resultsRes, questionsRes] = await Promise.all([
-                            dbClient.from('users').select('*'),
+                            dbClient.from('users').select('username, name, role, class, is_login'),
                             dbClient.from('examresult').select('*').order('timestamp', { ascending: false }),
                             dbClient.from('questions').select('*').order('id', { ascending: true })
                         ]);
@@ -2737,7 +2737,6 @@
                 
                 // Tampilkan Hasil jika sukses, tampilkan error jika gagal
                 if (success) {
-                    if (typeof loadExamData === 'function') await loadExamData();
                     if (typeof renderResultPage === 'function') renderResultPage(score);
                 } else {
                     console.error("Gagal menyimpan hasil ujian.");
@@ -3207,39 +3206,6 @@
                     </div>
                 `;
                 showGuruSection('questions');
-            }
-            
-            function updateDashboardStats() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                
-                const totalUsers = allUsers.length;
-                const totalStudents = allUsers.filter(u => u.role === 'siswa').length;
-                const totalQuestions = allQuestions.length;
-                const totalExams = allExamResults.length;
-                
-                const avgScore = allExamResults.length > 0 
-                    ? Math.round(allExamResults.reduce((sum, r) => sum + r.final_score, 0) / allExamResults.length)
-                    : 0;
-                
-                // Update stats cards jika ada
-                const statsCards = document.querySelectorAll('#adminContent .bg-white.rounded-xl.shadow');
-                if (statsCards.length > 0) {
-                    const stats = [totalUsers, totalQuestions, totalExams, avgScore];
-                    const descriptions = [`${totalStudents} Siswa`, 'Soal Tersedia', 'Total Ujian', 'Nilai Rata-rata'];
-                    
-                    statsCards.forEach((card, idx) => {
-                        if (idx < 4) {
-                            const valueElement = card.querySelector('p.font-bold');
-                            const descElement = card.querySelector('p.text-gray-500');
-                            if (valueElement) valueElement.textContent = stats[idx];
-                            if (descElement) descElement.textContent = descriptions[idx];
-                        }
-                    });
-                }
             }
 
             function showAdminSection(section) {
