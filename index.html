@@ -33,8 +33,6 @@
                 gap: 8px;
             }
 
-
-
             .ql-container {
                 height: auto !important;
                 min-height: 60px;
@@ -165,7 +163,6 @@
             .snap-mandatory {
                 scroll-behavior: smooth;
             }
-            /* ... style lainnya ... */
 
             /* Pastikan SweetAlert selalu di atas Loading Overlay */
             .swal2-container {
@@ -175,8 +172,9 @@
             /* Mencegah body bergeser saat popup muncul */
             body.swal2-shown > [aria-hidden="true"] {
                 transition: 0.1s filter;
-                filter: blur(3px); /* Efek blur keren di background saat popup muncul */
+                filter: blur(3px); 
             }
+
             /* Reset Margin */
             body {
                 margin: 0;
@@ -185,9 +183,8 @@
                 left: 0;
                 width: 100%;
                 min-height: 100vh;
-                background-color:#1e3a8a;
+                background-color: #1e3a8a;
                 overflow-x: hidden; 
-            
             
                 /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
                 overscroll-behavior-y: contain; 
@@ -198,61 +195,27 @@
                 user-select: none;
                 box-sizing: border-box;
             }
+            /* Di dalam style, tambahkan: */
+            #adminContent, #monitorPanel {
+                -webkit-user-select: text;
+                -moz-user-select: text;
+                user-select: text;
+            }
 
-            .header-waves {
+            /* PENGGANTI OMBAK (GRADASI PROFESIONAL) */
+            .header-background {
                 position: absolute;
                 top: 0; left: 0;
                 width: 100%; height: 100%;
-                background: linear-gradient(60deg, #0f172a 0%, #1e3a8a 100%); /* Warna Laut Dalam */
+                /* DIUBAH: Dari #0f172a ke #1e3a8a, dan dari #1e40af ke #3b82f6 */
+                background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); 
                 color: white;
-                z-index: 0; /* Di belakang layar */
+                z-index: 0; 
                 overflow: hidden;
             }
 
-            .waves {
-                position: absolute;
-                bottom: 0;
-                width: 100%;
-                height: 45vh; /* Tinggi ombak 15% dari layar */
-                min-height: 100px;
-                max-height: 200px;
-            }
-
-            /* Animasi Gerakan Ombak */
-            .parallax > use {
-                animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
-            }
-            .parallax > use:nth-child(1) {
-                animation-delay: -2s;
-                animation-duration: 7s;
-                fill: rgba(59, 130, 246, 0.7); /* Biru Terang Transparan */
-            }
-            .parallax > use:nth-child(2) {
-                animation-delay: -3s;
-                animation-duration: 10s;
-                fill: rgba(37, 99, 235, 0.5); /* Biru Sedang Transparan */
-            }
-            .parallax > use:nth-child(3) {
-                animation-delay: -4s;
-                animation-duration: 13s;
-                fill: rgba(29, 78, 216, 0.3); /* Biru Gelap Transparan */
-            }
-            .parallax > use:nth-child(4) {
-                animation-delay: -5s;
-                animation-duration: 20s;
-                fill: #1e3a8a; /* Warna Dasar Ombak (Biru Laut Malam) */
-            }
-            
-            @keyframes move-forever {
-                0% { transform: translate3d(-90px,0,0); }
-                100% { transform: translate3d(85px,0,0); }
-            }
-
-            /* Responsif untuk HP (Ombak tetap terlihat proporsional) */
-            @media (max-width: 768px) {
-                .waves { height: 85px; min-height: 85px; }
-            }
             @view-transition { navigation: auto; }
+            
             #app {
                 width: 100%;
                 /* Gunakan min-height: 100vh agar responsif menyesuaikan layar mobile */
@@ -301,22 +264,8 @@
         </style>
     </head>
     <body class="min-h-screen">
-        <div class="header-waves">
+        <div class="header-background">
             <div class="inner-header flex"></div>
-            <div>
-                <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
-                    <defs>
-                        <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
-                    </defs>
-                    <g class="parallax">
-                        <use xlink:href="#gentle-wave" x="48" y="0" fill="rgba(255,255,255,0.7)" />
-                        <use xlink:href="#gentle-wave" x="48" y="3" fill="rgba(255,255,255,0.5)" />
-                        <use xlink:href="#gentle-wave" x="48" y="5" fill="rgba(255,255,255,0.3)" />
-                        <use xlink:href="#gentle-wave" x="48" y="7" fill="#fff" />
-                    </g>
-                </svg>
-            </div>
         </div>
         <div id="app" class="min-h-screen w-full flex flex-col" style="position: relative; z-index: 10;"></div>
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
@@ -416,7 +365,6 @@
             };
             
             // Load minimum waktu submit dari localStorage
-            let minTimeToSubmit = parseInt(localStorage.getItem('minTimeToSubmit') || '0');
             let hasSubmitted = false; // Status apakah siswa sudah submit ujian
             
             const SUBJECTS = [
@@ -701,6 +649,7 @@
                 if (error) console.error("Gagal lapor:", error.message);
             }
 
+            let isPelaporanListenerAdded = false;
             // Pemicu Laporan Siswa
             function mulaiPelaporanSiswa() {
                 console.log("Sistem pelaporan siswa aktif.");
@@ -710,8 +659,10 @@
                 setInterval(laporKeAdmin, 300000); 
                 
                 // 2. Lapor Instan saat Pindah Tab (Anti-Curang)
-                // Langsung lapor jika siswa mencoba minimize atau pindah tab browser
-                document.addEventListener("visibilitychange", laporKeAdmin);
+                if (!isPelaporanListenerAdded) {
+                    document.addEventListener('visibilitychange', laporKeAdmin);
+                    isPelaporanListenerAdded = true;
+                }
             }
 
             // 2. BAGIAN ADMIN (MONITORING REALTIME SUPABASE)
@@ -1033,44 +984,47 @@
             
             // 1. FUNGSI MENYIMPAN HASIL UJIAN KE SUPABASE
             async function saveExamResultToSheet(examData, retries = 3) {
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        showLoading();
-                        
-                        // Siapkan data, hapus property 'action' karena Supabase tidak butuh itu
-                        const dataToSave = { ...examData };
-                        delete dataToSave.action;
+                showLoading(); 
+                try {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            // Siapkan data, hapus property 'action' karena Supabase tidak butuh itu
+                            const dataToSave = { ...examData };
+                            delete dataToSave.action;
 
-                        // Pastikan format answers menjadi JSON string jika struktur kolom di Supabase diset 'text'
-                        // Jika kolom di Supabase diset 'jsonb', ini opsional namun tetap aman dilakukan.
-                        if (typeof dataToSave.answers === 'object') {
-                            dataToSave.answers = JSON.stringify(dataToSave.answers);
+                            // Pastikan format answers menjadi JSON string jika struktur kolom di Supabase diset 'text'
+                            if (typeof dataToSave.answers === 'object') {
+                                dataToSave.answers = JSON.stringify(dataToSave.answers);
+                            }
+
+                            // Proses Insert ke Supabase
+                            const { error } = await dbClient
+                                .from('examresult')
+                                .insert([dataToSave]);
+
+                            if (!error) {
+                                return true; // Berhasil terkirim (otomatis memicu blok finally di bawah)
+                            } else {
+                                console.error("Gagal simpan ke Supabase (Percobaan " + (i + 1) + "):", error);
+                            }
+                            
+                        } catch (error) {
+                            console.error("Error saat mengirim nilai:", error);
                         }
 
-                        // Proses Insert ke Supabase
-                        const { error } = await dbClient
-                            .from('examresult')
-                            .insert([dataToSave]);
-
-                        if (!error) {
-                            return true; // Berhasil terkirim
-                        } else {
-                            console.error("Gagal simpan ke Supabase (Percobaan " + (i + 1) + "):", error);
+                        // Tunggu sebentar sebelum mencoba lagi (exponential backoff)
+                        if (i < retries - 1) {
+                            const waitTime = (i + 1) * 2000; // 2s, 4s...
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
                         }
-                        
-                    } catch (error) {
-                        console.error("Error saat mengirim nilai:", error);
-                    } finally {
-                        hideLoading();
-                    }
+                    }                
+                    return false; // Gagal total setelah semua percobaan (otomatis memicu blok finally di bawah)
 
-                    // Tunggu sebentar sebelum mencoba lagi (exponential backoff)
-                    if (i < retries - 1) {
-                        const waitTime = (i + 1) * 2000; // 2s, 4s...
-                        await new Promise(resolve => setTimeout(resolve, waitTime));
-                    }
-                }                
-                return false; // Gagal total setelah semua percobaan
+                } finally {
+                    // 2. Sembunyikan loading di sini. 
+                    // Blok ini PASTI jalan di akhir, tidak peduli fungsi ini keluar lewat 'return true' atau 'return false'.
+                    hideLoading();
+                }
             }
 
             // INITIALIZATION
@@ -1164,12 +1118,12 @@
 
             // LOGIN PAGE
             function renderLoginPage() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
+                const textColor = defaultConfig.text_color;
                 
                 document.getElementById('app').innerHTML = `
                     <div id="login-animasi" class="min-h-screen flex items-center justify-center p-4">
@@ -1553,6 +1507,8 @@
             }
 
             async function prosesMulaiUjianSiswa(user, subject) {
+                // Ini dieksekusi instan saat tombol diklik, tanpa menunggu proses 'await'
+                if (typeof activateFullscreen === 'function') activateFullscreen();
                 if (typeof showLoading === 'function') showLoading();
                 
                 // Set mapel yang dipilih
@@ -1560,18 +1516,20 @@
                 sessionStorage.setItem('currentExam', JSON.stringify(currentExam));
                 localStorage.setItem('currentExam', JSON.stringify(currentExam));
 
-                // Lakukan proses muat Bank Soal & Nilai hanya setelah siswa yakin masuk ke ujian
+                // Lakukan proses muat Bank Soal & Nilai
                 const examDataLoaded = await loadExamData();
                 
                 // Cek limit kesempatan (1 kali)
                 if (examSettings.limit_one_attempt) {
-                    // Asumsi allExamResults telah dimuat melalui loadExamData() di aplikasi Anda
                     const hasTakenExam = allExamResults.some(result => 
                         result.student_name === (user.name || user.username) && 
                         result.exam_subject === subject
                     );
 
                     if (hasTakenExam) {
+                        // JIKA DITOLAK: Batalkan fullscreen agar tampilan kembali normal
+                        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+
                         if (typeof hideLoading === 'function') hideLoading();
                         if (typeof Swal !== 'undefined') {
                             await Swal.fire({
@@ -1595,10 +1553,13 @@
                 }
 
                 if (!examDataLoaded) {
+                    // JIKA EROR: Batalkan fullscreen
+                    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
                     if (typeof hideLoading === 'function') hideLoading();
                     showError('Gagal memuat data soal dari server. Coba lagi.');
                     return;
                 }
+
                 // ✅ RESET STATUS UJIAN (Agar di Admin terbaca "Mengerjakan")
                 hasSubmitted = false;
                 examSubmitted = false;
@@ -1607,11 +1568,9 @@
                 // ✅ PERTAHANKAN JAWABAN (Agar bisa lanjut jika ke-refresh)
                 const savedAnswers = localStorage.getItem('studentAnswers');
                 if (savedAnswers) {
-                    // Jika ada jawaban tersimpan di memori HP/Komputer, muat kembali!
                     window.studentAnswers = JSON.parse(savedAnswers);
                     console.log("Memulihkan jawaban sebelumnya...");
                 } else {
-                    // Jika benar-benar baru pertama kali mulai, baru dikosongkan
                     window.studentAnswers = {}; 
                 }
 
@@ -1621,16 +1580,21 @@
                     q.question_class === gradeLevel && 
                     q.subject === subject
                 );
+
                 if (availableQuestions.length === 0) {
+                    // JIKA SOAL KOSONG: Batalkan fullscreen
+                    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
                     if (typeof hideLoading === 'function') hideLoading();
                     if (typeof renderNoQuestionsPage === 'function') renderNoQuestionsPage();
                     return;
                 }
+
                 // Eksekusi Soal
                 await loadExamQuestions();
 
+                // Sisa eksekusi UI
                 if (typeof hideLoading === 'function') hideLoading();
-                if (typeof activateFullscreen === 'function') activateFullscreen();
+                // (activateFullscreen di sini sudah dihapus karena dipindah ke atas)
                 if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
                 if (typeof requestWakeLock === 'function') requestWakeLock();
                 if (typeof renderExamPage === 'function') renderExamPage();
@@ -1690,13 +1654,13 @@
             }
 
             function renderNoQuestionsPage() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                const textColor = config.text_color || defaultConfig.text_color;
-                const backgroundColor = config.background_color || defaultConfig.background_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
+                const textColor = defaultConfig.text_color;
+                const backgroundColor = defaultConfig.background_color;
                 
                 document.getElementById('app').innerHTML = `
                     <div class="fixed inset-0 z-[100] min-h-screen w-full flex items-center justify-center p-4 gradient-bg overflow-y-auto">
@@ -1749,12 +1713,12 @@
             }
 
             function renderExamPage() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
+                const textColor = defaultConfig.text_color;
                 
                 const app = document.getElementById('app');
                 app.innerHTML = `
@@ -2144,10 +2108,10 @@
             }
 
             function renderNavigationButtons() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
+                const baseSize = defaultConfig.font_size;
                 
                 const navContainer = document.getElementById('navigationButtons');
                 if (!navContainer) return;
@@ -2195,11 +2159,11 @@
             }
 
             function renderQuestion() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
                 
                 if (!examQuestions || examQuestions.length === 0) {
                     document.getElementById('questionContainer').innerHTML = `
@@ -2259,11 +2223,11 @@
             }
 
             function renderMultipleChoice(question) {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
                 
                 const currentAnswer = studentAnswers[currentQuestionIndex];
                 
@@ -2290,11 +2254,11 @@
             }
 
             function renderComplexMultipleChoice(question) {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
                 
                 const currentAnswer = studentAnswers[currentQuestionIndex] || "";
                 
@@ -2341,10 +2305,10 @@
             }
 
             function renderShortAnswer(question) {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
+                const baseSize = defaultConfig.font_size;
                 
                 const currentAnswer = studentAnswers[currentQuestionIndex] || '';
                 
@@ -2370,11 +2334,11 @@
             }
 
             function renderTrueFalse(question) {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
                 
                 // Ambil jawaban saat ini dari array studentAnswers
                 const currentAnswer = studentAnswers[currentQuestionIndex] || "";
@@ -2458,16 +2422,6 @@
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
                 const selected = Array.from(checkboxes).map(cb => cb.value);
                 studentAnswers[currentQuestionIndex] = selected;
-                sessionStorage.setItem('studentAnswers', JSON.stringify(studentAnswers));
-                localStorage.setItem('studentAnswers', JSON.stringify(studentAnswers)); // Tambahkan ini
-                renderQuestionNav();
-            }
-
-            function saveTrueFalseAnswer(index, value) {
-                const currentAnswer = studentAnswers[currentQuestionIndex] || {};
-                const answers = typeof currentAnswer === 'string' ? JSON.parse(currentAnswer || '{}') : currentAnswer;
-                answers[index] = value;
-                studentAnswers[currentQuestionIndex] = answers;
                 sessionStorage.setItem('studentAnswers', JSON.stringify(studentAnswers));
                 localStorage.setItem('studentAnswers', JSON.stringify(studentAnswers)); // Tambahkan ini
                 renderQuestionNav();
@@ -2608,6 +2562,7 @@
             }
 
             async function submitExam(isAutoSubmit = false) {
+                if (examSubmitted || hasSubmitted) return;
                 if (!navigator.onLine) {
                     alert("Gagal mengirim! Koneksi internet Anda terputus. Silakan cari sinyal dan coba lagi."); 
                     return; 
@@ -2628,40 +2583,62 @@
                     remainingSeconds = remainingTime;
                 }
                 
-                // 1. Ambil batas minimal waktu dari pengaturan (localStorage)
-                const minTimeSetting = parseInt(localStorage.getItem('minTimeToSubmit')) || 0;
+                // 1. JARING PENGAMAN: Ambil batas minimal waktu
+                let minTimeSetting = 0;
+                if (typeof examSettings !== 'undefined' && !isNaN(parseInt(examSettings.minTimeToSubmit))) {
+                    minTimeSetting = parseInt(examSettings.minTimeToSubmit);
+                } else {
+                    minTimeSetting = parseInt(localStorage.getItem('minTimeToSubmit')) || 0;
+                }
 
-                // 2. Ambil durasi ujian (Cegah error NaN jika examSettings kosong)
-                const durasiUjian = (typeof examSettings !== 'undefined' && examSettings.exam_duration) ? parseInt(examSettings.exam_duration) : 60;
-                
-                // 3. Hitung waktu yang sudah berjalan
+                // 2. MENCEGAH BUG REFRESH: Ambil durasi ujian asli, jangan langsung default 60!
+                let durasiUjian = 60; 
+                if (typeof examSettings !== 'undefined' && examSettings.exam_duration) {
+                    durasiUjian = parseInt(examSettings.exam_duration);
+                    localStorage.setItem('backup_exam_duration', durasiUjian); // Simpan memori cadangan
+                } else if (localStorage.getItem('backup_exam_duration')) {
+                    durasiUjian = parseInt(localStorage.getItem('backup_exam_duration')); // Gunakan memori cadangan
+                }
+
+                // 3. Hitung waktu yang sudah dihabiskan siswa dengan benar
                 const totalWaktuUjianDetik = durasiUjian * 60;
                 const waktuBerjalanDetik = totalWaktuUjianDetik - remainingSeconds;
                 let waktuBerjalanMenit = Math.floor(waktuBerjalanDetik / 60);
 
-                // Cegah angka minus jika terjadi bug pada timer
                 if (waktuBerjalanMenit < 0) waktuBerjalanMenit = 0; 
 
-                // 4. KUNCI UTAMA: Blokir jika belum memenuhi syarat!
+                // 4. KUNCI UTAMA: Blokir jika belum memenuhi syarat "Waktu Pengerjaan"
                 if (!isAutoSubmit && minTimeSetting > 0) {
                     if (waktuBerjalanMenit < minTimeSetting || isNaN(waktuBerjalanMenit)) {
-                        const menitTampil = isNaN(waktuBerjalanMenit) ? 0 : waktuBerjalanMenit;
-                        Swal.fire({
-                            title: 'Belum Bisa Dikumpulkan!',
-                            text: `Minimal waktu pengerjaan adalah ${minTimeSetting} menit.\nAnda baru mengerjakan selama ${menitTampil} menit.`,
-                            icon: 'info',
-                            confirmButtonText: 'Kembali Mengerjakan',
-                            confirmButtonColor: '#ef4444' // Warna merah Tailwind
-                        });
                         
-                        return; // Hentikan proses kumpul di sini!
+                        const sisaMenit = Math.floor(remainingSeconds / 60);
+                        const sisaDetik = remainingSeconds % 60;
+
+                        if (typeof showSubmitWarning === 'function') {
+                            // Kita kirimkan waktuBerjalanMenit agar bisa dimunculkan di notifikasi!
+                            showSubmitWarning(sisaMenit, sisaDetik, minTimeSetting, waktuBerjalanMenit);
+                        } else {
+                            alert(`Belum bisa kumpul! Anda baru mengerjakan ${waktuBerjalanMenit} menit. Syarat minimal: ${minTimeSetting} menit.`);
+                        }
+                        
+                        return; // Hentikan proses kumpul
                     }
                 }
                 // --- AKHIR PENGECEKAN WAKTU MINIMAL KUMPUL ---
 
                 // Konfirmasi dari siswa jika klik kumpul manual
                 if (!isAutoSubmit) {
-                    if (!confirm('Apakah Anda yakin ingin menyelesaikan ujian sekarang?')) return;
+                    const result = await Swal.fire({
+                        title: 'Kumpulkan Ujian?',
+                        text: 'Apakah Anda yakin ingin menyelesaikan ujian sekarang?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#22c55e',
+                        cancelButtonColor: '#ef4444',
+                        confirmButtonText: 'Ya, Kumpulkan!',
+                        cancelButtonText: 'Batal'
+                    });
+                    if (!result.isConfirmed) return;
                 }
                 
                 // Matikan interval timer
@@ -2827,12 +2804,12 @@
             }
 
             function renderResultPage(score) {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
+                const textColor = defaultConfig.text_color;
                         
                 document.getElementById('app').innerHTML = `
                     <div class="fixed inset-0 z-[100] min-h-screen w-full flex items-center justify-center p-4 gradient-bg overflow-y-auto">
@@ -2868,10 +2845,13 @@
                 `;
             }
 
-            function showSubmitWarning(remainingMinutes, remainingSeconds, minTimeToSubmit) {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+            // Tambahkan parameter ke-4: waktuBerjalanMenit
+            function showSubmitWarning(remainingMinutes, remainingSeconds, minTimeToSubmit, waktuBerjalanMenit = 0) {
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
+                
+                let totalSisaDetik = (remainingMinutes * 60) + remainingSeconds;
                 
                 const warningDiv = document.createElement('div');
                 warningDiv.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
@@ -2882,11 +2862,14 @@
                             <span class="text-5xl">⏰</span>
                         </div>
                         <h2 class="text-xl md:text-2xl font-bold text-red-600 mb-3" style="font-family: ${customFont}, ${baseFontStack};">TIDAK DAPAT SUBMIT!</h2>
-                        <p class="text-gray-700 mb-4" style="font-family: ${customFont}, ${baseFontStack};">Anda belum bisa mengumpulkan ujian karena waktu masih tersisa terlalu banyak.</p>
+                        <p class="text-gray-700 mb-4" style="font-family: ${customFont}, ${baseFontStack};">Waktu minimal pengerjaan belum terpenuhi. Anda belum bisa keluar ruangan.</p>
                         <div class="bg-red-50 rounded-lg p-4 mb-4">
                             <p class="text-red-800 font-semibold mb-2" style="font-family: ${customFont}, ${baseFontStack};">Sisa Waktu Anda:</p>
                             <p id="warningTimerDisplay" class="text-3xl font-bold text-red-600 mb-3" style="font-family: ${customFont}, ${baseFontStack};">${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}</p>
-                            <p class="text-sm text-red-700" style="font-family: ${customFont}, ${baseFontStack};">Anda baru bisa submit jika sisa waktu ≤ ${minTimeToSubmit} menit</p>
+                            <p class="text-sm text-red-700 font-semibold" style="font-family: ${customFont}, ${baseFontStack};">
+                            Tunggu ${minTimeToSubmit} menit dari waktu berjalan untuk menyelesaikan.<br>
+                            (Anda baru mengerjakan ${waktuBerjalanMenit} menit)
+                            </p>
                         </div>
                         <p class="text-sm text-gray-600 mb-6" style="font-family: ${customFont}, ${baseFontStack};">Silakan gunakan waktu yang tersisa untuk memeriksa kembali jawaban Anda.</p>
                         <button onclick="closeSubmitWarning()" 
@@ -2898,7 +2881,6 @@
                 `;
                 document.body.appendChild(warningDiv);
                 
-                // Update timer setiap detik di dalam notif
                 const warningTimerInterval = setInterval(() => {
                     const warningTimerDisplay = document.getElementById('warningTimerDisplay');
                     if (!warningTimerDisplay || !document.getElementById('submitWarningModal')) {
@@ -2906,12 +2888,15 @@
                         return;
                     }
                     
-                    const minutes = Math.floor(remainingTime / 60);
-                    const seconds = remainingTime % 60;
+                    if (totalSisaDetik > 0) totalSisaDetik--;
+                    
+                    const minutes = Math.floor(totalSisaDetik / 60);
+                    const seconds = totalSisaDetik % 60;
+                    
                     warningTimerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
                 }, 1000);
                 
-                // Simpan interval ID untuk dibersihkan nanti
                 warningDiv.dataset.intervalId = warningTimerInterval;
             }
             
@@ -2927,6 +2912,21 @@
             }
 
             async function logout() {
+                if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                    try {
+                        if (document.exitFullscreen) {
+                            await document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) { // Untuk Safari / iOS lama
+                            await document.webkitExitFullscreen();
+                        } else if (document.mozCancelFullScreen) { // Untuk Firefox lama
+                            await document.mozCancelFullScreen();
+                        } else if (document.msExitFullscreen) { // Untuk IE/Edge lama
+                            await document.msExitFullscreen();
+                        }
+                    } catch (err) {
+                        console.error("Gagal keluar dari mode fullscreen:", err);
+                    }
+                }
                 // --- TAMBAHAN: KEMBALIKAN STATUS LOGIN MENJADI FALSE (KHUSUS SISWA) ---
                 if (currentUser && currentUser.role === 'siswa') {
                     try {
@@ -2945,6 +2945,14 @@
             
                 if (examTimer) clearInterval(examTimer);
                 if (adminRefreshInterval) clearInterval(adminRefreshInterval);
+                if (realtimeChannel) {
+                    realtimeChannel.unsubscribe();
+                    realtimeChannel = null;
+                }
+                if (realtimeLoginChannel) {
+                    realtimeLoginChannel.unsubscribe();
+                    realtimeLoginChannel = null;
+                }
                 examSubmitted = false;
                 currentUser = null;
                 currentExam = null;
@@ -2954,19 +2962,23 @@
                 currentQuestionIndex = 0;
                 remainingTime = 0;
                 violationCount = 0;
+                isPelaporanListenerAdded = false;
                 
                 localStorage.clear();
                 sessionStorage.clear();
                 
                 renderLoginPage();
             }
-            async function resetSiswaLogin(usernameSiswa) {
-                // Meminta konfirmasi admin agar tidak salah klik
-                if (!confirm(`Yakin ingin mereset sesi login untuk siswa: ${usernameSiswa} ?`)) {
-                    return;
+            
+            async function resetSiswaLogin(usernameSiswa, isBulk = false) {
+                // ✅ PERUBAHAN 2: Jika isBulk = true, lewati confirm popup
+                if (!isBulk) {
+                    if (!confirm(`Yakin ingin mereset sesi login untuk siswa: ${usernameSiswa} ?`)) {
+                        return;
+                    }
                 }
 
-                if (typeof showLoading === 'function') showLoading();
+                if (!isBulk && typeof showLoading === 'function') showLoading();
                 
                 try {
                     const { error } = await dbClient
@@ -2974,41 +2986,47 @@
                         .update({ is_login: false })
                         .eq('username', usernameSiswa);
 
-                    if (typeof hideLoading === 'function') hideLoading();
+                    if (!isBulk && typeof hideLoading === 'function') hideLoading();
 
                     if (error) {
                         console.error("Error mereset login:", error);
-                        if (typeof showError === 'function') {
-                            showError("Gagal mereset sesi siswa.");
-                        } else {
-                            alert("Gagal mereset sesi siswa.");
+                        // ✅ PERUBAHAN 3: Sembunyikan alert satuan jika sedang reset massal
+                        if (!isBulk) {
+                            if (typeof showError === 'function') {
+                                showError("Gagal mereset sesi siswa.");
+                            } else {
+                                alert("Gagal mereset sesi siswa.");
+                            }
                         }
                     } else {
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire('Berhasil!', `Sesi untuk ${usernameSiswa} telah direset. Siswa bisa login kembali.`, 'success');
-                        } else {
-                            alert(`Sesi untuk ${usernameSiswa} telah direset.`);
+                        // ✅ PERUBAHAN 4: Sembunyikan alert sukses satuan jika sedang reset massal
+                        if (!isBulk) {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire('Berhasil!', `Sesi untuk ${usernameSiswa} telah direset. Siswa bisa login kembali.`, 'success');
+                            } else {
+                                alert(`Sesi untuk ${usernameSiswa} telah direset.`);
+                            }
+                            
+                            // Segarkan data pengguna secara otomatis
+                            refreshTarget('users'); 
                         }
-                        
-                        // Segarkan data pengguna secara otomatis
-                        refreshTarget('users'); 
                     }
                 } catch (err) {
-                    if (typeof hideLoading === 'function') hideLoading();
+                    if (!isBulk && typeof hideLoading === 'function') hideLoading();
                     console.error("Terjadi kesalahan:", err);
-                    alert("Gagal terhubung ke server.");
+                    if (!isBulk) alert("Gagal terhubung ke server.");
                 }
             }
 
             // ADMIN DASHBOARD
             let adminRefreshInterval = null;            
             function renderAdminDashboard() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
+                const textColor = defaultConfig.text_color;
                 
                 // Pastikan interval lama dibersihkan saat masuk dashboard agar tidak berjalan di background
                 if (adminRefreshInterval) {
@@ -3153,12 +3171,12 @@
             }
 
             function renderGuruDashboard() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
+                const textColor = defaultConfig.text_color;
                 
                 
                 // Start auto refresh setiap 30 detik
@@ -3213,8 +3231,8 @@
 
             function showAdminSection(section) {
                 currentAdminTab = section;
-                const config = window.elementSdk?.config || defaultConfig;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const config = defaultConfig;
+                const primaryColor = defaultConfig.primary_color;
                 
                 document.querySelectorAll('[id^="nav-"]').forEach(btn => {
                     btn.classList.remove('bg-blue-100', 'text-blue-800', 'font-semibold');
@@ -3237,8 +3255,8 @@
 
             function showGuruSection(section) {
                 currentGuruTab = section;
-                const config = window.elementSdk?.config || defaultConfig;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const config = defaultConfig;
+                const primaryColor = defaultConfig.primary_color;
                 
                 document.querySelectorAll('[id^="nav-"]').forEach(btn => {
                     btn.classList.remove('bg-blue-100', 'text-blue-800', 'font-semibold');
@@ -3258,12 +3276,12 @@
 
 
             function renderDashboardSection() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
+                const primaryColor = defaultConfig.primary_color;
                 
                 const totalUsers = allUsers.length;
                 const totalStudents = allUsers.filter(u => u.role === 'siswa').length;
@@ -3351,41 +3369,78 @@
                 const onlineUsers = allUsers.filter(user => user.role === 'siswa' && user.is_login);
                 
                 if (onlineUsers.length === 0) {
-                    alert("Tidak ada siswa yang sedang aktif/online saat ini.");
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire('Info', 'Tidak ada siswa yang sedang aktif/online saat ini.', 'info');
+                    } else {
+                        alert("Tidak ada siswa yang sedang aktif/online saat ini.");
+                    }
                     return;
                 }
 
-                // 1. Konfirmasi hanya muncul 1 KALI di awal untuk seluruh siswa
-                if (confirm(`Apakah Anda yakin ingin meriset login untuk ${onlineUsers.length} siswa yang sedang aktif secara bersamaan?`)) {
+                // 1. Variabel penampung hasil konfirmasi
+                let isConfirmed = false;
+
+                // 2. Munculkan konfirmasi dengan SweetAlert jika tersedia, atau confirm bawaan jika tidak
+                if (typeof Swal !== 'undefined') {
+                    const result = await Swal.fire({
+                        title: 'Konfirmasi Reset Massal',
+                        text: `Apakah Anda yakin ingin mereset login untuk ${onlineUsers.length} siswa yang sedang aktif secara bersamaan?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33', // Warna merah karena ini aksi destruktif
+                        cancelButtonColor: '#3085d6', // Warna biru untuk batal
+                        confirmButtonText: 'Ya, Reset Semua!',
+                        cancelButtonText: 'Batal'
+                    });
+                    isConfirmed = result.isConfirmed; // Bernilai true jika tombol 'Ya' diklik
+                } else {
+                    isConfirmed = confirm(`Apakah Anda yakin ingin mereset login untuk ${onlineUsers.length} siswa yang sedang aktif secara bersamaan?`);
+                }
+
+                // 3. Jika pengguna mengonfirmasi (isConfirmed = true), jalankan eksekusi
+                if (isConfirmed) {
                     
-                    // 2. TRIK JITU: Simpan fungsi confirm asli browser, lalu paksa sementara menjadi selalu bernilai TRUE
-                    const originalConfirm = window.confirm;
-                    window.confirm = () => true; 
+                    // Tampilkan loading global untuk proses bulk
+                    if (typeof showLoading === 'function') showLoading();
 
                     try {
-                        // 3. Jalankan fungsi asli Anda. Karena konfirmasi sudah di-override, pop-up tidak akan muncul berulang-ulang
+                        // Panggil fungsi satuan dengan isBulk = true (supaya tidak muncul popup lagi)
                         for (const user of onlineUsers) {
-                            await resetSiswaLogin(user.username);
+                            await resetSiswaLogin(user.username, true);
                         }
+                        
+                        // Berikan alert sukses SATU KALI di akhir
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Berhasil!', 'Semua status login siswa aktif telah direset.', 'success');
+                        } else {
+                            alert("Berhasil meriset status login semua siswa yang aktif.");
+                        }
+                        
+                        // Refresh tabel & target setelah semua proses selesai
+                        if (typeof renderUsersSection === 'function') renderUsersSection(); 
+                        if (typeof refreshTarget === 'function') refreshTarget('users');
+
                     } catch (error) {
                         console.error("Gagal meriset beberapa pengguna:", error);
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Error', 'Terjadi kesalahan saat melakukan reset massal.', 'error');
+                        } else {
+                            alert("Terjadi kesalahan saat melakukan reset massal.");
+                        }
                     } finally {
-                        // 4. PENTING: Kembalikan fungsi confirm asli browser agar tombol satuan di tabel tetap berfungsi normal
-                        window.confirm = originalConfirm;
+                        // Matikan loading global
+                        if (typeof hideLoading === 'function') hideLoading();
                     }
-
-                    alert("Berhasil meriset status login semua siswa yang aktif.");
-                    renderUsersSection(); // Refresh tabel setelah selesai
                 }
             }
 
             function renderUsersSection() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor =  defaultConfig.text_color;
+                const primaryColor = defaultConfig.primary_color;
                 
                 // Hitung jumlah pengguna yang sedang online
                 const totalOnline = allUsers.filter(user => user.role === 'siswa' && user.is_login).length;
@@ -3400,128 +3455,144 @@
                     return true;
                 });
 
-                document.getElementById('adminContent').innerHTML = `
-                    <div class="space-y-6">
-                        <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
-                            <div>
-                                <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.35}px; color: ${textColor};">Data Pengguna</h2>
-                                <p class="text-xs mt-1 text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">
-                                    Siswa Sedang Aktif: <span class="px-2 py-0.5 bg-red-100 text-red-600 font-bold rounded-full text-[11px]">${totalOnline} Online</span>
-                                </p>
+                const container = document.getElementById('adminContent');
+                let tbody = document.getElementById('usersTableBody');
+
+                // --- FASE 1: RENDER SKELETON JIKA BELUM ADA ---
+                if (!tbody) {
+                    container.innerHTML = `
+                        <div class="space-y-6" id="usersContainerWrapper">
+                            <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+                                <div>
+                                    <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.35}px; color: ${textColor};">Data Pengguna</h2>
+                                    <p class="text-xs mt-1 text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">
+                                        Siswa Sedang Aktif: <span id="onlineUserCounter" class="px-2 py-0.5 bg-red-100 text-red-600 font-bold rounded-full text-[11px]">${totalOnline} Online</span>
+                                    </p>
+                                </div>
+                                
+                                <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
+                                    <div class="w-full sm:w-auto flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
+                                        <span class="text-[11px] font-semibold px-1.5 text-gray-600 shrink-0">Filter:</span>
+                                        <select onchange="window.currentUserFilter = this.value; renderUsersSection();" 
+                                            class="w-full sm:w-auto bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            style="font-family: ${customFont}, ${baseFontStack};">
+                                            <option value="all" ${window.currentUserFilter === 'all' ? 'selected' : ''}>Semua Pengguna</option>
+                                            <option value="online" ${window.currentUserFilter === 'online' ? 'selected' : ''}>🔴 Sedang Aktif</option>
+                                            <option value="offline" ${window.currentUserFilter === 'offline' ? 'selected' : ''}>🟢 Offline</option>
+                                        </select>
+                                    </div>
+                                    <button onclick="resetAllOnlineUsers()" class="w-full sm:w-auto px-3 py-1.5 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition shadow flex items-center justify-center gap-1.5" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">🚨 Reset Semua Online</button>
+                                    <button onclick="showAddUserForm()" class="w-full sm:w-auto px-3 py-1.5 rounded-lg text-white font-semibold hover:opacity-90 transition shadow flex items-center justify-center gap-1.5" style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;"><span class="text-xs">➕</span><span>Tambah Pengguna</span></button>
+                                    <button onclick="refreshTarget('users')" class="w-full sm:w-auto px-3 py-1.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition shadow" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">🔄 Refresh</button>
+                                </div>
                             </div>
                             
-                            <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
-                                
-                                <div class="w-full sm:w-auto flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
-                                    <span class="text-[11px] font-semibold px-1.5 text-gray-600 shrink-0">Filter:</span>
-                                    <select onchange="window.currentUserFilter = this.value; renderUsersSection();" 
-                                        class="w-full sm:w-auto bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        style="font-family: ${customFont}, ${baseFontStack};">
-                                        <option value="all" ${window.currentUserFilter === 'all' ? 'selected' : ''}>Semua Pengguna</option>
-                                        <option value="online" ${window.currentUserFilter === 'online' ? 'selected' : ''}>🔴 Sedang Aktif</option>
-                                        <option value="offline" ${window.currentUserFilter === 'offline' ? 'selected' : ''}>🟢 Offline</option>
-                                    </select>
-                                </div>
-
-                                <button onclick="resetAllOnlineUsers()" 
-                                    class="w-full sm:w-auto px-3 py-1.5 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition shadow flex items-center justify-center gap-1.5"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
-                                    🚨 Reset Semua Online
-                                </button>
-
-                                <button onclick="showAddUserForm()" 
-                                    class="w-full sm:w-auto px-3 py-1.5 rounded-lg text-white font-semibold hover:opacity-90 transition shadow flex items-center justify-center gap-1.5"
-                                    style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
-                                    <span class="text-xs">➕</span>
-                                    <span>Tambah Pengguna</span>
-                                </button>
-                                
-                                <button onclick="refreshTarget('users')" 
-                                    class="w-full sm:w-auto px-3 py-1.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition shadow"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
-                                    🔄 Refresh
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div id="userFormContainer" style="display: none;" class="bg-white rounded-2xl shadow-custom p-6"></div>
-                        
-                        <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
-                            <div class="overflow-x-auto -mx-4 md:mx-0">
-                                <table class="w-full min-w-full">
-                                    <thead>
-                                        <tr class="border-b-2 border-gray-300">
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Foto</th>
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Username</th>
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Nama</th>
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Role</th>
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Kelas</th>
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Status Sesi</th>
-                                            <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="usersTableBody">
-                                        ${filteredUsers.map(user => `
-                                            <tr class="border-b border-gray-200 hover:bg-blue-50 transition">
-                                                <td class="p-3 md:p-4">
-                                                    <img src="/assets/foto_siswa/${user.username}.jpg" loading="lazy" alt="${user.name}" class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg" style="display:none;">👤</div>
-                                                </td>
-                                                <td class="p-3 md:p-4">
-                                                    <span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.username}</span>
-                                                </td>
-                                                <td class="p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.name}</td>
-                                                <td class="p-3 md:p-4">
-                                                    <span class="px-2 py-0.5 rounded-full text-[11px] md:text-xs font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'guru' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                                        ${user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'guru' ? '👨‍🏫 Guru' : '👨‍🎓 Siswa'}
-                                                    </span>
-                                                </td>
-                                                <td class="p-3 md:p-4">
-                                                    <span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.class || '-'}</span>
-                                                </td>
-                                                <td class="p-3 md:p-4">
-                                                    ${user.role === 'siswa' ? `
-                                                        <span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-[11px] md:text-xs">
-                                                            ${user.is_login ? '🔴 Aktif' : '🟢 Offline'}
-                                                        </span>
-                                                    ` : '-'}
-                                                </td>
-                                                <td class="p-3 md:p-4 flex gap-1.5">
-                                                    ${user.role === 'siswa' ? `
-                                                        <button onclick="resetSiswaLogin('${user.username}')" 
-                                                            class="px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition shadow text-[11px] md:text-xs"
-                                                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;"
-                                                            title="Reset Sesi Login Jika Siswa Terkunci">
-                                                            🔓 Reset
-                                                        </button>
-                                                    ` : ''}
-                                                    <button onclick="deleteUser('${user.id}')" 
-                                                        class="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition shadow text-[11px] md:text-xs"
-                                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;">
-                                                        🗑️ Hapus
-                                                    </button>
-                                                </td>
+                            <div id="userFormContainer" style="display: none;" class="bg-white rounded-2xl shadow-custom p-6"></div>
+                            
+                            <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
+                                <div class="overflow-x-auto -mx-4 md:mx-0">
+                                    <table class="w-full min-w-full">
+                                        <thead>
+                                            <tr class="border-b-2 border-gray-300">
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Foto</th>
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Username</th>
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Nama</th>
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Role</th>
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Kelas</th>
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Status Sesi</th>
+                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Aksi</th>
                                             </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                                ${filteredUsers.length === 0 ? `
-                                    <div class="text-center py-12">
-                                        <p class="text-gray-400 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Tidak ada data pengguna yang sesuai filter</p>
-                                    </div>
-                                ` : ''}
+                                        </thead>
+                                        <tbody id="usersTableBody"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                    tbody = document.getElementById('usersTableBody');
+                } else {
+                    // Jika DOM sudah ada, cukup update statisiknya
+                    const counter = document.getElementById('onlineUserCounter');
+                    if (counter) counter.textContent = `${totalOnline} Online`;
+                }
+
+                // --- FASE 2: DOM RECONCILIATION UNTUK BARIS ---
+                
+                // Handle status kosong
+                if (filteredUsers.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};" id="empty-user-row">Tidak ada data pengguna yang sesuai filter</td></tr>`;
+                    return;
+                }
+
+                const emptyRow = document.getElementById('empty-user-row');
+                if (emptyRow) emptyRow.remove();
+
+                // Map elemen saat ini
+                const existingRows = Array.from(tbody.children);
+                const rowMap = new Map();
+                existingRows.forEach(row => { if (row.id) rowMap.set(row.id, row); });
+
+                // Loop data & Update DOM
+                filteredUsers.forEach(user => {
+                    const uniqueId = `user-row-${user.username}`;
+                    let tr = rowMap.get(uniqueId);
+
+                    if (tr) {
+                        // UPDATE: Baris sudah ada, cukup perbarui data (seperti status online) agar UI tidak berkedip
+                        tr.children[2].textContent = user.name;
+                        
+                        if (user.role === 'siswa') {
+                            const statusContainer = tr.children[5];
+                            statusContainer.innerHTML = `
+                                <span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-[11px] md:text-xs">
+                                    ${user.is_login ? '🔴 Aktif' : '🟢 Offline'}
+                                </span>
+                            `;
+                        }
+
+                        rowMap.delete(uniqueId);
+                        tbody.appendChild(tr); // Jaga urutan sorting
+                    } else {
+                        // INSERT: Baris baru
+                        tr = document.createElement('tr');
+                        tr.id = uniqueId;
+                        tr.className = "border-b border-gray-200 hover:bg-blue-50 transition";
+                        
+                        tr.innerHTML = `
+                            <td class="p-3 md:p-4">
+                                <img src="/assets/foto_siswa/${user.username}.jpg" loading="lazy" alt="${user.name}" class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg" style="display:none;">👤</div>
+                            </td>
+                            <td class="p-3 md:p-4"><span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.username}</span></td>
+                            <td class="p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.name}</td>
+                            <td class="p-3 md:p-4">
+                                <span class="px-2 py-0.5 rounded-full text-[11px] md:text-xs font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'guru' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
+                                    ${user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'guru' ? '👨‍🏫 Guru' : '👨‍🎓 Siswa'}
+                                </span>
+                            </td>
+                            <td class="p-3 md:p-4"><span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${user.class || '-'}</span></td>
+                            <td class="p-3 md:p-4">
+                                ${user.role === 'siswa' ? `<span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-[11px] md:text-xs">${user.is_login ? '🔴 Aktif' : '🟢 Offline'}</span>` : '-'}
+                            </td>
+                            <td class="p-3 md:p-4 flex gap-1.5">
+                                ${user.role === 'siswa' ? `<button onclick="resetSiswaLogin('${user.username}')" class="px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition shadow text-[11px] md:text-xs" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;" title="Reset Sesi Login Jika Siswa Terkunci">🔓 Reset</button>` : ''}
+                                <button onclick="deleteUser('${user.id}')" class="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition shadow text-[11px] md:text-xs" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;">🗑️ Hapus</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                });
+
+                // DELETE: Hapus baris yang tidak cocok dengan filter
+                rowMap.forEach(row => row.remove());
             }
 
             function showAddUserForm() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
                 
                 const container = document.getElementById('userFormContainer');
                 container.style.display = 'block';
@@ -3704,11 +3775,11 @@
             }
 
             function renderResultsSection() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
 
                 const filteredData = getProcessedData();
 
@@ -3716,8 +3787,6 @@
                 const existingTableBody = document.getElementById('resultsTableBody');
 
                 // --- BAGIAN A: RENDER WADAH (Hanya Sekali) ---
-                // Jika 'resultsTableBody' belum ada, berarti ini pertama kali buka tab.
-                // Kita buat Dropdown, Tombol, dan Header Tabel di sini.
                 if (!existingTableBody) {
                     
                     // Siapkan opsi dropdown saat inisialisasi awal
@@ -3771,7 +3840,8 @@
                             <div class="hidden md:block overflow-x-auto -mx-4 md:mx-0">
                                 <table class="w-full min-w-full">
                                     <thead>
-                                        <tr class="border-b-2 border-gray-300">
+                                        <tr class="border-b-2 border-gray-300 text-xs text-gray-600 uppercase tracking-wider">
+                                            <th class="text-left p-3 w-12">No</th>
                                             <th class="text-left p-3">Nama</th>
                                             <th class="text-left p-3">Kelas</th>
                                             <th class="text-left p-3">Mapel</th>
@@ -3801,8 +3871,6 @@
                 }
 
                 // --- BAGIAN B: UPDATE ISI DATA (Berjalan Terus) ---
-                // Sehingga dropdown aman dan tidak akan tertutup sendiri.
-
                 const dropClass = document.getElementById('filterClass');
                 if (dropClass && typeof allExamResults !== 'undefined') {
                     const pilihanSaatIni = dropClass.value; 
@@ -3818,17 +3886,18 @@
                 // 1. Update Tabel Desktop
                 if (tableBody) {
                     if (filteredData.length === 0) {
-                        tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-gray-400">Data tidak ditemukan</td></tr>`;
+                        tableBody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-gray-400 text-xs">Data tidak ditemukan</td></tr>`;
                     } else {
-                        tableBody.innerHTML = filteredData.map(result => `
+                        tableBody.innerHTML = filteredData.map((result, index) => `
                             <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_class}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_subject}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
-                                <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;" style="color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.waktu_login || '-'}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.waktu_selesai || '-'}</td>
+                                <td class="p-3 text-gray-500 font-medium" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${index + 1}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.student_name}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.student_class}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.exam_subject}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
+                                <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px; color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.waktu_login || '-'}</td>
+                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.waktu_selesai || '-'}</td>
                                 <td class="p-3">
                                     <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                                         ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
@@ -3842,18 +3911,18 @@
                 // 2. Update Mobile View
                 if (mobileView) {
                     if (filteredData.length === 0) {
-                        mobileView.innerHTML = `<div class="text-center py-12"><p class="text-gray-400">Data tidak ditemukan</p></div>`;
+                        mobileView.innerHTML = `<div class="text-center py-12"><p class="text-gray-400 text-sm">Data tidak ditemukan</p></div>`;
                     } else {
-                        mobileView.innerHTML = filteredData.map(result => `
+                        mobileView.innerHTML = filteredData.map((result, index) => `
                             <div class="border-2 border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                                 <div class="flex justify-between items-start mb-3">
                                     <div class="flex-1">
-                                        <h3 class="font-bold text-base mb-1">${result.student_name}</h3>
-                                        <p class="text-sm text-gray-600">Kelas ${result.student_class}</p>
+                                        <h3 class="font-bold text-sm mb-1"><span class="text-gray-400 font-normal mr-1">#${index + 1}</span>${result.student_name}</h3>
+                                        <p class="text-xs text-gray-600">Kelas ${result.student_class}</p>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-2xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</div>
-                                        <p class="text-sm text-gray-500">Nilai</p>
+                                        <div class="text-xl font-bold" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</div>
+                                        <p class="text-xs text-gray-500">Nilai</p>
                                     </div>
                                 </div>
                                 <div class="pt-3 border-t border-gray-200 text-xs space-y-2">
@@ -4018,36 +4087,30 @@
             }
 
             function renderQuestionsSection() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
+                const primaryColor = defaultConfig.primary_color;
                 
-                // 1. Deteksi Role User
-                // (Diasumsikan objek currentUser memiliki properti role: 'admin' atau 'guru')
                 const isAdmin = currentUser && currentUser.role === 'admin';
+                const targetContainer = isAdmin ? document.getElementById('adminContent') : document.getElementById('guruContent');
 
-                // 2. Logika Data & Filtering
                 const uniqueSubjects = [...new Set(allQuestions.map(q => q.subject))].filter(Boolean);
-                // Ambil daftar kelas unik (Misal: 7, 8, 9)
                 const uniqueClasses = [...new Set(allQuestions.map(q => q.question_class ? q.question_class.charAt(0) : ''))].filter(Boolean).sort();
+                
                 let questionsToRender = allQuestions;
 
-                // Filter Mapel & Kelas HANYA berlaku untuk Admin
                 if (isAdmin) {
                     if (window.selectedBankSoalSubject) {
                         questionsToRender = questionsToRender.filter(q => q.subject === window.selectedBankSoalSubject);
                     }
-                    
-                    // Tambahan filter kelas
                     if (window.selectedBankSoalClass) {
                         questionsToRender = questionsToRender.filter(q => q.question_class && q.question_class.startsWith(window.selectedBankSoalClass));
                     }
                 }
 
-                // 3. Logika Statistik (KHUSUS GURU)
                 let totalSemuaSoal = 0;
                 let totalSoalGuru = 0;
                 if (!isAdmin) {
@@ -4058,211 +4121,196 @@
                     }).length;
                 }
 
-                // 4. Kelompokkan Soal berdasarkan Kelas
                 const questionsByGrade = {
-                    '7': questionsToRender.filter(q => q.question_class.startsWith('7')),
-                    '8': questionsToRender.filter(q => q.question_class.startsWith('8')),
-                    '9': questionsToRender.filter(q => q.question_class.startsWith('9'))
+                    '7': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('7')),
+                    '8': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('8')),
+                    '9': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('9'))
                 };
 
-                // 5. BLOK KONTEN SPESIFIK (Agar layout Admin & Guru tidak berubah)
-                const adminControls = `
-                    <div class="flex flex-col sm:flex-row gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
-    
-                        <select id="filterKelasBankSoal" 
-                            onchange="window.selectedBankSoalClass = this.value; renderQuestionsSection()" 
-                            class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
-                            <option value="">Semua Kelas</option>
-                            ${uniqueClasses.map(cls => `
-                                <option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>
-                            `).join('')}
-                        </select>
-
-                        <select id="filterMapelBankSoal" 
-                            onchange="window.selectedBankSoalSubject = this.value; renderQuestionsSection()" 
-                            class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
-                            <option value="">Semua Mata Pelajaran</option>
-                            ${uniqueSubjects.map(sub => `
-                                <option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>
-                            `).join('')}
-                        </select>
-
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 sm:gap-4 mt-3 sm:mt-0">
-                        <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">
-                            📄 Template
-                        </button>
-                        <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-4 py-2 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-sm whitespace-nowrap shadow-sm">
-                            📥 Download
-                        </button>
-                        <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-sm whitespace-nowrap shadow-sm">
-                            📤 Upload
-                        </button>
-                        <button onclick="showAddQuestionForm()" 
-                            class="w-full flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm"
-                            style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
-                            ➕ Tambah Soal
-                        </button>
-                        <button onclick="refreshTarget('questions')" 
-                            class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            🔄 Refresh
-                        </button>
-                        <input type="file" id="fileUploadSoal" accept=".xlsx, .xls" style="display: none;" onchange="handleUploadSoal(event)">
-                    </div>
-                `;
-
-                const guruControls = `
-                    <div class="flex w-full sm:w-auto gap-2">
-                        <button onclick="showGuruAddQuestionForm()" 
-                            class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm"
-                            style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">
-                            ➕ Tambah Soal
-                        </button>
-                        <button onclick="refreshTarget('questions')" 
-                            class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                `;
-
-                const guruStatsCards = `
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Total Keseluruhan Soal</h3>
-                                <span class="p-2.5 bg-blue-50 rounded-lg">📚</span>
-                            </div>
-                            <p class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSemuaSoal}</p>
-                            <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Semua Mapel & Kelas</p>
-                        </div>
-                        
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</h3>
-                                <span class="p-2.5 bg-blue-50 rounded-lg">📝</span>
-                            </div>
-                            <p class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
-                            <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.subject || 'Mapel Anda'}</p>
-                        </div>
-                    </div>
-                `;
-
-                // 6. Fungsi Pembangun Daftar Soal (Disesuaikan berdasarkan Role)
-                const renderQuestionItem = (q, grade) => {
+                // Helper HTML untuk item pertanyaan
+                const getQuestionItemHTML = (q, grade) => {
                     if (isAdmin) {
                         return `
-                            <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})' 
-                                class="border border-gray-200 rounded-lg p-3 hover:bg-blue-50 cursor-pointer transition">
-                                <div class="flex justify-between items-start gap-3">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex gap-2 mb-2 flex-wrap">
-                                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">${q.subject}</span>
-                                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
-                                        </div>
-                                        <p class="text-gray-800 text-sm line-clamp-2">${q.question_text.replace(/<[^>]*>/g, '')}</p>
+                            <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})' class="flex justify-between items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex gap-2 mb-2 flex-wrap">
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">${q.subject}</span>
+                                        <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                     </div>
-                                    <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
-                                        class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center gap-1 shadow-sm">
-                                        🖋️ <span class="hidden sm:inline">Edit</span>
-                                    </button>
-                                    <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" 
-                                        class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex items-center gap-1 shadow-sm">
-                                        🗑️ <span class="hidden sm:inline">Hapus</span>
-                                    </button>
+                                    <p class="text-gray-800 text-sm line-clamp-2">${q.question_text.replace(/<[^>]*>/g, '')}</p>
                                 </div>
+                                <button onclick="event.stopPropagation(); editQuestion('${q.id}')" class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center gap-1 shadow-sm">🖋️ <span class="hidden sm:inline">Edit</span></button>
+                                <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex items-center gap-1 shadow-sm">🗑️ <span class="hidden sm:inline">Hapus</span></button>
                             </div>
                         `;
                     } else {
                         const isRightSubject = q.subject === currentUser.subject;
                         const teachesThisGrade = currentUser.class && currentUser.class.includes(grade);
                         const isOwner = isRightSubject && teachesThisGrade;
-
+                        
                         return `
-                            <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})'
-                                class="border border-gray-200 rounded-lg p-3 ${isOwner ? 'hover:bg-gray-50' : 'bg-gray-50/50'} transition cursor-pointer">
-                                <div class="flex justify-between items-start gap-3">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex gap-2 mb-2 flex-wrap">
-                                            <span class="px-2 py-1 ${isOwner ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'} rounded text-xs font-semibold">
-                                                ${q.subject}
-                                            </span>
-                                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">
-                                                ${getQuestionTypeLabel(q.question_type)}
-                                            </span>
-                                        </div>
-                                        <p class="text-gray-800 text-sm break-words">${q.question_text}</p>
+                            <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})' class="flex justify-between items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex gap-2 mb-2 flex-wrap">
+                                        <span class="px-2 py-1 ${isOwner ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'} rounded text-xs font-semibold">${q.subject}</span>
+                                        <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                     </div>
-                                    ${isOwner ? `
-                                        <div class="flex flex-col gap-2">
-                                            <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
-                                                class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center justify-center gap-1 shadow-sm">
-                                                🖋️ <span class="hidden sm:inline">Edit</span>
-                                            </button>
-                                            <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" 
-                                                class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex items-center justify-center gap-1 shadow-sm">
-                                                🗑️ <span class="hidden sm:inline">Hapus</span>
-                                            </button>
-                                        </div>
-                                    ` : '<span class="text-xs text-gray-400 italic self-center">Read Only</span>'}
+                                    <p class="text-gray-800 text-sm break-words">${q.question_text.replace(/<[^>]*>/g, '')}</p>
                                 </div>
+                                ${isOwner ? `
+                                    <div class="flex flex-col gap-2">
+                                        <button onclick="event.stopPropagation(); editQuestion('${q.id}')" class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs flex items-center justify-center gap-1 shadow-sm">🖋️ <span class="hidden sm:inline">Edit</span></button>
+                                        <button onclick="event.stopPropagation(); deleteQuestion('${q.id}')" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs flex items-center justify-center gap-1 shadow-sm">🗑️ <span class="hidden sm:inline">Hapus</span></button>
+                                    </div>
+                                ` : '<span class="text-xs text-gray-400 italic self-center">Read Only</span>'}
                             </div>
                         `;
                     }
                 };
 
-                // 7. Rangkai Seluruh HTML
-                const finalHTML = `
-                    <div class="${isAdmin ? 'space-y-4' : 'space-y-4 md:space-y-6'}">
-                        
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
-                            
-                            ${isAdmin ? `
-                                <div class="flex flex-col sm:flex-row w-full md:w-auto gap-2">
-                                    ${adminControls}
-                                </div>
-                            ` : guruControls}
-                        </div>
-                        
-                        ${!isAdmin ? guruStatsCards : ''}
-                        
-                        <div id="questionFormContainer" style="display: none;" class="bg-white ${isAdmin ? 'rounded-lg shadow p-4' : 'rounded-xl shadow-sm border border-gray-100 p-4 md:p-6'}"></div>
-                        
-                        <div class="space-y-4">
-                            ${['7', '8', '9'].filter(grade => !window.selectedBankSoalClass || window.selectedBankSoalClass === grade)
-                            .map(grade => `
-                                <div class="bg-white rounded-lg shadow p-4">
-                                    <div class="flex items-center justify-between mb-3 pb-2 border-b-2 border-gray-200">
-                                        <h3 class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">
-                                            📚 Kelas ${grade} <span class="text-sm font-normal text-gray-600">(${questionsByGrade[grade].length} soal)</span>
-                                        </h3>
-                                    </div>
-                                    <div class="space-y-2" id="questionsList${grade}">
-                                        ${questionsByGrade[grade].length > 0 
-                                            ? questionsByGrade[grade].map(q => renderQuestionItem(q, grade)).join('') 
-                                            : `
-                                            <div class="text-center py-8 text-gray-400">
-                                                <p ${isAdmin ? `style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"` : ''}>Belum ada soal untuk kelas ${grade}</p>
-                                            </div>
-                                        `}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                let questionsWrapper = document.getElementById('questionsWrapper');
 
-                // 8. Cetak ke dalam Layout yang Tepat
-                if (isAdmin) {
-                    const adminContainer = document.getElementById('adminContent');
-                    if (adminContainer) adminContainer.innerHTML = finalHTML;
+                // --- FASE 1: RENDER SKELETON JIKA BELUM ADA ---
+                if (!questionsWrapper) {
+                    const adminControls = `
+                        <div class="flex flex-col sm:flex-row gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
+                            <select id="filterKelasBankSoal" onchange="window.selectedBankSoalClass = this.value; renderQuestionsSection()" class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                                <option value="">Semua Kelas</option>
+                                ${uniqueClasses.map(cls => `<option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>`).join('')}
+                            </select>
+                            <select id="filterMapelBankSoal" onchange="window.selectedBankSoalSubject = this.value; renderQuestionsSection()" class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                                <option value="">Semua Mata Pelajaran</option>
+                                ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 sm:gap-4 mt-3 sm:mt-0">
+                            <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">📄 Template</button>
+                            <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-4 py-2 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-sm whitespace-nowrap shadow-sm">📥 Download</button>
+                            <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-sm whitespace-nowrap shadow-sm">📤 Upload</button>
+                            <button onclick="showAddQuestionForm()" class="w-full flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
+                            <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
+                            <input type="file" id="fileUploadSoal" accept=".xlsx, .xls" style="display: none;" onchange="handleUploadSoal(event)">
+                        </div>
+                    `;
+
+                    const guruControls = `
+                        <div class="flex w-full sm:w-auto gap-2">
+                            <button onclick="showGuruAddQuestionForm()" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
+                            <button onclick="refreshTarget('questions')" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
+                        </div>
+                    `;
+
+                    const guruStatsCards = `
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Total Keseluruhan Soal</h3>
+                                    <span class="p-2.5 bg-blue-50 rounded-lg">📚</span>
+                                </div>
+                                <p id="statTotalSemua" class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSemuaSoal}</p>
+                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Semua Mapel & Kelas</p>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</h3>
+                                    <span class="p-2.5 bg-blue-50 rounded-lg">📝</span>
+                                </div>
+                                <p id="statTotalGuru" class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
+                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.subject || 'Mapel Anda'}</p>
+                            </div>
+                        </div>
+                    `;
+
+                    targetContainer.innerHTML = `
+                        <div id="questionsWrapper" class="${isAdmin ? 'space-y-4' : 'space-y-4 md:space-y-6'}">
+                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
+                                ${isAdmin ? `<div class="flex flex-col sm:flex-row w-full md:w-auto gap-2">${adminControls}</div>` : guruControls}
+                            </div>
+                            
+                            ${!isAdmin ? guruStatsCards : ''}
+                            <div id="questionFormContainer" style="display: none;" class="bg-white ${isAdmin ? 'rounded-lg shadow p-4' : 'rounded-xl shadow-sm border border-gray-100 p-4 md:p-6'}"></div>
+                            
+                            <div class="space-y-4">
+                                ${['7', '8', '9'].map(grade => `
+                                    <div id="gradeBlock${grade}" class="bg-white rounded-lg shadow p-4">
+                                        <div class="flex items-center justify-between mb-3 pb-2 border-b-2 border-gray-200">
+                                            <h3 class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">
+                                                📚 Kelas ${grade} <span id="countGrade${grade}" class="text-sm font-normal text-gray-600">(0 soal)</span>
+                                            </h3>
+                                        </div>
+                                        <div class="space-y-2" id="questionsList${grade}"></div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
                 } else {
-                    const guruContainer = document.getElementById('guruContent');
-                    if (guruContainer) guruContainer.innerHTML = finalHTML;
+                    // Jika UI sudah ada, perbarui statistik statis (khusus Guru)
+                    if (!isAdmin) {
+                        document.getElementById('statTotalSemua').textContent = totalSemuaSoal;
+                        document.getElementById('statTotalGuru').textContent = totalSoalGuru;
+                    }
                 }
+
+                // --- FASE 2: DOM RECONCILIATION UNTUK SOAL PER KELAS ---
+                ['7', '8', '9'].forEach(grade => {
+                    const gradeBlock = document.getElementById(`gradeBlock${grade}`);
+                    const listContainer = document.getElementById(`questionsList${grade}`);
+                    const countSpan = document.getElementById(`countGrade${grade}`);
+
+                    // Tampilkan/Sembunyikan blok kelas berdasarkan Filter Admin
+                    if (isAdmin && window.selectedBankSoalClass && window.selectedBankSoalClass !== grade) {
+                        gradeBlock.style.display = 'none';
+                        return;
+                    } else {
+                        gradeBlock.style.display = 'block';
+                    }
+
+                    const dataForGrade = questionsByGrade[grade];
+                    countSpan.textContent = `(${dataForGrade.length} soal)`;
+
+                    if (dataForGrade.length === 0) {
+                        listContainer.innerHTML = `<div class="text-center py-8 text-gray-400" id="empty-q-${grade}"><p ${isAdmin ? `style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"` : ''}>Belum ada soal untuk kelas ${grade}</p></div>`;
+                        return;
+                    }
+
+                    // Hapus pesan kosong jika ada
+                    const emptyMsg = document.getElementById(`empty-q-${grade}`);
+                    if (emptyMsg) emptyMsg.remove();
+
+                    const existingItems = Array.from(listContainer.children);
+                    const itemMap = new Map();
+                    existingItems.forEach(item => { if (item.id) itemMap.set(item.id, item); });
+
+                    // Loop dan Update/Insert Div Soal
+                    dataForGrade.forEach(q => {
+                        const uniqueId = `q-item-${q.id}`;
+                        let div = itemMap.get(uniqueId);
+                        
+                        const isOwner = !isAdmin && (q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade));
+
+                        if (div) {
+                            // UPDATE
+                            div.innerHTML = getQuestionItemHTML(q, grade);
+                            // Class reset just in case ownership changed in the UI somehow
+                            div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
+                            
+                            itemMap.delete(uniqueId);
+                            listContainer.appendChild(div); // Pertahankan Sorting
+                        } else {
+                            // INSERT
+                            div = document.createElement('div');
+                            div.id = uniqueId;
+                            div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
+                            div.innerHTML = getQuestionItemHTML(q, grade);
+                            listContainer.appendChild(div);
+                        }
+                    });
+
+                    // DELETE elemen yang sudah difilter keluar atau dihapus
+                    itemMap.forEach(item => item.remove());
+                });
             }
 
             function showQuestionDetail(q) {
@@ -5474,12 +5522,12 @@
         // 1. FUNGSI RENDER PENGATURAN UMUM
         // ==============================================================
         function renderSettingsSection() {
-            const config = window.elementSdk?.config || defaultConfig;
-            const customFont = config.font_family || defaultConfig.font_family;
+            const config = defaultConfig;
+            const customFont = defaultConfig.font_family;
             const baseFontStack = 'Arial, sans-serif';
-            const baseSize = config.font_size || defaultConfig.font_size;
-            const textColor = config.text_color || defaultConfig.text_color;
-            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            const baseSize = defaultConfig.font_size;
+            const textColor = defaultConfig.text_color;
+            const primaryColor = defaultConfig.primary_color;
             
             document.getElementById('adminContent').innerHTML = `
                 <div class="space-y-6">
@@ -5561,12 +5609,12 @@
         }
             
             function renderScheduleSection() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const textColor = config.text_color || defaultConfig.text_color;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const baseSize = defaultConfig.font_size;
+                const textColor = defaultConfig.text_color;
+                const primaryColor = defaultConfig.primary_color;
                 
                 const now = new Date();
                 
@@ -5739,11 +5787,11 @@
             }
 
             function showAddScheduleForm() {
-                const config = window.elementSdk?.config || defaultConfig;
-                const customFont = config.font_family || defaultConfig.font_family;
+                const config = defaultConfig;
+                const customFont = defaultConfig.font_family;
                 const baseFontStack = 'Arial, sans-serif';
-                const baseSize = config.font_size || defaultConfig.font_size;
-                const primaryColor = config.primary_color || defaultConfig.primary_color;
+                const baseSize = defaultConfig.font_size;
+                const primaryColor = defaultConfig.primary_color;
                 
                 const container = document.getElementById('scheduleFormContainer');
                 container.style.display = 'block';
@@ -6178,109 +6226,6 @@
                     toast.style.opacity = '0';
                     setTimeout(() => toast.remove(), 300);
                 }, 3000);
-            }
-
-            // ============================================
-            // ELEMENT SDK
-            // ============================================
-            async function onConfigChange(config) {
-                const appElement = document.getElementById('app');
-                if (!appElement) return;
-                
-                if (currentUser && currentUser.role === 'admin') {
-                    renderAdminDashboard();
-                } else if (currentUser && currentUser.role === 'siswa') {
-                    renderExamPage();
-                } else {
-                    renderLoginPage();
-                }
-            }
-
-            const capabilities = {
-                recolorables: [
-                    {
-                        get: () => window.elementSdk?.config?.primary_color || defaultConfig.primary_color,
-                        set: (value) => {
-                            if (window.elementSdk?.config) {
-                                window.elementSdk.config.primary_color = value;
-                                window.elementSdk.setConfig({ primary_color: value });
-                            }
-                        }
-                    },
-                    {
-                        get: () => window.elementSdk?.config?.secondary_color || defaultConfig.secondary_color,
-                        set: (value) => {
-                            if (window.elementSdk?.config) {
-                                window.elementSdk.config.secondary_color = value;
-                                window.elementSdk.setConfig({ secondary_color: value });
-                            }
-                        }
-                    },
-                    {
-                        get: () => window.elementSdk?.config?.background_color || defaultConfig.background_color,
-                        set: (value) => {
-                            if (window.elementSdk?.config) {
-                                window.elementSdk.config.background_color = value;
-                                window.elementSdk.setConfig({ background_color: value });
-                            }
-                        }
-                    },
-                    {
-                        get: () => window.elementSdk?.config?.text_color || defaultConfig.text_color,
-                        set: (value) => {
-                            if (window.elementSdk?.config) {
-                                window.elementSdk.config.text_color = value;
-                                window.elementSdk.setConfig({ text_color: value });
-                            }
-                        }
-                    },
-                    {
-                        get: () => window.elementSdk?.config?.button_color || defaultConfig.button_color,
-                        set: (value) => {
-                            if (window.elementSdk?.config) {
-                                window.elementSdk.config.button_color = value;
-                                window.elementSdk.setConfig({ button_color: value });
-                            }
-                        }
-                    }
-                ],
-                borderables: [],
-                fontEditable: {
-                    get: () => window.elementSdk?.config?.font_family || defaultConfig.font_family,
-                    set: (value) => {
-                        if (window.elementSdk?.config) {
-                            window.elementSdk.config.font_family = value;
-                            window.elementSdk.setConfig({ font_family: value });
-                        }
-                    }
-                },
-                fontSizeable: {
-                    get: () => window.elementSdk?.config?.font_size || defaultConfig.font_size,
-                    set: (value) => {
-                        if (window.elementSdk?.config) {
-                            window.elementSdk.config.font_size = value;
-                            window.elementSdk.setConfig({ font_size: value });
-                        }
-                    }
-                }
-            };
-
-            function mapToEditPanelValues(config) {
-                return new Map([
-                    ["app_title", config.app_title || defaultConfig.app_title],
-                    ["school_name", config.school_name || defaultConfig.school_name],
-                    ["welcome_text", config.welcome_text || defaultConfig.welcome_text],
-                    ["login_button_text", config.login_button_text || defaultConfig.login_button_text]
-                ]);
-            }
-
-            if (window.elementSdk) {
-                window.elementSdk.init({
-                    defaultConfig,
-                    onConfigChange,
-                    mapToCapabilities: () => capabilities,
-                    mapToEditPanelValues
-                });
             }
 
             init();
