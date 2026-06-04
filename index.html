@@ -1126,9 +1126,28 @@
                 const textColor = defaultConfig.text_color;
                 
                 document.getElementById('app').innerHTML = `
-                    <div id="login-animasi" class="min-h-screen flex items-center justify-center p-4">
-                        <div class="w-full max-w-md">
-                            <div class="glass-panel p-8 shadow-2xl">
+                    <style>
+                        @keyframes fadeInBg {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                        }
+                        @keyframes slideUpPanel {
+                            from { opacity: 0; transform: translateY(30px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        .animate-fade-bg {
+                            animation: fadeInBg 0.6s ease-out forwards;
+                        }
+                        .animate-slide-panel {
+                            animation: slideUpPanel 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+                            opacity: 0; 
+                        }
+                    </style>
+                    <div class="h-[100dvh] overflow-hidden flex items-center justify-center p-4 fixed inset-0 z-50 w-full animate-fade-bg"
+                        style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
+                        
+                        <div class="w-full max-w-md relative animate-slide-panel">
+                            <div class="glass-panel p-8 shadow-2xl relative z-10">
                                 <div class="text-center mb-8">
                                     <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: white;">Selamat Datang</h1>
                                     <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: rgba(255,255,255,0.8);">Silahkan Login menggunakan NISN Anda</p>
@@ -1144,18 +1163,17 @@
                                     </div>
                             
                                     <div class="relative">
-                                    <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
-                                    <div class="relative">
-                                        <input type="password" id="password" required 
-                                            class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition pr-10"
-                                            style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
-                                            placeholder="Masukkan password">
-                                        <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-white opacity-70 hover:opacity-100">
-                                            <span id="eyeIcon">🙈</span>
-                                        </button>
+                                        <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
+                                        <div class="relative">
+                                            <input type="password" id="password" required 
+                                                class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition pr-10"
+                                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
+                                                placeholder="Masukkan password">
+                                            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-white opacity-70 hover:opacity-100">
+                                                <span id="eyeIcon">🙈</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            
                             
                                     <div id="errorMessage" class="text-red-300 text-center hidden font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"></div>
 
@@ -1181,11 +1199,8 @@
                 const eyeIcon = document.getElementById('eyeIcon');
 
                 toggleButton.addEventListener('click', function () {
-                    // Cek tipe input saat ini
                     const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                     passwordInput.setAttribute('type', type);
-                    
-                    // Ubah icon (Opsional: Anda bisa mengganti emoji-nya)
                     eyeIcon.textContent = type === 'password' ? '🙈' : '🐵';
                 });
             }
