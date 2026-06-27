@@ -284,7 +284,6 @@
                 try {
                     if ('wakeLock' in navigator) {
                         wakeLock = await navigator.wakeLock.request('screen');
-                        console.log('Layar ditahan agar tetap menyala.');
                     }
                 } catch (err) {
                     console.error('Fitur Wake Lock gagal/tidak didukung:', err);
@@ -311,6 +310,15 @@
                 button_color: "#2563eb",
                 font_family: "Arial",
                 font_size: 16
+            };
+            const RC = {
+                get config()        { return defaultConfig; },
+                get customFont()    { return defaultConfig.font_family; },
+                get baseFontStack() { return 'Arial, sans-serif'; },
+                get baseSize()      { return defaultConfig.font_size; },
+                get primaryColor()  { return defaultConfig.primary_color; },
+                get textColor()     { return defaultConfig.text_color; },
+                get secondaryColor(){ return defaultConfig.secondary_color; },
             };
 
             // 1. SETUP DATABASE
@@ -368,19 +376,12 @@
             let hasSubmitted = false; // Status apakah siswa sudah submit ujian
             
             const SUBJECTS = [
-                "SMT GANJIL - UP BAB I",
-                "SMT GANJIL - UP BAB II",
-                "SMT GANJIL - UP BAB III",
-                "UP TENGAH SEMESTER 1",
-                "SMT GANJIL - UP BAB IV",
-                "SMT GANJIL - UP BAB V",
-                "ULANGAN HARIAN I SMT1",
-                "SMT GENAP - UP BAB I",
-                "SMT GENAP - UP BAB II",
-                "UP TENGAH SEMESTER 2",
-                "SMT GENAP - UP BAB III",
-                "SMT GENAP - UP BAB IV",
-                "ULANGAN HARIAN I SMT2",
+                "Uji Pemahaman BAB I",
+                "Uji Pemahaman BAB II",
+                "Uji Pemahaman BAB III",
+                "Uji Pemahaman BAB IV",
+                "Uji Pemahaman TENGAH SEMESTER",
+                "ULANGAN HARIAN",
                 "REMEDIAL"
             ];
             
@@ -423,11 +424,11 @@
             function showLoading() {
                 const overlay = document.getElementById('loadingOverlay');
                 if (!overlay) return;
-                
                 overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
                 
                 // Hanya render HTML jika cube-loader belum ada
                 if (!overlay.innerHTML.includes('cube-loader')) {
+                if (!overlay.querySelector('.cube-loader')) {
                     overlay.innerHTML = `
                         <div>
                             <div class="cube-loader">
@@ -441,8 +442,7 @@
                             <div class="loading-text">MEMUAT DATA...</div>
                         </div>
                     `;
-                }
-                
+                }}
                 overlay.style.display = 'flex';
             }
 
@@ -650,19 +650,21 @@
             }
 
             let isPelaporanListenerAdded = false;
+            let pelaporanInterval = null;
             // Pemicu Laporan Siswa
             function mulaiPelaporanSiswa() {
-                console.log("Sistem pelaporan siswa aktif.");
                 
                 // 1. Lapor Rutin ke Admin 
                 // Menggunakan 300000 (5 menit) agar sangat aman untuk server database dengan 1060 siswa
-                setInterval(laporKeAdmin, 300000); 
-                
+                if (!pelaporanInterval) {
+                    pelaporanInterval = setInterval(laporKeAdmin, 300000);
+                }
                 // 2. Lapor Instan saat Pindah Tab (Anti-Curang)
                 if (!isPelaporanListenerAdded) {
                     document.addEventListener('visibilitychange', laporKeAdmin);
                     isPelaporanListenerAdded = true;
                 }
+                laporKeAdmin();
             }
 
             // 2. BAGIAN ADMIN (MONITORING REALTIME SUPABASE)
@@ -673,7 +675,7 @@
             async function bukaMonitoring() {
                 // Cek Database
                 if (!dbClient) {
-                    alert("Database belum siap. Coba refresh halaman.");
+                    Swal.fire('Gagal!', 'Database belum siap. Coba refresh halaman.', 'error');
                     return;
                 }
 
@@ -725,7 +727,6 @@
                     )
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
-                            console.log("✅ Berhasil terhubung ke Supabase Realtime!");
                             if (loadingText) {
                                 loadingText.innerText = "Monitoring Realtime Aktif 🟢";
                                 loadingText.style.color = "green";
@@ -1072,7 +1073,7 @@
                     // Karena user refresh halaman saat ujian, kita WAJIB load soal sekarang
                     const examLoaded = await loadExamData();
                     if (!examLoaded) {
-                        alert("Gagal mengembalikan sesi ujian. Silakan login ulang.");
+                        await Swal.fire('Gagal!', 'Gagal mengembalikan sesi ujian. Silakan login ulang.', 'error');
                         localStorage.clear();
                         renderLoginPage();
                         return;
@@ -1095,7 +1096,7 @@
                     if (savedViolations) violationCount = parseInt(savedViolations);
                     if (subjectQuestions.length === 0) {
                         // Jika setelah refresh ternyata soal tidak ada/belum tersedia
-                        alert("Maaf, soal untuk mata pelajaran ini belum tersedia.");
+                        await Swal.fire('Info', 'Maaf, soal untuk mata pelajaran ini belum tersedia.', 'warning');
 
                         // Bersihkan data ujian yang salah dari storage
                         localStorage.removeItem('currentExam');
@@ -1118,12 +1119,7 @@
 
             // LOGIN PAGE
             function renderLoginPage() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                const textColor = defaultConfig.text_color;
+                const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;
                 
                 document.getElementById('app').innerHTML = `
                     <style>
@@ -1260,10 +1256,19 @@
                         .from('users')
                         .select('*')
                         .eq('username', username)
-                        .eq('password', password)
                         .single();
 
                     if (error || !userData) {
+                        if (typeof Swal !== 'undefined') Swal.close();
+                        showError('Username atau password salah!');
+                        return;
+                    }
+                    // Verifikasi password dengan hash ← TAMBAHKAN blok ini
+                    const { data: verified } = await dbClient.rpc('verify_password', {
+                        input_password: password,
+                        hashed_password: userData.password
+                    });
+                    if (!verified) {
                         if (typeof Swal !== 'undefined') Swal.close();
                         showError('Username atau password salah!');
                         return;
@@ -1329,7 +1334,7 @@
                     try {
                         // Tarik SEMUA DATA secara Paralel (bersamaan) agar jauh lebih cepat
                         const [usersRes, resultsRes, questionsRes] = await Promise.all([
-                            dbClient.from('users').select('username, name, role, class, is_login'),
+                            dbClient.from('users').select('id, username, name, role, class, is_login'),
                             dbClient.from('examresult').select('*').order('timestamp', { ascending: false }),
                             dbClient.from('questions').select('*').order('id', { ascending: true })
                         ]);
@@ -1556,7 +1561,7 @@
                                 allowOutsideClick: false
                             });
                         } else {
-                            alert("Anda sudah mengerjakan ujian ini!");
+                            alert('Anda sudah mengerjakan ujian ini!'); // Fallback aman tanpa Swal
                         }
                         //membersihkan saat siswa sudah mengerjakan 1x
                         localStorage.removeItem('currentUser');
@@ -1571,7 +1576,7 @@
                     // JIKA EROR: Batalkan fullscreen
                     if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
                     if (typeof hideLoading === 'function') hideLoading();
-                    showError('Gagal memuat data soal dari server. Coba lagi.');
+                    if (typeof renderNoQuestionsPage === 'function') renderNoQuestionsPage();
                     return;
                 }
 
@@ -1584,7 +1589,6 @@
                 const savedAnswers = localStorage.getItem('studentAnswers');
                 if (savedAnswers) {
                     window.studentAnswers = JSON.parse(savedAnswers);
-                    console.log("Memulihkan jawaban sebelumnya...");
                 } else {
                     window.studentAnswers = {}; 
                 }
@@ -1669,12 +1673,7 @@
             }
 
             function renderNoQuestionsPage() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                const textColor = defaultConfig.text_color;
+                const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;
                 const backgroundColor = defaultConfig.background_color;
                 
                 document.getElementById('app').innerHTML = `
@@ -1711,10 +1710,20 @@
                 `;
             }
 
-            function backToLogin() {
+            async function backToLogin() {
                 if (examTimer) clearInterval(examTimer);
                 examSubmitted = false;
-                hasSubmitted = false; //reset monitoring
+                hasSubmitted = false;
+
+                // Set is_login = false di Supabase agar akun kembali offline
+                if (currentUser && currentUser.role === 'siswa') {
+                    try {
+                        await dbClient.from('users').update({ is_login: false }).eq('username', currentUser.username);
+                    } catch (err) {
+                        console.error("Gagal mereset status login:", err);
+                    }
+                }
+
                 currentUser = null;
                 currentExam = null;
                 examQuestions = [];
@@ -1728,12 +1737,7 @@
             }
 
             function renderExamPage() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                const textColor = defaultConfig.text_color;
+                const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;
                 
                 const app = document.getElementById('app');
                 app.innerHTML = `
@@ -1746,7 +1750,7 @@
                                     <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-lg md:text-xl flex-shrink-0" style="display:none;">👤</div>
                                     <div class="flex-1 min-w-0">
                                         <h2 class="font-bold text-xs md:text-sm truncate" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</h2>
-                                        <p class="text-[11px] md:text-xs opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - INFORMATIKA ${currentExam.subject}</p>
+                                        <p class="text-[11px] md:text-xs opacity-90 truncate" style="font-family: ${customFont}, ${baseFontStack};">Kelas ${currentUser.class} - ${currentExam.subject}</p>
                                     </div>
                                 </div>
 
@@ -1953,6 +1957,7 @@
 
             // Dapatkan posisi ujung jari / mouse
             function getPosition(e) {
+                if (!canvas) return { x: 0, y: 0 };
                 const rect = canvas.getBoundingClientRect();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -2123,10 +2128,7 @@
             }
 
             function renderNavigationButtons() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
+                const { config, customFont, baseFontStack, baseSize } = RC;
                 
                 const navContainer = document.getElementById('navigationButtons');
                 if (!navContainer) return;
@@ -2174,11 +2176,7 @@
             }
 
             function renderQuestion() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
+                const { config, customFont, baseFontStack, baseSize, textColor } = RC;
                 
                 if (!examQuestions || examQuestions.length === 0) {
                     document.getElementById('questionContainer').innerHTML = `
@@ -2238,11 +2236,7 @@
             }
 
             function renderMultipleChoice(question) {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
+                const { config, customFont, baseFontStack, baseSize, textColor } = RC;
                 
                 const currentAnswer = studentAnswers[currentQuestionIndex];
                 
@@ -2269,11 +2263,7 @@
             }
 
             function renderComplexMultipleChoice(question) {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
+                const { config, customFont, baseFontStack, baseSize, textColor } = RC;
                 
                 const currentAnswer = studentAnswers[currentQuestionIndex] || "";
                 
@@ -2320,11 +2310,7 @@
             }
 
             function renderShortAnswer(question) {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                
+                const { config, customFont, baseFontStack, baseSize } = RC;
                 const currentAnswer = studentAnswers[currentQuestionIndex] || '';
                 
                 return `
@@ -2349,12 +2335,7 @@
             }
 
             function renderTrueFalse(question) {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
-                
+                const { config, customFont, baseFontStack, baseSize, textColor } = RC;
                 // Ambil jawaban saat ini dari array studentAnswers
                 const currentAnswer = studentAnswers[currentQuestionIndex] || "";
                 
@@ -2437,8 +2418,9 @@
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
                 const selected = Array.from(checkboxes).map(cb => cb.value);
                 studentAnswers[currentQuestionIndex] = selected;
-                sessionStorage.setItem('studentAnswers', JSON.stringify(studentAnswers));
-                localStorage.setItem('studentAnswers', JSON.stringify(studentAnswers)); // Tambahkan ini
+                const encoded = JSON.stringify(studentAnswers); // ← Stringify SEKALI
+                sessionStorage.setItem('studentAnswers', encoded);
+                localStorage.setItem('studentAnswers', encoded);
                 renderQuestionNav();
             }
 
@@ -2579,7 +2561,12 @@
             async function submitExam(isAutoSubmit = false) {
                 if (examSubmitted || hasSubmitted) return;
                 if (!navigator.onLine) {
-                    alert("Gagal mengirim! Koneksi internet Anda terputus. Silakan cari sinyal dan coba lagi."); 
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Tidak Ada Koneksi',
+                        text: 'Koneksi internet Anda terputus. Silakan cari sinyal dan coba lagi.',
+                        confirmButtonColor: '#d33'
+                    });
                     return; 
                 }
 
@@ -2633,7 +2620,12 @@
                             // Kita kirimkan waktuBerjalanMenit agar bisa dimunculkan di notifikasi!
                             showSubmitWarning(sisaMenit, sisaDetik, minTimeSetting, waktuBerjalanMenit);
                         } else {
-                            alert(`Belum bisa kumpul! Anda baru mengerjakan ${waktuBerjalanMenit} menit. Syarat minimal: ${minTimeSetting} menit.`);
+                            await Swal.fire({
+                                icon: 'warning',
+                                title: 'Belum Bisa Kumpul',
+                                text: `Anda baru mengerjakan ${waktuBerjalanMenit} menit. Syarat minimal: ${minTimeSetting} menit.`,
+                                confirmButtonColor: '#f59e0b'
+                            });
                         }
                         
                         return; // Hentikan proses kumpul
@@ -2663,7 +2655,6 @@
                 if (typeof wakeLock !== 'undefined' && wakeLock !== null) {
                     wakeLock.release().then(() => {
                         wakeLock = null;
-                        console.log('Wake Lock dilepas, layar bisa mati otomatis kembali.');
                     }).catch((err) => console.error('Gagal melepas Wake Lock:', err));
                 }
                 
@@ -2674,25 +2665,14 @@
                 if (!isAutoSubmit) {
                     const randomDelay = Math.floor(Math.random() * 12000);
                     await new Promise(resolve => setTimeout(resolve, randomDelay));
-                } else {
-                    console.log("Emergency/Auto Submit terdeteksi. Mengirim data instan...");
                 }
                 
-                // Tandai ujian telah selesai
-                if (typeof examSubmitted !== 'undefined') examSubmitted = true;
-                if (typeof hasSubmitted !== 'undefined') hasSubmitted = true;
-
-                // Lapor ke Admin secara realtime
-                if (typeof laporKeAdmin === 'function') {
-                    await laporKeAdmin(); 
-                }
-
-                // Siapkan data untuk dikirim ke database/spreadsheet
+                // Siapkan data untuk dikirim ke database SEBELUM hapus apapun
                 const score = typeof calculateScore === 'function' ? calculateScore() : 0;
                 const answersString = typeof studentAnswers !== 'undefined' ? JSON.stringify(studentAnswers) : "{}";
                 const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || "-";
                 const waktuSelesaiSiswa = sessionStorage.getItem('waktuSelesai') || new Date().toLocaleTimeString('id-ID');
-                
+
                 const examData = {
                     student_name: currentUser.name,
                     student_class: currentUser.class,
@@ -2705,6 +2685,35 @@
                     waktu_selesai: waktuSelesaiSiswa
                 };
 
+                // Proses Simpan ke Database DULU sebelum hapus data lokal
+                let success = false;
+                if (typeof saveExamResultToSheet === 'function') {
+                    success = await saveExamResultToSheet(examData);
+                }
+
+                // Jika GAGAL: jangan hapus data, jangan kunci tombol, beri tahu siswa
+                if (!success) {
+                    console.error("Gagal menyimpan hasil ujian.");
+                    if (typeof hideLoading === 'function') hideLoading();
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Mengirim',
+                        text: 'Koneksi bermasalah. Data jawaban Anda AMAN. Silakan klik Selesai lagi setelah koneksi pulih.',
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Coba Lagi'
+                    });
+                    return; // Keluar tanpa set examSubmitted = true dan tanpa hapus data
+                }
+
+                // Jika SUKSES: baru tandai selesai dan bersihkan data lokal
+                if (typeof examSubmitted !== 'undefined') examSubmitted = true;
+                if (typeof hasSubmitted !== 'undefined') hasSubmitted = true;
+
+                // Lapor ke Admin secara realtime
+                if (typeof laporKeAdmin === 'function') {
+                    await laporKeAdmin(); 
+                }
+
                 // Bersihkan Memori Timer
                 localStorage.removeItem(timerKey); 
 
@@ -2715,7 +2724,7 @@
                 localStorage.removeItem('remainingTime');
                 localStorage.removeItem('violationCount');
                 localStorage.removeItem('doubtQuestions');
-                
+
                 sessionStorage.removeItem('currentUser');
                 sessionStorage.removeItem('currentExam');
                 sessionStorage.removeItem('studentAnswers');
@@ -2723,21 +2732,8 @@
                 sessionStorage.removeItem('currentQuestionIndex');
                 sessionStorage.removeItem('remainingTime');
                 sessionStorage.removeItem('violationCount');
-                
-                // Proses Simpan ke Database
-                let success = false;
-                if (typeof saveExamResultToSheet === 'function') {
-                    success = await saveExamResultToSheet(examData);
-                }
-                
-                // Tampilkan Hasil jika sukses, tampilkan error jika gagal
-                if (success) {
-                    if (typeof renderResultPage === 'function') renderResultPage(score);
-                } else {
-                    console.error("Gagal menyimpan hasil ujian.");
-                    if (typeof hideLoading === 'function') hideLoading();
-                    alert("Terjadi kesalahan saat menyimpan hasil ujian ke server. Silakan coba klik kumpulkan lagi.");
-                }
+
+                if (typeof renderResultPage === 'function') renderResultPage(score);
             }
 
             // Fungsi pembantu untuk membersihkan HTML dan spasi (Letakkan di luar calculateScore)
@@ -2819,13 +2815,7 @@
             }
 
             function renderResultPage(score) {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                const textColor = defaultConfig.text_color;
-                        
+                const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;            
                 document.getElementById('app').innerHTML = `
                     <div class="fixed inset-0 z-[100] min-h-screen w-full flex items-center justify-center p-4 gradient-bg overflow-y-auto">
                         <div class="max-w-2xl w-full bg-white rounded-2xl shadow-custom p-8 text-center">
@@ -2862,12 +2852,8 @@
 
             // Tambahkan parameter ke-4: waktuBerjalanMenit
             function showSubmitWarning(remainingMinutes, remainingSeconds, minTimeToSubmit, waktuBerjalanMenit = 0) {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                
+                const { config, customFont, baseFontStack } = RC;                
                 let totalSisaDetik = (remainingMinutes * 60) + remainingSeconds;
-                
                 const warningDiv = document.createElement('div');
                 warningDiv.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
                 warningDiv.id = 'submitWarningModal';
@@ -2960,6 +2946,11 @@
             
                 if (examTimer) clearInterval(examTimer);
                 if (adminRefreshInterval) clearInterval(adminRefreshInterval);
+                if (pelaporanInterval) {
+                    clearInterval(pelaporanInterval);
+                    pelaporanInterval = null;
+                }
+                document.removeEventListener('visibilitychange', laporKeAdmin);
                 if (realtimeChannel) {
                     realtimeChannel.unsubscribe();
                     realtimeChannel = null;
@@ -2988,9 +2979,16 @@
             async function resetSiswaLogin(usernameSiswa, isBulk = false) {
                 // ✅ PERUBAHAN 2: Jika isBulk = true, lewati confirm popup
                 if (!isBulk) {
-                    if (!confirm(`Yakin ingin mereset sesi login untuk siswa: ${usernameSiswa} ?`)) {
-                        return;
-                    }
+                    const result = await Swal.fire({
+                        title: 'Reset Sesi Login?',
+                        text: `Yakin ingin mereset sesi login untuk siswa: ${usernameSiswa}?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        confirmButtonText: 'Ya, Reset!',
+                        cancelButtonText: 'Batal'
+                    });
+                    if (!result.isConfirmed) return;
                 }
 
                 if (!isBulk && typeof showLoading === 'function') showLoading();
@@ -3007,22 +3005,12 @@
                         console.error("Error mereset login:", error);
                         // ✅ PERUBAHAN 3: Sembunyikan alert satuan jika sedang reset massal
                         if (!isBulk) {
-                            if (typeof showError === 'function') {
-                                showError("Gagal mereset sesi siswa.");
-                            } else {
-                                alert("Gagal mereset sesi siswa.");
-                            }
+                            Swal.fire('Gagal!', 'Gagal mereset sesi siswa.', 'error');
                         }
                     } else {
                         // ✅ PERUBAHAN 4: Sembunyikan alert sukses satuan jika sedang reset massal
                         if (!isBulk) {
-                            if (typeof Swal !== 'undefined') {
-                                Swal.fire('Berhasil!', `Sesi untuk ${usernameSiswa} telah direset. Siswa bisa login kembali.`, 'success');
-                            } else {
-                                alert(`Sesi untuk ${usernameSiswa} telah direset.`);
-                            }
-                            
-                            // Segarkan data pengguna secara otomatis
+                            Swal.fire('Berhasil!', `Sesi untuk ${usernameSiswa} telah direset. Siswa bisa login kembali.`, 'success');
                             refreshTarget('users'); 
                         }
                     }
@@ -3036,13 +3024,7 @@
             // ADMIN DASHBOARD
             let adminRefreshInterval = null;            
             function renderAdminDashboard() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                const textColor = defaultConfig.text_color;
-                
+                const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;
                 // Pastikan interval lama dibersihkan saat masuk dashboard agar tidak berjalan di background
                 if (adminRefreshInterval) {
                     clearInterval(adminRefreshInterval);
@@ -3137,14 +3119,7 @@
                                             </svg>
                                             Bersihkan
                                         </button>
-                                        
-                                        <button onclick="ambilDataTerbaru()" class="w-full flex justify-center items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700 text-sm transition whitespace-nowrap">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                            </svg>
-                                            Refresh
-                                        </button>
-                                        
+                                    
                                         <button onclick="document.getElementById('monitorPanel').classList.add('hidden')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded shadow hover:bg-red-700 text-sm transition whitespace-nowrap">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -3186,14 +3161,7 @@
             }
 
             function renderGuruDashboard() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                const textColor = defaultConfig.text_color;
-                
-                
+                const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;
                 // Start auto refresh setiap 30 detik
                 if (adminRefreshInterval) {
                     clearInterval(adminRefreshInterval);
@@ -3246,9 +3214,7 @@
 
             function showAdminSection(section) {
                 currentAdminTab = section;
-                const config = defaultConfig;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, primaryColor } = RC;
                 document.querySelectorAll('[id^="nav-"]').forEach(btn => {
                     btn.classList.remove('bg-blue-100', 'text-blue-800', 'font-semibold');
                     btn.style.backgroundColor = '';
@@ -3270,8 +3236,7 @@
 
             function showGuruSection(section) {
                 currentGuruTab = section;
-                const config = defaultConfig;
-                const primaryColor = defaultConfig.primary_color;
+                const { config, primaryColor } = RC;
                 
                 document.querySelectorAll('[id^="nav-"]').forEach(btn => {
                     btn.classList.remove('bg-blue-100', 'text-blue-800', 'font-semibold');
@@ -3291,85 +3256,226 @@
 
 
             function renderDashboardSection() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, customFont, baseFontStack, baseSize, textColor, primaryColor } = RC;    
+                // --- TOTAL KESELURUHAN ---
                 const totalUsers = allUsers.length;
                 const totalStudents = allUsers.filter(u => u.role === 'siswa').length;
                 const totalQuestions = allQuestions.length;
                 const totalExams = allExamResults.length;
                 
                 const avgScore = allExamResults.length > 0 
-                    ? Math.round(allExamResults.reduce((sum, r) => sum + r.final_score, 0) / allExamResults.length)
-                    : 0;
+                    ? Math.round(allExamResults.reduce((sum, r) => sum + (Number(r.final_score) || 0), 0) / allExamResults.length)
+                    : '-';
                 
-                const recentResults = [...allExamResults]
-                    .reverse()   //sort((a, b) => new Date(b.exam_time) - new Date(a.exam_time))
-                    .slice(0, 5);
+                // --- MENGHITUNG DATA PER JENJANG (SISWA, SOAL, UJIAN, NILAI) ---
+                let studentCount7 = 0, studentCount8 = 0, studentCount9 = 0;
+                let qCount7 = 0, qCount8 = 0, qCount9 = 0;
+                let examCount7 = 0, totalScore7 = 0;
+                let examCount8 = 0, totalScore8 = 0;
+                let examCount9 = 0, totalScore9 = 0;
+
+                // Hitung Siswa per kelas
+                allUsers.forEach(u => {
+                    if (u.role === 'siswa') {
+                        const jenjang = String(u.class || "").trim().charAt(0);
+                        if (jenjang === '7') studentCount7++;
+                        else if (jenjang === '8') studentCount8++;
+                        else if (jenjang === '9') studentCount9++;
+                    }
+                });
+
+                // Hitung Soal per kelas & Statistik untuk Tabel
+                const questionStats = {};
+                allQuestions.forEach(q => {
+                    const subject = q.subject || 'Tanpa Mapel';
+                    const cls = String(q.question_class || 'Lainnya').trim(); 
+                    const jenjang = cls.charAt(0);
+
+                    // Untuk Card Atas
+                    if (jenjang === '7') qCount7++;
+                    else if (jenjang === '8') qCount8++;
+                    else if (jenjang === '9') qCount9++;
+                    
+                    // Untuk Tabel Bawah
+                    if (!questionStats[subject]) {
+                        questionStats[subject] = { '7': 0, '8': 0, '9': 0, 'Lainnya': 0 };
+                    }
+                    if (questionStats[subject][cls] !== undefined) {
+                        questionStats[subject][cls]++;
+                    } else {
+                        questionStats[subject]['Lainnya']++;
+                    }
+                });
+
+                // Hitung Ujian & Nilai per kelas
+                allExamResults.forEach(r => {
+                    const jenjang = String(r.student_class || "").trim().charAt(0);
+                    const score = Number(r.final_score) || 0;
+                    
+                    if (jenjang === '7') { examCount7++; totalScore7 += score; } 
+                    else if (jenjang === '8') { examCount8++; totalScore8 += score; } 
+                    else if (jenjang === '9') { examCount9++; totalScore9 += score; }
+                });
+
+                // Kalkulasi rata-rata nilai per jenjang
+                const avg7 = examCount7 > 0 ? Math.round(totalScore7 / examCount7) : '-';
+                const avg8 = examCount8 > 0 ? Math.round(totalScore8 / examCount8) : '-';
+                const avg9 = examCount9 > 0 ? Math.round(totalScore9 / examCount9) : '-';
                 
                 document.getElementById('adminContent').innerHTML = `
-                    <div class="space-y-4 md:space-y-6">
-                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Total Pengguna</h3>
-                                    <span class="text-xl md:text-2xl">👥</span>
+                    <div class="space-y-4">
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+                            
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <div>
+                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Total Siswa</h3>
+                                        <div class="font-bold text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${totalStudents}</div>
+                                    </div>
+                                    <div class="text-xl md:text-2xl opacity-80">👥</div>
                                 </div>
-                                <p class="font-bold text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${totalUsers}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${totalStudents} Siswa</p>
+                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                        <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount7}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                        <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount8}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                        <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount9}</p>
+                                    </div>
+                                </div>
+                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Inc. Admin & Guru</span>
+                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalUsers}</span>
+                                </div>
                             </div>
                             
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
-                                    <span class="text-xl md:text-2xl">📝</span>
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <div>
+                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
+                                        <div class="font-bold text-green-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</div>
+                                    </div>
+                                    <div class="text-xl md:text-2xl opacity-80">📝</div>
                                 </div>
-                                <p class="font-bold text-green-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Soal Tersedia</p>
+                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                        <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount7}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                        <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount8}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                        <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount9}</p>
+                                    </div>
+                                </div>
+                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Total Seluruh Soal</span>
+                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</span>
+                                </div>
                             </div>
                             
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
-                                    <span class="text-xl md:text-2xl">📊</span>
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <div>
+                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
+                                        <div class="font-bold text-purple-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</div>
+                                    </div>
+                                    <div class="text-xl md:text-2xl opacity-80">📊</div>
                                 </div>
-                                <p class="font-bold text-purple-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Total Ujian</p>
+                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                        <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount7}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                        <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount8}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                        <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount9}</p>
+                                    </div>
+                                </div>
+                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Total Eksekusi Ujian</span>
+                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</span>
+                                </div>
                             </div>
                             
-                            <div class="bg-white rounded-xl shadow p-4 md:p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata</h3>
-                                    <span class="text-xl md:text-2xl">⭐</span>
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <div>
+                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata Nilai</h3>
+                                        <div class="font-bold text-yellow-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${avgScore}</div>
+                                    </div>
+                                    <div class="text-xl md:text-2xl opacity-80">⭐</div>
                                 </div>
-                                <p class="font-bold text-yellow-500 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${avgScore}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Nilai Rata-rata</p>
+                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                        <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg7}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                        <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg8}</p>
+                                    </div>
+                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                        <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg9}</p>
+                                    </div>
+                                </div>
+                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Skala Nilai 0-100</span>
+                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${avgScore !== '-' ? avgScore : 0}</span>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-xl shadow p-6">
-                            <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor};">🏆 Hasil Ujian Terbaru</h3>
-                            <div class="space-y-2">
-                                ${recentResults.length > 0 ? recentResults.map((result) => `
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                                        <div>
-                                            <p class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">${result.student_name}</p>
-                                            <p class="text-gray-500 text-xs" style="font-family: ${customFont}, ${baseFontStack};">${result.exam_subject} - Kelas ${result.student_class}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${result.final_score >= 80 ? '#22c55e' : result.final_score >= 60 ? '#eab308' : '#ef4444'};">${result.final_score}</p>
-                                        </div>
-                                    </div>
-                                `).join('') : `
-                                    <div class="text-center py-8 text-gray-400">
-                                        <p style="font-family: ${customFont}, ${baseFontStack};">Belum ada hasil ujian</p>
-                                    </div>
-                                `}
-                            </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4 overflow-x-auto">
+                            <h3 class="font-bold mb-3 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">📚 Statistik Soal (Mapel & Kelas)</h3>
+                            
+                            <table class="min-w-full text-sm border-collapse">
+                                <thead class="bg-gray-50 text-gray-600">
+                                    <tr>
+                                        <th class="p-2 border-b font-semibold" style="font-family: ${customFont}, ${baseFontStack};">Mata Pelajaran</th>
+                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 7</th>
+                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 8</th>
+                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 9</th>
+                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.keys(questionStats).length > 0 ? Object.keys(questionStats).map(subject => {
+                                        const count7 = questionStats[subject]['7'] || 0;
+                                        const count8 = questionStats[subject]['8'] || 0;
+                                        const count9 = questionStats[subject]['9'] || 0;
+                                        const total = count7 + count8 + count9 + (questionStats[subject]['Lainnya'] || 0);
+                                        
+                                        return `
+                                            <tr class="hover:bg-gray-50 border-b last:border-0 transition-colors">
+                                                <td class="p-2 font-medium text-gray-800" style="font-family: ${customFont}, ${baseFontStack};">${subject}</td>
+                                                <td class="p-2 text-center text-gray-500">${count7 > 0 ? count7 : '-'}</td>
+                                                <td class="p-2 text-center text-gray-500">${count8 > 0 ? count8 : '-'}</td>
+                                                <td class="p-2 text-center text-gray-500">${count9 > 0 ? count9 : '-'}</td>
+                                                <td class="p-2 text-center font-bold text-gray-700">${total}</td>
+                                            </tr>
+                                        `;
+                                    }).join('') : `
+                                        <tr>
+                                            <td colspan="5" class="p-4 text-center text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada data bank soal</td>
+                                        </tr>
+                                    `}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 `;
@@ -3450,13 +3556,7 @@
             }
 
             function renderUsersSection() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor =  defaultConfig.text_color;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, customFont, textColor, primaryColor, baseFontStack, baseSize } = RC;                
                 // Hitung jumlah pengguna yang sedang online
                 const totalOnline = allUsers.filter(user => user.role === 'siswa' && user.is_login).length;
 
@@ -3603,12 +3703,7 @@
             }
 
             function showAddUserForm() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, primaryColor, customFont, baseFontStack, baseSize } = RC;                
                 const container = document.getElementById('userFormContainer');
                 container.style.display = 'block';
                 container.innerHTML = `
@@ -3753,8 +3848,7 @@
 
             async function deleteUser(userId) {
                 const user = allUsers.find(u => String(u.id) === String(userId));
-                if (!user) return;
-                
+                if (!user) return;  
                 // --- AKALIN DISINI: Jika modal sudah ada di layar, hapus dulu yang lama agar tidak dobel ---
                 const existingModal = document.getElementById('delete-user-modal');
                 if (existingModal) existingModal.remove();
@@ -3790,14 +3884,8 @@
             }
 
             function renderResultsSection() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
-
+                const { config, customFont, baseFontStack, baseSize, textColor } = RC;
                 const filteredData = getProcessedData();
-
                 // --- 2. CEK APAKAH ELEMEN SUDAH ADA? (INTI SOLUSI) ---
                 const existingTableBody = document.getElementById('resultsTableBody');
 
@@ -3960,8 +4048,16 @@
                 }
             }
             async function clearAllResults() {
-                const yakin = confirm("⚠️ PERINGATAN!\n\nApakah Anda yakin ingin menghapus SEMUA data hasil ujian? Aksi ini tidak dapat dibatalkan!");
-                if (!yakin) return;
+                const { isConfirmed } = await Swal.fire({
+                    title: '⚠️ Hapus Semua Data?',
+                    text: 'Aksi ini tidak dapat dibatalkan!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                });
+                if (!isConfirmed) return;
 
                 try {
                     if (typeof showLoading === 'function') showLoading();
@@ -4003,20 +4099,27 @@
 
             // Contoh fungsi untuk menghapus semua data di tabel monitoring
             async function bersihkanDataMonitoring() {
-                const konfirmasi = confirm("Apakah Anda yakin ingin menghapus semua data monitoring?");
-                
-                if (konfirmasi) {
-                    // Proses hapus dari database Supabase
+                const hasilKonfirmasi = await Swal.fire({
+                    title: 'Hapus Data Monitoring?',
+                    text: 'Semua data monitoring akan dihapus permanen!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                });
+
+                if (hasilKonfirmasi.isConfirmed) {
                     const { error } = await dbClient
-                        .from('monitoring') // WAJIB GANTI: sesuaikan dengan nama tabel Anda
+                        .from('monitoring')
                         .delete()
                         .not('id', 'is', null);
 
                     if (error) {
                         console.error("Gagal menghapus data:", error);
-                        alert("Terjadi kesalahan saat menghapus data.");
+                        Swal.fire('Error', 'Terjadi kesalahan saat menghapus data.', 'error');
                     } else {
-                        alert("Data monitoring berhasil dibersihkan!");
+                        Swal.fire('Berhasil!', 'Data monitoring berhasil dibersihkan!', 'success');
                         
                         // 1. Kosongkan isi tabel di layar secara instan
                         const tabelBody = document.getElementById('monitorTableBody');
@@ -4030,10 +4133,6 @@
                             loadingText.textContent = "Data monitoring kosong. Menunggu sinyal dari siswa...";
                             loadingText.classList.remove('hidden'); // Memastikan teksnya muncul kembali
                         }
-                        
-                        // Opsional: Jika Anda lebih suka memanggil fungsi refresh bawaan Anda,
-                        // Anda cukup menghapus baris 1 dan 2 di atas, lalu hapus tanda miring ganda di bawah ini:
-                        // ambilDataTerbaru();
                     }
                 }
             }
@@ -4048,7 +4147,7 @@
                 
                 const dataToExport = getProcessedData();
                 if (dataToExport.length === 0) {
-                    alert("Tidak ada data yang sesuai filter untuk diunduh.");
+                    Swal.fire('Info', 'Tidak ada data yang sesuai filter untuk diunduh.', 'info');
                     return;
                 }
 
@@ -4102,16 +4201,9 @@
             }
 
             function renderQuestionsSection() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, primaryColor, customFont, baseFontStack, baseSize, textColor } = RC;                
                 const isAdmin = currentUser && currentUser.role === 'admin';
                 const targetContainer = isAdmin ? document.getElementById('adminContent') : document.getElementById('guruContent');
-
                 const uniqueSubjects = [...new Set(allQuestions.map(q => q.subject))].filter(Boolean);
                 const uniqueClasses = [...new Set(allQuestions.map(q => q.question_class ? q.question_class.charAt(0) : ''))].filter(Boolean).sort();
                 
@@ -5537,12 +5629,7 @@
         // 1. FUNGSI RENDER PENGATURAN UMUM
         // ==============================================================
         function renderSettingsSection() {
-            const config = defaultConfig;
-            const customFont = defaultConfig.font_family;
-            const baseFontStack = 'Arial, sans-serif';
-            const baseSize = defaultConfig.font_size;
-            const textColor = defaultConfig.text_color;
-            const primaryColor = defaultConfig.primary_color;
+            const { config, customFont, baseFontStack, baseSize, textColor, primaryColor } = RC;
             
             document.getElementById('adminContent').innerHTML = `
                 <div class="space-y-6">
@@ -5624,13 +5711,7 @@
         }
             
             function renderScheduleSection() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const textColor = defaultConfig.text_color;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, primaryColor, customFont, baseFontStack, baseSize, textColor } = RC;                
                 const now = new Date();
                 
                 document.getElementById('adminContent').innerHTML = `
@@ -5802,12 +5883,7 @@
             }
 
             function showAddScheduleForm() {
-                const config = defaultConfig;
-                const customFont = defaultConfig.font_family;
-                const baseFontStack = 'Arial, sans-serif';
-                const baseSize = defaultConfig.font_size;
-                const primaryColor = defaultConfig.primary_color;
-                
+                const { config, primaryColor, customFont, baseFontStack, baseSize } = RC;                
                 const container = document.getElementById('scheduleFormContainer');
                 container.style.display = 'block';
                 container.innerHTML = `
@@ -5998,6 +6074,7 @@
 
             function deleteSchedule(subject) {
                 const confirmDiv = document.createElement('div');
+                confirmDiv.id = 'confirm-delete-schedule';
                 confirmDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
                 confirmDiv.innerHTML = `
                     <div class="bg-white rounded-lg p-6 max-w-sm">
@@ -6014,10 +6091,10 @@
 
             async function confirmDeleteSchedule(subject) {
                 document.querySelector('div.fixed').remove();
-                
+                const modal = document.getElementById('confirm-delete-schedule');
+                if (modal) modal.remove();
                 const oldActiveSubjects = [...examSettings.active_subjects];
                 examSettings.active_subjects = examSettings.active_subjects.filter(item => item.subject !== subject);
-                
                 try {
                     showLoading();
                     // --- DIUBAH: Update (Hapus mapel) dari Supabase ---
@@ -6138,7 +6215,8 @@
 
                     const { error } = await dbClient
                         .from('settings')
-                        .upsert(payloadSettings);
+                        .update(payloadSettings)
+                        .eq('id', 1);
 
                     if (error) throw error;
                     
