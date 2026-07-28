@@ -261,6 +261,17 @@
                 text-align: center; color: white; font-family: sans-serif; 
                 letter-spacing: 2px; font-size: 0.9rem;
             }
+
+            .quill-content-render ul,
+            .quill-content-render ol {
+                list-style-position: outside;
+                padding-left: 1.5em;
+                margin: 0.5em 0;
+            }
+            .quill-content-render ul { list-style-type: disc; }
+            .quill-content-render ul ul { list-style-type: circle; }
+            .quill-content-render ol { list-style-type: decimal; }
+            .quill-content-render li { margin-bottom: 0.25em; }
         </style>
     </head>
     <body class="min-h-screen">
@@ -1435,7 +1446,7 @@
                                 <h3 class="font-extrabold text-slate-800 text-xl leading-tight truncate w-full px-2" title="${user.name || user.username}">
                                     ${user.name || user.username}
                                 </h3>
-                                <p class="text-sm text-blue-700 mt-2 font-bold bg-blue-100/70 px-4 py-1.5 rounded-full border border-blue-200/50 tracking-wide">
+                                <p class="text-xs text-blue-700 mt-2 font-bold bg-blue-100/70 px-2 py-0.5 rounded-full border border-blue-200/50 tracking-wide">
                                     Kelas ${user.class}
                                 </p>
                             </div>
@@ -2198,7 +2209,7 @@
                                 ${getQuestionTypeLabel(question.question_type)}
                             </span>
                         </div>
-                        <p class="text-lg mb-4 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${question.question_text}</p>
+                        <div class="quill-content-render text-lg mb-4 break-words" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor}; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${question.question_text}</div>
                         ${question.question_image && question.question_image.trim() !== '' ? 
                             `<div class="mb-4">
                                 <img src="${question.question_image}" alt="Gambar Soal" class="max-w-full h-auto rounded-lg shadow-lg border-2 border-gray-300" 
@@ -2297,7 +2308,7 @@
                                         </div>
 
                                         <div class="ml-4 flex-grow">
-                                            <div class="break-words leading-relaxed" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">
+                                            <div class="quill-content-render break-words leading-relaxed" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">
                                                 ${option}
                                             </div>
                                         </div>
@@ -4518,7 +4529,7 @@
                         <div class="text-left">
                             <div class="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
                                 <div class="text-[10px] font-bold text-blue-400 uppercase mb-1">Pertanyaan:</div>
-                                <div class="text-gray-800 text-sm leading-relaxed" style="white-space: pre-wrap;">${q.question_text}</div>
+                                <div class="quill-content-render text-gray-800 text-sm leading-relaxed" style="white-space: pre-wrap;">${q.question_text}</div>
                                 ${q.question_image ? `<img src="${q.question_image}" class="mt-3 rounded-lg max-w-full h-auto mx-auto border shadow-sm block">` : ''}
                             </div>                            
                             
@@ -4664,7 +4675,7 @@
                         </div>
                     `,
                     didOpen: () => {
-                        const configMini = { modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], ['clean']] }, theme: 'snow' };
+                        const configMini = { modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, theme: 'snow' };
 
                         window.editEditors = {
                             question: new Quill('#edit-q-text', configMini),
