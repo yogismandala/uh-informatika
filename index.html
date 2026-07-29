@@ -3053,7 +3053,7 @@
                                         </div>
                                         <div>
                                             <h2 class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">Admin Panel</h2>
-                                            <p class="text-xs opacity-80 hidden sm:block" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</p>
+                                            <p class="text-xs opacity-80 style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</p>
                                         </div>
                                     </div>
                                     
@@ -3190,7 +3190,7 @@
                                         </div>
                                         <div>
                                             <h2 class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">Guru Panel</h2>
-                                            <p class="text-xs opacity-80 hidden sm:block" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name} - ${currentUser.subject}</p>
+                                            <p class="text-xs opacity-80 style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name} - ${currentUser.subject}</p>
                                         </div>
                                     </div>
                                     
@@ -3332,6 +3332,29 @@
                 const avg7 = examCount7 > 0 ? Math.round(totalScore7 / examCount7) : '-';
                 const avg8 = examCount8 > 0 ? Math.round(totalScore8 / examCount8) : '-';
                 const avg9 = examCount9 > 0 ? Math.round(totalScore9 / examCount9) : '-';
+
+                // --- JUMLAH SISWA & STATUS PENGERJAAN ULANGAN PER KELAS (PER MAPEL) ---
+                const studentsByClass = {};
+                allUsers.forEach(u => {
+                    if (u.role === 'siswa') {
+                        const cls = String(u.class || 'Lainnya').trim() || 'Lainnya';
+                        if (!studentsByClass[cls]) studentsByClass[cls] = [];
+                        studentsByClass[cls].push(u);
+                    }
+                });
+
+                // Daftar mapel unik, gabungan dari Bank Soal & Hasil Ulangan yang sudah ada
+                const mapelSet = new Set();
+                allQuestions.forEach(q => { if (q.subject) mapelSet.add(String(q.subject).trim()); });
+                allExamResults.forEach(r => { if (r.exam_subject) mapelSet.add(String(r.exam_subject).trim()); });
+                const daftarMapel = [...mapelSet].sort();
+
+                // Set "nama|mapel" yang sudah dikerjakan siswa (untuk cek cepat)
+                const sudahMengerjakanSet = new Set(
+                    allExamResults.map(r => `${String(r.student_name || '').trim().toLowerCase()}|${String(r.exam_subject || '').trim()}`)
+                );
+
+                const sortedClassKeys = Object.keys(studentsByClass).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
                 
                 document.getElementById('adminContent').innerHTML = `
                     <div class="space-y-4">
@@ -3487,6 +3510,81 @@
                                     `}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
+                            <h3 class="font-bold mb-1 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">👥 Jumlah Siswa & Status Pengerjaan Ulangan per Kelas</h3>
+                            <p class="text-[11px] md:text-xs text-gray-400 mb-3" style="font-family: ${customFont}, ${baseFontStack};">Klik kelas untuk melihat rincian per mapel & per siswa</p>
+
+                            <div class="space-y-2">
+                                ${sortedClassKeys.length > 0 ? sortedClassKeys.map(cls => {
+                                    const studentsInClass = studentsByClass[cls].slice().sort((a, b) => String(a.name || a.username || '').localeCompare(String(b.name || b.username || '')));
+                                    const jumlahSiswa = studentsInClass.length;
+
+                                    // Rekap jumlah sudah/belum per mapel untuk kelas ini
+                                    const rekapMapel = daftarMapel.map(mapel => {
+                                        const sudahCount = studentsInClass.filter(s =>
+                                            sudahMengerjakanSet.has(`${String(s.name || s.username || '').trim().toLowerCase()}|${mapel}`)
+                                        ).length;
+                                        return { mapel, sudah: sudahCount, belum: jumlahSiswa - sudahCount };
+                                    });
+
+                                    return `
+                                        <details class="border border-gray-100 rounded-lg overflow-hidden">
+                                            <summary class="cursor-pointer select-none p-2.5 md:p-3 bg-gray-50 hover:bg-gray-100 transition-colors" style="font-family: ${customFont}, ${baseFontStack};">
+                                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2">
+                                                    <span class="font-semibold text-gray-800 text-sm md:text-base">
+                                                        Kelas ${cls}
+                                                        <span class="inline md:block text-gray-400 font-normal text-xs md:text-sm md:mt-0.5">(${jumlahSiswa} siswa)</span>
+                                                    </span>
+                                                    <div class="flex flex-wrap gap-1.5">
+                                                        ${rekapMapel.length > 0 ? rekapMapel.map(r => `
+                                                            <span class="inline-block text-[10px] md:text-xs px-2 py-1 rounded-full border font-medium ${r.belum === 0 ? 'bg-green-50 border-green-200 text-green-700' : (r.sudah === 0 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-yellow-50 border-yellow-200 text-yellow-700')}">
+                                                                ${r.mapel}: ${r.sudah}/${jumlahSiswa}
+                                                            </span>
+                                                        `).join('') : `<span class="text-[10px] md:text-xs text-gray-400">Belum ada mapel di Bank Soal</span>`}
+                                                    </div>
+                                                </div>
+                                            </summary>
+
+                                            <div class="p-2.5 md:p-3 border-t border-gray-100 overflow-x-auto">
+                                                <table class="min-w-full text-xs md:text-sm border-collapse">
+                                                    <thead class="bg-gray-50 text-gray-500">
+                                                        <tr>
+                                                            <th class="p-2 text-left font-semibold whitespace-nowrap" style="font-family: ${customFont}, ${baseFontStack};">Nama Siswa</th>
+                                                            ${daftarMapel.map(m => `<th class="p-2 text-center font-semibold whitespace-nowrap" style="font-family: ${customFont}, ${baseFontStack};">${m}</th>`).join('')}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${daftarMapel.length > 0 ? studentsInClass.map(s => {
+                                                            const namaKey = String(s.name || s.username || '').trim().toLowerCase();
+                                                            return `
+                                                                <tr class="border-b last:border-0 hover:bg-gray-50">
+                                                                    <td class="p-2 font-medium text-gray-800 whitespace-nowrap" style="font-family: ${customFont}, ${baseFontStack};">${s.name || s.username || 'Tanpa Nama'}</td>
+                                                                    ${daftarMapel.map(m => {
+                                                                        const sudah = sudahMengerjakanSet.has(`${namaKey}|${m}`);
+                                                                        return `
+                                                                            <td class="p-2 text-center">
+                                                                                <span class="inline-block px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold ${sudah ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}">
+                                                                                    ${sudah ? '✅' : '❌'}
+                                                                                </span>
+                                                                            </td>
+                                                                        `;
+                                                                    }).join('')}
+                                                                </tr>
+                                                            `;
+                                                        }).join('') : `
+                                                            <tr>
+                                                                <td class="p-3 text-center text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada mapel di Bank Soal untuk direkap</td>
+                                                            </tr>
+                                                        `}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </details>
+                                    `;
+                                }).join('') : `<p class="text-center text-gray-400 text-sm p-4" style="font-family: ${customFont}, ${baseFontStack};">Belum ada data siswa</p>`}
+                            </div>
                         </div>
                     </div>
                 `;
