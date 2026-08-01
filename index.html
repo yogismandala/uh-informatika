@@ -2808,9 +2808,19 @@
                         }
 
                         let kNormalized = kArray
-                            .map(item => normalizeText(item).trim().toUpperCase())
-                            .filter(item => item !== "")
-                            .sort();
+                        .map(item => {
+                            let trimmed = String(item).trim().toUpperCase();
+                            if (/^[A-Z]$/.test(trimmed) && Array.isArray(question.options)) {
+                                const optIdx = trimmed.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                                if (question.options[optIdx] !== undefined) {
+                                    return normalizeText(question.options[optIdx]).trim().toUpperCase();
+                                }
+                            }
+                            // Fallback: jika kunci sudah berupa teks lengkap (bukan huruf tunggal)
+                            return normalizeText(trimmed).trim().toUpperCase();
+                        })
+                        .filter(item => item !== "")
+                        .sort();
 
                         // 3. Bandingkan isi array yang sudah jadi string murni
                         const sFinal = sNormalized.join(',');
@@ -3475,7 +3485,7 @@
                         </div>
                         
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4 overflow-x-auto">
-                            <h3 class="font-bold mb-3 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">📚 Statistik Soal (Mapel & Kelas)</h3>
+                            <h3 class="font-bold mb-3 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">📚 Soal (Mapel & Kelas)</h3>
                             
                             <table class="min-w-full text-sm border-collapse">
                                 <thead class="bg-gray-50 text-gray-600">
