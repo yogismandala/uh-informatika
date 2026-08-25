@@ -4335,6 +4335,13 @@
                     if (window.selectedBankSoalClass) {
                         questionsToRender = questionsToRender.filter(q => q.question_class && q.question_class.startsWith(window.selectedBankSoalClass));
                     }
+                } else {
+                    // GURU: hanya tampilkan soal miliknya sendiri
+                    // (mapel sama dengan currentUser.subject DAN kelasnya termasuk yang diajar guru ini)
+                    questionsToRender = questionsToRender.filter(q => {
+                        const grade = q.question_class ? q.question_class.charAt(0) : '';
+                        return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                    });
                 }
 
                 let totalSemuaSoal = 0;
@@ -4347,10 +4354,17 @@
                     }).length;
                 }
 
+                // Fungsi urutan: kelompokkan per Mapel (A-Z), soal dalam mapel yang sama diurutkan berdasarkan ID (lama ke baru)
+                const sortBySubject = (a, b) => {
+                    const subA = (a.subject || '').toLowerCase();
+                    const subB = (b.subject || '').toLowerCase();
+                    if (subA !== subB) return subA.localeCompare(subB);
+                    return (a.id > b.id) ? 1 : (a.id < b.id ? -1 : 0);
+                };
                 const questionsByGrade = {
-                    '7': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('7')),
-                    '8': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('8')),
-                    '9': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('9'))
+                    '7': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('7')).sort(sortBySubject),
+                    '8': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('8')).sort(sortBySubject),
+                    '9': questionsToRender.filter(q => q.question_class && q.question_class.startsWith('9')).sort(sortBySubject)
                 };
 
                 // Helper HTML untuk item pertanyaan
@@ -4476,6 +4490,22 @@
                     if (!isAdmin) {
                         document.getElementById('statTotalSemua').textContent = totalSemuaSoal;
                         document.getElementById('statTotalGuru').textContent = totalSoalGuru;
+                    } else {
+                        // ADMIN: perbarui ulang opsi dropdown Mapel & Kelas agar sinkron dgn data terbaru
+                        const selMapel = document.getElementById('filterMapelBankSoal');
+                        if (selMapel) {
+                            selMapel.innerHTML = `
+                                <option value="">Semua Mata Pelajaran</option>
+                                ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
+                            `;
+                        }
+                        const selKelas = document.getElementById('filterKelasBankSoal');
+                        if (selKelas) {
+                            selKelas.innerHTML = `
+                                <option value="">Semua Kelas</option>
+                                ${uniqueClasses.map(cls => `<option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>`).join('')}
+                            `;
+                        }
                     }
                 }
 
