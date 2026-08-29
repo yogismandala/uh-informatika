@@ -272,6 +272,15 @@
             .quill-content-render ul ul { list-style-type: circle; }
             .quill-content-render ol { list-style-type: decimal; }
             .quill-content-render li { margin-bottom: 0.25em; }
+
+            .sticky-toolbar {
+            position: sticky;
+            top: -1px;
+            z-index: 30;
+            background: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
         </style>
     </head>
     <body class="min-h-screen">
@@ -1241,6 +1250,15 @@
                     return typeof item === 'object' ? item.subject : item;
                 });
             }
+            // Ambil objek jadwal lengkap (termasuk pengaturan token) untuk satu mapel tertentu
+            function getSubjectScheduleItem(subject) {
+                if (!subject || typeof examSettings === 'undefined' || !Array.isArray(examSettings.active_subjects)) {
+                    return null;
+                }
+                return examSettings.active_subjects.find(item => {
+                    return (typeof item === 'object' && item !== null) ? item.subject === subject : item === subject;
+                }) || null;
+            }
 
             async function handleLogin(e) {
                 e.preventDefault();
@@ -1466,16 +1484,24 @@
                             </div>
                             
                             <form id="formPilihJadwal">
-                                <div class="mb-5">
+                                <div class="mb-2">
                                     <label class="block text-slate-700 text-sm font-semibold mb-2">Mata Pelajaran :</label>
                                     <div class="relative">
-                                        <select id="selectedSubject" class="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-slate-700 font-bold transition duration-200 appearance-none cursor-pointer" required>
+                                        <select id="selectedSubject" class="w-full px-3 py-1 bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-slate-700 font-bold transition duration-200 appearance-none cursor-pointer" required>
                                             ${optionsHTML}
                                         </select>
                                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div class="mb-2" id="tokenInputWrapper" style="display:none;">
+                                    <label class="block text-slate-700 text-xs font-semibold mb-1">🔑 Token Ujian :</label>
+                                    <input type="text" id="examTokenInput" placeholder="Masukkan token"
+                                        class="w-full px-3 py-1 bg-white border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-700 font-bold tracking-widest uppercase text-center text-sm transition duration-200">
+                                    <p id="tokenErrorMsg" class="hidden text-red-500 text-[10px] font-semibold mt-1"></p>
+                                    <p class="text-[8px] text-slate-500 mt-1">Mata pelajaran ini memerlukan token untuk bisa masuk ke ujian.</p>
                                 </div>
 
                                 <div class="mb-6 bg-slate-50 p-1 rounded-lg border border-slate-200">
@@ -1488,10 +1514,10 @@
                                 </div>
 
                                 <div class="space-y-2.5">
-                                    <button type="submit" id="btnSubmitUjian" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl transition duration-200 shadow-lg shadow-blue-600/30 active:scale-[0.99]">
+                                    <button type="submit" id="btnSubmitUjian" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-3 rounded-xl transition duration-200 shadow-lg shadow-blue-600/30 active:scale-[0.99]">
                                         Masuk Ruang Ujian
                                     </button>
-                                    <button type="button" onclick="logout()" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 px-4 rounded-xl transition duration-200 active:scale-[0.99]">
+                                    <button type="button" onclick="logout()" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-2 px-3 rounded-xl transition duration-200 active:scale-[0.99]">
                                         Batal
                                     </button>
                                 </div>
@@ -1516,6 +1542,26 @@
                     document.head.appendChild(style);
                 }
 
+                document.getElementById('selectedSubject').addEventListener('change', function() {
+                    const scheduleItem = getSubjectScheduleItem(this.value);
+                    const tokenWrapper = document.getElementById('tokenInputWrapper');
+                    const tokenInput = document.getElementById('examTokenInput');
+                    if (scheduleItem && scheduleItem.token_enabled) {
+                        tokenWrapper.style.display = 'block';
+                        tokenInput.required = true;
+                        tokenInput.value = '';
+                    } else {
+                        tokenWrapper.style.display = 'none';
+                        tokenInput.required = false;
+                        tokenInput.value = '';
+                    }
+                });
+
+                document.getElementById('examTokenInput').addEventListener('input', function() {
+                    this.classList.remove('border-red-500');
+                    document.getElementById('tokenErrorMsg').classList.add('hidden');
+                });
+                
                 document.getElementById('formPilihJadwal').addEventListener('submit', async function(e) {
                     e.preventDefault();
                     
@@ -1530,6 +1576,30 @@
                     if (!isAgreed) {
                         showError('Anda wajib mencentang kotak persetujuan tata tertib ujian untuk memulai.');
                         return;
+                    }
+
+                    const scheduleItem = getSubjectScheduleItem(subject);
+                    const tokenInputEl = document.getElementById('examTokenInput');
+                    const tokenErrorEl = document.getElementById('tokenErrorMsg');
+                    if (scheduleItem && scheduleItem.token_enabled) {
+                        const enteredToken = (document.getElementById('examTokenInput').value || '').trim().toUpperCase();
+                        const correctToken = (scheduleItem.token_code || '').trim().toUpperCase();
+
+                        if (!enteredToken) {
+                            tokenErrorEl.textContent = '⚠️ Token wajib diisi untuk mata pelajaran ini.';
+                            tokenErrorEl.classList.remove('hidden');
+                            tokenInputEl.classList.add('border-red-500');
+                            tokenInputEl.focus();
+                            return;
+                        }
+                        if (enteredToken !== correctToken) {
+                            tokenErrorEl.textContent = '⚠️ Token yang Anda masukkan salah.';
+                            tokenErrorEl.classList.remove('hidden');
+                            tokenInputEl.classList.add('border-red-500');
+                            tokenInputEl.value = '';
+                            tokenInputEl.focus();
+                            return;
+                        }
                     }
                     
                     modalOverlay.remove();
@@ -3369,9 +3439,9 @@
                 document.getElementById('adminContent').innerHTML = `
                     <div class="space-y-4">
                         
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+                        <div id="statCardsSlider" class="flex sm:grid overflow-x-auto sm:overflow-visible snap-x snap-mandatory snap-always sm:snap-none scrollbar-hide sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-3">
                             
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
                                 <div class="flex justify-between items-start mb-1.5">
                                     <div>
                                         <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Total Siswa</h3>
@@ -3399,7 +3469,7 @@
                                 </div>
                             </div>
                             
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
                                 <div class="flex justify-between items-start mb-1.5">
                                     <div>
                                         <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
@@ -3427,7 +3497,7 @@
                                 </div>
                             </div>
                             
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
                                 <div class="flex justify-between items-start mb-1.5">
                                     <div>
                                         <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
@@ -3455,7 +3525,7 @@
                                 </div>
                             </div>
                             
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
                                 <div class="flex justify-between items-start mb-1.5">
                                     <div>
                                         <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata Nilai</h3>
@@ -3484,6 +3554,12 @@
                             </div>
                         </div>
                         
+                        <div class="flex sm:hidden justify-center gap-1.5 -mt-1">
+                            <span class="w-2 h-2 rounded-full bg-[#D4AF37]" data-dot="0"></span>
+                            <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="1"></span>
+                            <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="2"></span>
+                            <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="3"></span>
+                        </div>
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4 overflow-x-auto">
                             <h3 class="font-bold mb-3 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">📚 Soal (Mapel & Kelas)</h3>
                             
@@ -3598,6 +3674,16 @@
                         </div>
                     </div>
                 `;
+                const slider = document.getElementById('statCardsSlider');
+                if (slider) {
+                    slider.addEventListener('scroll', () => {
+                        const index = Math.round(slider.scrollLeft / slider.clientWidth);
+                        document.querySelectorAll('[data-dot]').forEach((dot, i) => {
+                            dot.classList.toggle('bg-gray-300', i !== index);
+                            dot.classList.toggle('bg-[#D4AF37]', i === index);
+                        });
+                    });
+                }
             }           
 
             if (typeof window.currentUserFilter === 'undefined') {
@@ -4441,18 +4527,18 @@
                     `;
 
                     const guruStatsCards = `
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-2 md:p-3 hover:shadow-md transition duration-200">
                                 <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Total Keseluruhan Soal</h3>
+                                    <h3 class="text-gray-600 text-xs font-medium" style="font-family: ${customFont}, ${baseFontStack};">Total Keseluruhan Soal</h3>
                                     <span class="p-2.5 bg-blue-50 rounded-lg">📚</span>
                                 </div>
                                 <p id="statTotalSemua" class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSemuaSoal}</p>
                                 <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Semua Mapel & Kelas</p>
                             </div>
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 hover:shadow-md transition duration-200">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-2 md:p-3 hover:shadow-md transition duration-200">
                                 <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-gray-600 text-sm font-medium" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</h3>
+                                    <h3 class="text-gray-600 text-xs font-medium" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</h3>
                                     <span class="p-2.5 bg-blue-50 rounded-lg">📝</span>
                                 </div>
                                 <p id="statTotalGuru" class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
@@ -4463,7 +4549,7 @@
 
                     targetContainer.innerHTML = `
                         <div id="questionsWrapper" class="${isAdmin ? 'space-y-4' : 'space-y-4 md:space-y-6'}">
-                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="${!isAdmin ? 'sticky-toolbar p-3 md:p-4' : ''} flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Bank Soal</h2>
                                 ${isAdmin ? `<div class="flex flex-col sm:flex-row w-full md:w-auto gap-2">${adminControls}</div>` : guruControls}
                             </div>
@@ -6016,6 +6102,24 @@
                                                         </button>
                                                     </div>
                                                 </div>
+                                                <div class="pt-3 border-t border-dashed border-gray-200">
+                                                    ${item.token_enabled ? `
+                                                        <div class="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                                                            <div>
+                                                                <p class="text-[11px] text-indigo-600 font-semibold">🔑 Token Aktif</p>
+                                                                <p class="font-mono font-bold text-indigo-800 tracking-[0.2em] text-lg">${item.token_code || '-'}</p>
+                                                            </div>
+                                                            <div class="flex gap-2">
+                                                                <button onclick="regenerateToken('${item.subject}')" class="px-2 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition text-xs">🎲 Ganti</button>
+                                                                <button onclick="toggleSubjectToken('${item.subject}', false)" class="px-2 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-xs">Matikan</button>
+                                                            </div>
+                                                        </div>
+                                                    ` : `
+                                                        <button onclick="toggleSubjectToken('${item.subject}', true)" class="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium">
+                                                            🔓 Token Tidak Aktif — Klik untuk Aktifkan
+                                                        </button>
+                                                    `}
+                                                </div>
                                             </div>
                                         `;
                                     }).join('')
@@ -6082,6 +6186,23 @@
                                 <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Aktifkan Sekarang</span>
                             </label>
                         </div>
+
+                        <div class="border-t pt-4">
+                            <label class="flex items-center cursor-pointer mb-2">
+                                <input type="checkbox" id="scheduleTokenEnabled" onchange="toggleAddTokenField()"
+                                    class="w-5 h-5 text-blue-600 rounded">
+                                <span class="ml-3 text-gray-700 font-semibold">🔑 Wajibkan Token Masuk</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mb-2">Jika aktif, siswa harus memasukkan token yang benar untuk mapel ini.</p>
+                            <div id="addTokenFieldWrapper" style="display: none;" class="flex gap-2">
+                                <input type="text" id="scheduleTokenCode" placeholder="Contoh: UJIAN123" maxlength="20"
+                                    class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 uppercase tracking-widest">
+                                <button type="button" onclick="document.getElementById('scheduleTokenCode').value = generateRandomToken();"
+                                    class="px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 text-sm whitespace-nowrap">
+                                    🎲 Acak
+                                </button>
+                            </div>
+                        </div>
                         
                         <div class="flex gap-3">
                             <button type="submit" 
@@ -6130,6 +6251,25 @@
                 document.getElementById('scheduleFormContainer').style.display = 'none';
             }
 
+            function toggleAddTokenField() {
+                const checked = document.getElementById('scheduleTokenEnabled').checked;
+                const wrapper = document.getElementById('addTokenFieldWrapper');
+                wrapper.style.display = checked ? 'flex' : 'none';
+                if (checked && !document.getElementById('scheduleTokenCode').value) {
+                    document.getElementById('scheduleTokenCode').value = generateRandomToken();
+                }
+            }
+
+            // Menghasilkan kode token acak (hindari karakter mirip: 0/O, 1/I)
+            function generateRandomToken(length = 6) {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                let token = '';
+                for (let i = 0; i < length; i++) {
+                    token += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return token;
+            }
+
             async function addSchedule(e) {
                 e.preventDefault();
                 
@@ -6167,6 +6307,17 @@
                     const isActive = document.getElementById('scheduleIsActive').checked;
                     scheduleItem.is_active = isActive;
                 }
+
+                const tokenEnabled = document.getElementById('scheduleTokenEnabled').checked;
+                const tokenCode = (document.getElementById('scheduleTokenCode').value || '').trim().toUpperCase();
+
+                if (tokenEnabled && !tokenCode) {
+                    showToast('Token wajib diisi jika fitur token diaktifkan!', 'error');
+                    return;
+                }
+
+                scheduleItem.token_enabled = tokenEnabled;
+                scheduleItem.token_code = tokenEnabled ? tokenCode : '';
                 
                 examSettings.active_subjects.push(scheduleItem);            
                 
@@ -6218,6 +6369,56 @@
                     } finally {
                         hideLoading();
                     }
+                }
+            }
+
+            async function toggleSubjectToken(subject, newStatus) {
+                const index = examSettings.active_subjects.findIndex(item => item.subject === subject);
+                if (index === -1) return;
+
+                const item = examSettings.active_subjects[index];
+                const oldEnabled = item.token_enabled;
+                const oldCode = item.token_code;
+
+                if (newStatus && !item.token_code) {
+                    item.token_code = generateRandomToken();
+                }
+                item.token_enabled = newStatus;
+
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('settings').update({ jadwal: examSettings.active_subjects }).eq('id', 1);
+                    if (error) throw error;
+                    showToast(`Token untuk ${subject} berhasil ${newStatus ? 'diaktifkan (kode: ' + item.token_code + ')' : 'dinonaktifkan'}!`, 'success');
+                    renderScheduleSection();
+                } catch (error) {
+                    showToast('Gagal mengubah status token!', 'error');
+                    item.token_enabled = oldEnabled;
+                    item.token_code = oldCode;
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            async function regenerateToken(subject) {
+                const index = examSettings.active_subjects.findIndex(item => item.subject === subject);
+                if (index === -1) return;
+
+                const item = examSettings.active_subjects[index];
+                const oldCode = item.token_code;
+                item.token_code = generateRandomToken();
+
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('settings').update({ jadwal: examSettings.active_subjects }).eq('id', 1);
+                    if (error) throw error;
+                    showToast(`Token baru untuk ${subject}: ${item.token_code}`, 'success');
+                    renderScheduleSection();
+                } catch (error) {
+                    showToast('Gagal mengganti token!', 'error');
+                    item.token_code = oldCode;
+                } finally {
+                    hideLoading();
                 }
             }
 
