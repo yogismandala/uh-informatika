@@ -3439,166 +3439,173 @@
                 document.getElementById('adminContent').innerHTML = `
                     <div class="space-y-4">
                         
-                        <div id="statCardsSlider" class="flex sm:grid overflow-x-auto sm:overflow-visible snap-x snap-mandatory snap-always sm:snap-none scrollbar-hide sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-3">
-                            
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
-                                <div class="flex justify-between items-start mb-1.5">
-                                    <div>
-                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Total Siswa</h3>
-                                        <div class="font-bold text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${totalStudents}</div>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="w-full sm:w-1/4 shrink-0 flex flex-col gap-2">
+                            <div id="statCardsSlider" class="flex overflow-x-auto snap-x snap-mandatory snap-always scrollbar-hide gap-3">
+                                    
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center">
+                                    <div class="flex justify-between items-start mb-1.5">
+                                        <div>
+                                            <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Total Siswa</h3>
+                                            <div class="font-bold text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${totalStudents}</div>
+                                        </div>
+                                        <div class="text-xl md:text-2xl opacity-80">👥</div>
                                     </div>
-                                    <div class="text-xl md:text-2xl opacity-80">👥</div>
+                                    <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                            <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount7}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                            <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount8}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                            <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount9}</p>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                        <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Inc. Admin & Guru</span>
+                                        <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalUsers}</span>
+                                    </div>
                                 </div>
-                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
-                                        <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount7}</p>
+                                    
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center">
+                                    <div class="flex justify-between items-start mb-1.5">
+                                        <div>
+                                            <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
+                                            <div class="font-bold text-green-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</div>
+                                        </div>
+                                        <div class="text-xl md:text-2xl opacity-80">📝</div>
                                     </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
-                                        <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount8}</p>
+                                    <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                            <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount7}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                            <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount8}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                            <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount9}</p>
+                                        </div>
                                     </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
-                                        <p class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">${studentCount9}</p>
+                                    <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                        <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Total Seluruh Soal</span>
+                                        <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</span>
                                     </div>
                                 </div>
-                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
-                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Inc. Admin & Guru</span>
-                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalUsers}</span>
+                                    
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center">
+                                    <div class="flex justify-between items-start mb-1.5">
+                                        <div>
+                                            <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
+                                            <div class="font-bold text-purple-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</div>
+                                        </div>
+                                        <div class="text-xl md:text-2xl opacity-80">📊</div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                            <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount7}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                            <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount8}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                            <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount9}</p>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                        <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Total Eksekusi Ujian</span>
+                                        <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</span>
+                                    </div>
+                                </div>
+                                    
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center">
+                                    <div class="flex justify-between items-start mb-1.5">
+                                        <div>
+                                            <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata Nilai</h3>
+                                            <div class="font-bold text-yellow-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${avgScore}</div>
+                                        </div>
+                                        <div class="text-xl md:text-2xl opacity-80">⭐</div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
+                                            <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg7}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
+                                            <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg8}</p>
+                                        </div>
+                                        <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
+                                            <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
+                                            <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg9}</p>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
+                                        <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Skala Nilai 0-100</span>
+                                        <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${avgScore !== '-' ? avgScore : 0}</span>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
-                                <div class="flex justify-between items-start mb-1.5">
-                                    <div>
-                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Bank Soal</h3>
-                                        <div class="font-bold text-green-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</div>
-                                    </div>
-                                    <div class="text-xl md:text-2xl opacity-80">📝</div>
-                                </div>
-                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
-                                        <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount7}</p>
-                                    </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
-                                        <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount8}</p>
-                                    </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
-                                        <p class="font-bold text-green-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${qCount9}</p>
-                                    </div>
-                                </div>
-                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
-                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Total Seluruh Soal</span>
-                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalQuestions}</span>
-                                </div>
+                                
+                                
+                            <div class="flex justify-center gap-1.5 mt-1">
+                                <span class="w-2 h-2 rounded-full bg-[#D4AF37]" data-dot="0"></span>
+                                <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="1"></span>
+                                <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="2"></span>
+                                <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="3"></span>
                             </div>
-                            
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
-                                <div class="flex justify-between items-start mb-1.5">
-                                    <div>
-                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Ujian Selesai</h3>
-                                        <div class="font-bold text-purple-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</div>
-                                    </div>
-                                    <div class="text-xl md:text-2xl opacity-80">📊</div>
-                                </div>
-                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
-                                        <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount7}</p>
-                                    </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
-                                        <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount8}</p>
-                                    </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
-                                        <p class="font-bold text-purple-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${examCount9}</p>
-                                    </div>
-                                </div>
-                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
-                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Total Eksekusi Ujian</span>
-                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${totalExams}</span>
-                                </div>
                             </div>
-                            
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 md:p-2 flex flex-col w-full shrink-0 snap-center sm:w-auto sm:shrink sm:snap-none">
-                                <div class="flex justify-between items-start mb-1.5">
-                                    <div>
-                                        <h3 class="text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider" style="font-family: ${customFont}, ${baseFontStack};">Rata-rata Nilai</h3>
-                                        <div class="font-bold text-yellow-500 text-2xl md:text-3xl mt-0.5" style="font-family: ${customFont}, ${baseFontStack};">${avgScore}</div>
-                                    </div>
-                                    <div class="text-xl md:text-2xl opacity-80">⭐</div>
-                                </div>
-                                <div class="grid grid-cols-3 gap-0.5 md:gap-1 mb-1.5 mt-auto">
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 7</p>
-                                        <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg7}</p>
-                                    </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 8</p>
-                                        <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg8}</p>
-                                    </div>
-                                    <div class="text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                        <p class="text-[10px] md:text-xs text-gray-500 font-bold mb-0.5" style="font-family: ${customFont}, ${baseFontStack};">KLS 9</p>
-                                        <p class="font-bold text-yellow-600 text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">${avg9}</p>
-                                    </div>
-                                </div>
-                                <div class="border-t border-gray-100 pt-1 mt-auto flex justify-between items-center">
-                                    <span class="text-[10px] md:text-xs text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Skala Nilai 0-100</span>
-                                    <span class="font-bold text-[10px] md:text-xs text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">${avgScore !== '-' ? avgScore : 0}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="flex sm:hidden justify-center gap-1.5 -mt-1">
-                            <span class="w-2 h-2 rounded-full bg-[#D4AF37]" data-dot="0"></span>
-                            <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="1"></span>
-                            <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="2"></span>
-                            <span class="w-2 h-2 rounded-full bg-gray-300" data-dot="3"></span>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4 overflow-x-auto">
-                            <h3 class="font-bold mb-3 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">📚 Soal (Mapel & Kelas)</h3>
-                            
-                            <table class="min-w-full text-sm border-collapse">
-                                <thead class="bg-gray-50 text-gray-600">
-                                    <tr>
-                                        <th class="p-2 border-b font-semibold" style="font-family: ${customFont}, ${baseFontStack};">Mata Pelajaran</th>
-                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 7</th>
-                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 8</th>
-                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 9</th>
-                                        <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${Object.keys(questionStats).length > 0 ? Object.keys(questionStats).map(subject => {
-                                        const count7 = questionStats[subject]['7'] || 0;
-                                        const count8 = questionStats[subject]['8'] || 0;
-                                        const count9 = questionStats[subject]['9'] || 0;
-                                        const total = count7 + count8 + count9 + (questionStats[subject]['Lainnya'] || 0);
+                            <div class="w-full sm:w-3/4">
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4 overflow-x-auto h-full">
+                                    <h3 class="font-bold mb-3 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">📚 Soal (Mapel & Kelas)</h3>
                                         
-                                        return `
-                                            <tr class="hover:bg-gray-50 border-b last:border-0 transition-colors">
-                                                <td class="p-2 font-medium text-gray-800" style="font-family: ${customFont}, ${baseFontStack};">${subject}</td>
-                                                <td class="p-2 text-center text-gray-500">${count7 > 0 ? count7 : '-'}</td>
-                                                <td class="p-2 text-center text-gray-500">${count8 > 0 ? count8 : '-'}</td>
-                                                <td class="p-2 text-center text-gray-500">${count9 > 0 ? count9 : '-'}</td>
-                                                <td class="p-2 text-center font-bold text-gray-700">${total}</td>
+                                    <table class="min-w-full text-sm border-collapse">
+                                        <thead class="bg-gray-50 text-gray-600">
+                                            <tr>
+                                                <th class="p-2 border-b font-semibold" style="font-family: ${customFont}, ${baseFontStack};">Mata Pelajaran</th>
+                                                <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 7</th>
+                                                <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 8</th>
+                                                <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Kelas 9</th>
+                                                <th class="p-2 border-b font-semibold text-center" style="font-family: ${customFont}, ${baseFontStack};">Total</th>
                                             </tr>
-                                        `;
-                                    }).join('') : `
-                                        <tr>
-                                            <td colspan="5" class="p-4 text-center text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada data bank soal</td>
-                                        </tr>
-                                    `}
-                                </tbody>
-                            </table>
+                                         </thead>
+                                        <tbody>
+                                            ${Object.keys(questionStats).length > 0 ? Object.keys(questionStats).map(subject => {
+                                                const count7 = questionStats[subject]['7'] || 0;
+                                                const count8 = questionStats[subject]['8'] || 0;
+                                                const count9 = questionStats[subject]['9'] || 0;
+                                                const total = count7 + count8 + count9 + (questionStats[subject]['Lainnya'] || 0);
+                                                    
+                                                    return `
+                                                    <tr class="hover:bg-gray-50 border-b last:border-0 transition-colors">
+                                                        <td class="p-2 font-medium text-gray-800" style="font-family: ${customFont}, ${baseFontStack};">${subject}</td>
+                                                        <td class="p-2 text-center text-gray-500">${count7 > 0 ? count7 : '-'}</td>
+                                                        <td class="p-2 text-center text-gray-500">${count8 > 0 ? count8 : '-'}</td>
+                                                        <td class="p-2 text-center text-gray-500">${count9 > 0 ? count9 : '-'}</td>
+                                                        <td class="p-2 text-center font-bold text-gray-700">${total}</td>
+                                                    </tr>
+                                                `;
+                                            }).join('') : `
+                                                <tr>
+                                                    <td colspan="5" class="p-4 text-center text-gray-400" style="font-family: ${customFont}, ${baseFontStack};">Belum ada data bank soal</td>
+                                                </tr>
+                                            `}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4 mt-4">
                             <h3 class="font-bold mb-1 text-base md:text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">👥 Jumlah Siswa & Status Pengerjaan Ulangan per Kelas</h3>
                             <p class="text-[11px] md:text-xs text-gray-400 mb-3" style="font-family: ${customFont}, ${baseFontStack};">Klik kelas untuk melihat rincian per mapel & per siswa</p>
 
