@@ -10,6 +10,7 @@
         <link rel="icon" type="image/png" href="https://i.ibb.co.com/99y5fNyw/LOGO-11.png">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
         <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
         <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
@@ -3697,6 +3698,91 @@
                 window.currentUserFilter = 'all';
             }
 
+            if (typeof window.currentUserSearch === 'undefined') {
+                window.currentUserSearch = '';
+            }
+
+            // Menangani perubahan input pencarian nama pengguna + menampilkan saran (suggestion)
+            function handleUserSearchInput(value) {
+                window.currentUserSearch = value;
+                renderUsersSection();
+
+                const suggestionBox = document.getElementById('userSearchSuggestions');
+                if (!suggestionBox) return;
+
+                const keyword = value.trim().toLowerCase();
+                if (keyword === '') {
+                    suggestionBox.innerHTML = '';
+                    suggestionBox.style.display = 'none';
+                    return;
+                }
+
+                // Ambil nama unik yang cocok dengan keyword, maksimal 6 saran
+                const matches = allUsers
+                    .filter(u => u.role === 'siswa' && u.name && u.name.toLowerCase().includes(keyword))
+                    .slice(0, 6);
+
+                if (matches.length === 0) {
+                    suggestionBox.innerHTML = `<div class="px-3 py-2 text-xs text-gray-400">Tidak ada nama yang cocok</div>`;
+                    suggestionBox.style.display = 'block';
+                    return;
+                }
+
+                suggestionBox.innerHTML = matches.map(u => {
+                    // Highlight bagian nama yang cocok dengan keyword
+                    const idx = u.name.toLowerCase().indexOf(keyword);
+                    const before = u.name.slice(0, idx);
+                    const match = u.name.slice(idx, idx + keyword.length);
+                    const after = u.name.slice(idx + keyword.length);
+                    return `
+                        <div onclick="selectUserSuggestion('${u.name.replace(/'/g, "\\'")}')" 
+                            class="px-3 py-2 text-xs md:text-sm cursor-pointer hover:bg-blue-50 flex items-center gap-2 border-b border-gray-100 last:border-b-0">
+                            <span>👤</span>
+                            <span>${before}<b class="text-blue-600">${match}</b>${after}</span>
+                            <span class="ml-auto text-[10px] text-gray-400">${u.class || ''}</span>
+                        </div>
+                    `;
+                }).join('');
+                suggestionBox.style.display = 'block';
+            }
+
+            // Ketika salah satu saran diklik, isi kotak pencarian dan filter tabel
+            function selectUserSuggestion(name) {
+                const input = document.getElementById('userSearchInput');
+                if (input) input.value = name;
+                window.currentUserSearch = name;
+
+                const suggestionBox = document.getElementById('userSearchSuggestions');
+                if (suggestionBox) {
+                    suggestionBox.innerHTML = '';
+                    suggestionBox.style.display = 'none';
+                }
+
+                renderUsersSection();
+            }
+
+            // Mengosongkan pencarian
+            function clearUserSearch() {
+                window.currentUserSearch = '';
+                const input = document.getElementById('userSearchInput');
+                if (input) input.value = '';
+                const suggestionBox = document.getElementById('userSearchSuggestions');
+                if (suggestionBox) {
+                    suggestionBox.innerHTML = '';
+                    suggestionBox.style.display = 'none';
+                }
+                renderUsersSection();
+            }
+
+            // Tutup dropdown saran jika klik di luar area pencarian
+            document.addEventListener('click', function(e) {
+                const wrapper = document.getElementById('userSearchWrapper');
+                const suggestionBox = document.getElementById('userSearchSuggestions');
+                if (wrapper && suggestionBox && !wrapper.contains(e.target)) {
+                    suggestionBox.style.display = 'none';
+                }
+            });
+
             // Fungsi Reset Massal yang AMAN tanpa merusak tombol tabel satuan
             async function resetAllOnlineUsers() {
                 const onlineUsers = allUsers.filter(user => user.role === 'siswa' && user.is_login);
@@ -3772,8 +3858,8 @@
                 // Hitung jumlah pengguna yang sedang online
                 const totalOnline = allUsers.filter(user => user.role === 'siswa' && user.is_login).length;
 
-                // Filter data berdasarkan pilihan dropdown
-                const filteredUsers = allUsers.filter(user => {
+                // Filter data berdasarkan pilihan dropdown status
+                let filteredUsers = allUsers.filter(user => {
                     if (window.currentUserFilter === 'online') {
                         return user.role === 'siswa' && user.is_login;
                     } else if (window.currentUserFilter === 'offline') {
@@ -3781,6 +3867,15 @@
                     }
                     return true;
                 });
+
+                // Filter tambahan berdasarkan kata kunci pencarian nama
+                const searchKeyword = (window.currentUserSearch || '').trim().toLowerCase();
+                if (searchKeyword !== '') {
+                    filteredUsers = filteredUsers.filter(user => 
+                        (user.name && user.name.toLowerCase().includes(searchKeyword)) ||
+                        (user.username && user.username.toLowerCase().includes(searchKeyword))
+                    );
+                }
 
                 const container = document.getElementById('adminContent');
                 let tbody = document.getElementById('usersTableBody');
@@ -3798,6 +3893,21 @@
                                 </div>
                                 
                                 <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
+                                    <div id="userSearchWrapper" class="relative w-full sm:w-56">
+                                        <div class="relative">
+                                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                                            <input type="text" id="userSearchInput" 
+                                                value="${window.currentUserSearch || ''}"
+                                                oninput="handleUserSearchInput(this.value)"
+                                                onfocus="handleUserSearchInput(this.value)"
+                                                placeholder="Cari nama siswa..." 
+                                                autocomplete="off"
+                                                class="w-full pl-7 pr-7 py-1.5 bg-white border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                style="font-family: ${customFont}, ${baseFontStack};">
+                                            ${window.currentUserSearch ? `<button onclick="clearUserSearch()" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>` : ''}
+                                        </div>
+                                        <div id="userSearchSuggestions" class="absolute z-20 top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden" style="display:none;"></div>
+                                    </div>
                                     <div class="w-full sm:w-auto flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
                                         <span class="text-[11px] font-semibold px-1.5 text-gray-600 shrink-0">Filter:</span>
                                         <select onchange="window.currentUserFilter = this.value; renderUsersSection();" 
@@ -3924,35 +4034,36 @@
                         <div>
                             <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
                             <input type="text" id="newUsername" required 
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
                             <input type="password" id="newPassword" required 
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Nama Lengkap</label>
                             <input type="text" id="newName" required 
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Role</label>
                             <select id="newRole" required onchange="toggleClassField()"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                                 <option value="">Pilih Role</option>
-                                <option value="admin">Admin</option>
-                                <option value="siswa">Siswa</option>
+                                <option value="admin">admin</option>
+                                <option value="admin">guru</option>
+                                <option value="siswa">siswa</option>
                             </select>
                         </div>
                         <div id="classFieldContainer" style="display: none;">
                             <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Kelas</label>
                             <select id="newClass"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                                 <option value="">Pilih Kelas</option>
                                 ${generateClassOptions()}
@@ -3961,7 +4072,7 @@
                         <div>
                             <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">URL Foto (Opsional)</label>
                             <input type="url" id="newPhoto" 
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                class="w-full px-2 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                         </div>
                         <div class="col-span-2 flex gap-3">
@@ -4520,6 +4631,8 @@
                             <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">📄 Template</button>
                             <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-4 py-2 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-sm whitespace-nowrap shadow-sm">📥 Download</button>
                             <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-sm whitespace-nowrap shadow-sm">📤 Upload</button>
+                            <button onclick="triggerUploadWord()" class="w-full flex justify-center items-center px-4 py-2 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-sm whitespace-nowrap shadow-sm">📝 Upload Word</button>
+                            <input type="file" id="fileUploadSoalWord" accept=".docx" style="display: none;" onchange="handleUploadWord(event)">
                             <button onclick="showAddQuestionForm()" class="w-full flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
                             <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
                             <input type="file" id="fileUploadSoal" accept=".xlsx, .xls" style="display: none;" onchange="handleUploadSoal(event)">
@@ -4527,9 +4640,11 @@
                     `;
 
                     const guruControls = `
-                        <div class="flex w-full sm:w-auto gap-2">
-                            <button onclick="showGuruAddQuestionForm()" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
-                            <button onclick="refreshTarget('questions')" class="flex-1 sm:flex-none flex justify-center items-center px-4 py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
+                        <div class="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
+                            <button onclick="triggerUploadWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📝 Upload Word</button>
+                            <button onclick="showGuruAddQuestionForm()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
+                            <button onclick="refreshTarget('questions')" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
+                            <input type="file" id="fileUploadSoalWord" accept=".docx" style="display: none;" onchange="handleUploadWord(event)">
                         </div>
                     `;
 
@@ -5313,6 +5428,224 @@
                         });
                     }
                 });
+            }
+
+            function triggerUploadWord() {
+                const input = document.getElementById('fileUploadSoalWord');
+                if (input) input.click();
+            }
+
+            // Mengubah "1" / "31" dsb menjadi angka, dan huruf opsi "a"/"A" menjadi index 0-3
+            function letterToIndex(letter) {
+                return String(letter).trim().toUpperCase().charCodeAt(0) - 65;
+            }
+
+            // Parser inti: mengubah teks hasil ekstraksi Word (format ASTS) menjadi array soal
+            // terstruktur. Versi ini teks-saja — gambar TIDAK diproses/diupload sama sekali.
+            function parseWordSoalText(rawText) {
+                const lines = rawText
+                    .split(/\r?\n/)
+                    .map(l => l.trim())
+                    .filter(l => l.length > 0);
+
+                const questionRe = /^(\d+)[\.\)]\s*(.*)$/;      // "1. Teks soal" / "31) Teks soal"
+                const optionRe   = /^([a-dA-D])[\.\)]\s*(.*)$/; // "a. Opsi" / "B) Opsi"
+                const complexHeaderRe = /pilihan\s*ganda\s*kompleks/i;
+                const answerKeyHeaderRe = /^kunci\s*jawaban/i;
+                const skipLineRe = /^(asesmen|tahun pelajaran|mata pelajaran|kelas\s*:|waktu\s*:|tanggal\s*:|pilihlah|pilihalah)/i;
+
+                let mainLines = lines;
+                let keyLines = [];
+                const keyStartIdx = lines.findIndex(l => answerKeyHeaderRe.test(l));
+                if (keyStartIdx !== -1) {
+                    mainLines = lines.slice(0, keyStartIdx);
+                    keyLines = lines.slice(keyStartIdx + 1);
+                }
+
+                const questionsMap = {};
+                let currentQ = null;
+                let currentOptLetter = null;
+                let isComplexSection = false;
+
+                for (const line of mainLines) {
+                    if (complexHeaderRe.test(line)) { isComplexSection = true; currentQ = null; currentOptLetter = null; continue; }
+                    if (skipLineRe.test(line)) { continue; }
+
+                    const qMatch = line.match(questionRe);
+                    const oMatch = line.match(optionRe);
+
+                    if (qMatch) {
+                        const num = parseInt(qMatch[1], 10);
+                        currentQ = { text: qMatch[2] || '', options: [], type: isComplexSection ? 'pilihan_ganda_kompleks' : 'pilihan_ganda' };
+                        questionsMap[num] = currentQ;
+                        currentOptLetter = null;
+                    } else if (oMatch && currentQ) {
+                        currentOptLetter = oMatch[1].toUpperCase();
+                        currentQ.options.push(oMatch[2] || '');
+                    } else if (currentQ) {
+                        if (currentOptLetter !== null && currentQ.options.length > 0) {
+                            currentQ.options[currentQ.options.length - 1] += ' ' + line;
+                        } else {
+                            currentQ.text += ' ' + line;
+                        }
+                    }
+                }
+
+                const answerMap = {};
+                for (const line of keyLines) {
+                    const m = line.match(/^(\d+)[\.\)]\s*([A-Da-d](?:\s*[,;/]\s*[A-Da-d])*)/);
+                    if (m) {
+                        const num = parseInt(m[1], 10);
+                        const letters = m[2].toUpperCase().split(/[,;/]/).map(s => s.trim()).filter(Boolean);
+                        answerMap[num] = letters.join(',');
+                    }
+                }
+
+                const results = [];
+                const skipped = [];
+
+                Object.keys(questionsMap).sort((a, b) => a - b).forEach(numStr => {
+                    const num = parseInt(numStr, 10);
+                    const q = questionsMap[num];
+                    const rawAnswer = answerMap[num];
+
+                    if (!q.text || q.options.length < 2) { skipped.push(num); return; }
+                    if (!rawAnswer) { skipped.push(num); return; }
+
+                    let finalAnswerKey;
+                    if (q.type === 'pilihan_ganda_kompleks') {
+                        finalAnswerKey = rawAnswer;
+                    } else {
+                        const idx = letterToIndex(rawAnswer.split(',')[0]);
+                        if (idx < 0 || idx >= q.options.length) { skipped.push(num); return; }
+                        finalAnswerKey = q.options[idx];
+                    }
+
+                    results.push({
+                        number: num,
+                        question_type: q.type,
+                        question_text: q.text.trim(),
+                        options: q.options.map(o => o.trim()),
+                        answer_key: finalAnswerKey
+                    });
+                });
+
+                return { results, skipped };
+            }
+
+            function handleUploadWord(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (typeof mammoth === 'undefined') {
+                    Swal.fire('Error', 'Library pembaca Word (mammoth.js) gagal dimuat. Periksa koneksi internet Anda.', 'error');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        // extractRawText: hanya ambil teks polos. Gambar TIDAK diproses/diupload.
+                        const { value: rawText } = await mammoth.extractRawText({ arrayBuffer });
+                        const { results, skipped } = parseWordSoalText(rawText);
+
+                        if (results.length === 0) {
+                            Swal.fire(
+                                'Tidak Ada Soal Terbaca',
+                                'Pastikan format dokumen sesuai template ASTS: nomor soal diikuti opsi a/b/c/d, ' +
+                                'dan ada bagian "KUNCI JAWABAN" di akhir dokumen berisi daftar seperti "1. A" atau "31. A, C".',
+                                'error'
+                            );
+                            event.target.value = '';
+                            return;
+                        }
+
+                        const isGuru = currentUser.role === 'GURU' || currentUser.role === 'guru';
+                        const classOptions = (isGuru && currentUser.class)
+                            ? `<option value="${currentUser.class}">Kelas ${currentUser.class}</option>`
+                            : `<option value="7">Kelas 7</option><option value="8">Kelas 8</option><option value="9">Kelas 9</option>`;
+                        const subjectOptions = (isGuru && currentUser.subject)
+                            ? `<option value="${currentUser.subject}">${currentUser.subject}</option>`
+                            : (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}">${s}</option>`).join('');
+
+                        const complexCount = results.filter(r => r.question_type === 'pilihan_ganda_kompleks').length;
+                        const simpleCount = results.length - complexCount;
+
+                        const confirmResult = await Swal.fire({
+                            title: '📝 Konfirmasi Import Soal dari Word',
+                            html: `
+                                <div style="text-align:left; font-size:13px;">
+                                    <p style="margin-bottom:10px;">Terdeteksi <b>${results.length} soal</b> siap diimpor
+                                    (${simpleCount} Pilihan Ganda, ${complexCount} PG Kompleks).
+                                    ${skipped.length ? `<br><span style="color:#b45309;">⚠️ ${skipped.length} nomor dilewati (soal/opsi/kunci tidak lengkap): ${skipped.join(', ')}</span>` : ''}
+                                    </p>
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Jenjang Kelas</label>
+                                    <select id="wordImportClass" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">${classOptions}</select>
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Mata Pelajaran</label>
+                                    <select id="wordImportSubject" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">${subjectOptions}</select>
+                                </div>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: '🚀 Import Sekarang',
+                            cancelButtonText: 'Batal',
+                            preConfirm: () => ({
+                                targetClass: document.getElementById('wordImportClass').value,
+                                targetSubject: document.getElementById('wordImportSubject').value
+                            })
+                        });
+
+                        if (!confirmResult.isConfirmed) { event.target.value = ''; return; }
+
+                        const { targetClass, targetSubject } = confirmResult.value;
+
+                        showLoading();
+                        let successCount = 0;
+                        let errorCount = 0;
+
+                        for (const q of results) {
+                            const payload = {
+                                question_class: String(targetClass),
+                                subject: targetSubject,
+                                question_type: q.question_type,
+                                question_text: q.question_text,
+                                options: JSON.stringify(q.options),
+                                answer_key: q.answer_key
+                            };
+
+                            const { error } = await dbClient.from('questions').insert([payload]);
+                            if (error) {
+                                console.error(`Gagal simpan soal nomor ${q.number}:`, error.message);
+                                errorCount++;
+                            } else {
+                                successCount++;
+                            }
+                        }
+
+                        hideLoading();
+                        Swal.fire(
+                            'Import Selesai',
+                            `Berhasil menambahkan: <b>${successCount} soal</b>.<br>Gagal: <b>${errorCount} soal</b>.` +
+                            (skipped.length ? `<br>Dilewati karena tidak lengkap: <b>${skipped.length} soal</b> (nomor: ${skipped.join(', ')}).` : ''),
+                            successCount > 0 ? 'success' : 'error'
+                        );
+
+                        event.target.value = '';
+
+                        if (typeof loadExamData === 'function') {
+                            await loadExamData(true);
+                            renderQuestionsSection();
+                        }
+
+                    } catch (err) {
+                        console.error('Terjadi kesalahan membaca file Word:', err);
+                        hideLoading();
+                        Swal.fire('Error', 'Gagal memproses file Word. Pastikan file berformat .docx dan sesuai template.', 'error');
+                        event.target.value = '';
+                    }
+                };
+
+                reader.readAsArrayBuffer(file);
             }
 
             // FITUR DOWNLOAD & UPLOAD SOAL EXCEL (URUTAN HEADER BARU & PREMIUM LAYOUT)
