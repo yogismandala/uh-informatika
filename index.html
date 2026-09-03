@@ -564,7 +564,7 @@
                     allQuestions = (questionsData || []).map(q => {
                         return {
                             ...q,
-                            security_token: btoa(q.answer_key || '')
+                            security_token: btoa(unescape(encodeURIComponent(q.answer_key || '')))
                         };
                     });
                     // --- BAGIAN YANG DIUBAH: B & C (OPTIMALISASI FILTER DATABASE) ---
@@ -5440,14 +5440,31 @@
                 return String(letter).trim().toUpperCase().charCodeAt(0) - 65;
             }
 
+            // Mengubah HTML hasil konversi Word (mammoth.convertToHtml) menjadi daftar baris teks.
+            // Setiap paragraf (<p>/<li>) DIPECAH LAGI berdasarkan tag <br> di dalamnya, supaya opsi
+            // yang diketik pakai Shift+Enter (line break dalam 1 paragraf yang sama) tetap terbaca
+            // sebagai baris terpisah, sama seperti opsi yang diketik pakai Enter (paragraf baru).
+            function extractLinesFromWordHtml(html) {
+                const container = document.createElement('div');
+                container.innerHTML = html;
+
+                const lines = [];
+                const nodes = container.querySelectorAll('p, li');
+                nodes.forEach(node => {
+                    const fragments = node.innerHTML.split(/<br\s*\/?>/i);
+                    fragments.forEach(fragHtml => {
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = fragHtml;
+                        const text = (tmp.textContent || '').trim();
+                        if (text) lines.push(text);
+                    });
+                });
+                return lines;
+            }
+
             // Parser inti: mengubah teks hasil ekstraksi Word (format ASTS) menjadi array soal
             // terstruktur. Versi ini teks-saja — gambar TIDAK diproses/diupload sama sekali.
-            function parseWordSoalText(rawText) {
-                const lines = rawText
-                    .split(/\r?\n/)
-                    .map(l => l.trim())
-                    .filter(l => l.length > 0);
-
+            function parseWordSoalText(lines) {
                 const questionRe = /^(\d+)[\.\)]\s*(.*)$/;      // "1. Teks soal" / "31) Teks soal"
                 const optionRe   = /^([a-dA-D])[\.\)]\s*(.*)$/; // "a. Opsi" / "B) Opsi"
                 const complexHeaderRe = /pilihan\s*ganda\s*kompleks/i;
@@ -5547,8 +5564,9 @@
                     try {
                         const arrayBuffer = e.target.result;
                         // extractRawText: hanya ambil teks polos. Gambar TIDAK diproses/diupload.
-                        const { value: rawText } = await mammoth.extractRawText({ arrayBuffer });
-                        const { results, skipped } = parseWordSoalText(rawText);
+                        const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
+                        const lines = extractLinesFromWordHtml(html);
+                        const { results, skipped } = parseWordSoalText(lines);
 
                         if (results.length === 0) {
                             Swal.fire(
