@@ -4781,7 +4781,9 @@
                 // 1. AMBIL DAN DECODE KUNCI JAWABAN
                 let kunciRaw = '';
                 try {
-                    kunciRaw = q.security_token ? atob(q.security_token).trim() : String(q.correct_answer || q.answer_key || '').trim();
+                    kunciRaw = q.security_token 
+                        ? decodeURIComponent(escape(atob(q.security_token))).trim() 
+                        : String(q.correct_answer || q.answer_key || '').trim();
                 } catch (e) { 
                     kunciRaw = String(q.correct_answer || '').trim(); 
                 }
@@ -5790,7 +5792,7 @@
                             const formattedData = finalSoal.map(q => {
                                 let answer = '';
                                 try {
-                                    answer = atob(q.security_token);
+                                    answer = decodeURIComponent(escape(atob(q.security_token)));
                                 } catch(e) {
                                     answer = q.answer_key || '';
                                 }
