@@ -2840,10 +2840,10 @@
 
                     // 1. Dekode dan Parsing Kunci Jawaban
                     try {
-                        const decodedKey = atob(question.security_token || "");
+                        const decodedKey = decodeURIComponent(escape(atob(question.security_token || "")));
                         answerKey = JSON.parse(decodedKey);
                     } catch {
-                        answerKey = atob(question.security_token || "");
+                        answerKey = decodeURIComponent(escape(atob(question.security_token || "")));
                     }
 
                     // 2. Validasi: Jangan hitung jika siswa tidak menjawab
@@ -5529,20 +5529,36 @@
                     if (!q.text || q.options.length < 2) { skipped.push(num); return; }
                     if (!rawAnswer) { skipped.push(num); return; }
 
+                    // Bungkus teks polos hasil ekstraksi Word menjadi HTML <p>...</p>,
+                    // SAMA PERSIS seperti format yang dihasilkan editor Quill saat soal
+                    // dibuat manual. Ini WAJIB supaya question_text/options/answer_key
+                    // yang tersimpan di database konsisten formatnya untuk semua soal,
+                    // baik yang diketik manual maupun hasil import Word/Excel.
+                    const wrapP = (str) => `<p>${String(str).trim()
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')}</p>`;
+
+                    const wrappedOptions = q.options.map(o => wrapP(o.trim()));
+
                     let finalAnswerKey;
                     if (q.type === 'pilihan_ganda_kompleks') {
+                        // Kunci PG Kompleks tetap berupa daftar huruf ("A,C"), bukan teks opsi,
+                        // jadi tidak perlu dibungkus <p> — dicocokkan lewat letterToIndex.
                         finalAnswerKey = rawAnswer;
                     } else {
                         const idx = letterToIndex(rawAnswer.split(',')[0]);
                         if (idx < 0 || idx >= q.options.length) { skipped.push(num); return; }
-                        finalAnswerKey = q.options[idx];
+                        // Ambil dari wrappedOptions (bukan q.options mentah) supaya answer_key
+                        // sama persis (termasuk tag <p>) dengan salah satu opsi yang tersimpan.
+                        finalAnswerKey = wrappedOptions[idx];
                     }
 
                     results.push({
                         number: num,
                         question_type: q.type,
-                        question_text: q.text.trim(),
-                        options: q.options.map(o => o.trim()),
+                        question_text: wrapP(q.text),
+                        options: wrappedOptions,
                         answer_key: finalAnswerKey
                     });
                 });
@@ -5865,6 +5881,15 @@
                         let successCount = 0;
                         let errorCount = 0;
 
+                        // Bungkus teks polos jadi <p>...</p> supaya format sama persis dengan
+                        // soal yang dibuat manual lewat editor Quill (jika teks SUDAH mengandung
+                        // tag HTML, biarkan apa adanya — jangan dibungkus dobel).
+                        const wrapPIfPlain = (str) => {
+                            const s = String(str == null ? '' : str).trim();
+                            if (s === '') return s;
+                            return /<\/?[a-z][\s\S]*>/i.test(s) ? s : `<p>${s}</p>`;
+                        };
+
                         for (const row of rows) {
                             let finalOptions = [];
                             
@@ -5878,15 +5903,24 @@
                                     finalOptions = String(row['options']).split(',').map(o => o.trim());
                                 }
                             }
+                            finalOptions = finalOptions.map(o => wrapPIfPlain(o));
+
+                            // Kunci jawaban: huruf tunggal/daftar huruf (A / A,C) dibiarkan huruf besar
+                            // seperti semula, tapi kunci berupa TEKS OPSI PENUH (dari file backup hasil
+                            // export) tidak boleh di-uppercase, dan harus dibungkus <p> jika masih polos —
+                            // supaya sama persis dengan salah satu elemen options di atas.
+                            const rawKey = String(row['answer_key'] || '').trim();
+                            const isLetterKey = /^[A-Da-d](\s*[,;/]\s*[A-Da-d])*$/.test(rawKey);
+                            const finalAnswerKey = isLetterKey ? rawKey.toUpperCase() : wrapPIfPlain(rawKey);
 
                             const payload = {
                                 question_class: String(row['question_class'] || ''),
                                 subject: row['subject'],
                                 question_type: row['question_type'] || 'pilihan_ganda',
-                                question_text: row['question_text'],
+                                question_text: wrapPIfPlain(row['question_text']),
                                 question_image: row['question_image'] || null, // Mendukung upload URL gambar jika ada
                                 options: JSON.stringify(finalOptions), 
-                                answer_key: String(row['answer_key'] || '').toUpperCase()
+                                answer_key: finalAnswerKey
                             };
 
                             // Validasi data baris minimal harus punya mata pelajaran dan teks soal
