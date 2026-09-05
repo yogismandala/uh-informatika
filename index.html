@@ -274,6 +274,75 @@
             .quill-content-render ol { list-style-type: decimal; }
             .quill-content-render li { margin-bottom: 0.25em; }
 
+            /* === Penyelarasan tampilan soal siswa dengan hasil format di editor Quill === */
+            /* Bold, italic, underline, strike sudah otomatis mengikuti tag HTML bawaan */
+            /* (<strong>, <em>, <u>, <s>) sehingga tidak perlu CSS tambahan.             */
+
+            /* Perataan teks: rata kiri/tengah/kanan/justify */
+            .quill-content-render .ql-align-left { text-align: left; }
+            .quill-content-render .ql-align-center { text-align: center; }
+            .quill-content-render .ql-align-right { text-align: right; }
+            .quill-content-render .ql-align-justify { text-align: justify; }
+
+            /* Indentasi paragraf (tombol increase/decrease indent di editor) */
+            .quill-content-render .ql-indent-1 { padding-left: 3em; }
+            .quill-content-render .ql-indent-2 { padding-left: 6em; }
+            .quill-content-render .ql-indent-3 { padding-left: 9em; }
+            .quill-content-render .ql-indent-4 { padding-left: 12em; }
+            .quill-content-render .ql-indent-5 { padding-left: 15em; }
+            .quill-content-render .ql-indent-6 { padding-left: 18em; }
+            .quill-content-render .ql-indent-7 { padding-left: 21em; }
+            .quill-content-render .ql-indent-8 { padding-left: 24em; }
+            .quill-content-render li.ql-indent-1 { padding-left: 4.5em; }
+            .quill-content-render li.ql-indent-2 { padding-left: 7.5em; }
+            .quill-content-render li.ql-indent-3 { padding-left: 10.5em; }
+
+            /* Arah teks kanan-ke-kiri (jika pernah dipakai) */
+            .quill-content-render .ql-direction-rtl { direction: rtl; text-align: inherit; }
+
+            /* Superscript / subscript */
+            .quill-content-render sub { vertical-align: sub; font-size: smaller; }
+            .quill-content-render sup { vertical-align: super; font-size: smaller; }
+
+            /* Blockquote dan kode, jika digunakan saat menyusun soal */
+            .quill-content-render blockquote {
+                border-left: 4px solid #ccc;
+                margin: 0.5em 0;
+                padding-left: 1em;
+                color: #555;
+            }
+            .quill-content-render pre.ql-syntax,
+            .quill-content-render code {
+                background-color: #f4f4f4;
+                border-radius: 4px;
+                padding: 0.2em 0.4em;
+                font-family: monospace;
+                overflow-x: auto;
+            }
+
+            /* Gambar/tabel yang disisipkan lewat editor agar tetap rapi & responsif */
+            .quill-content-render img {
+                max-width: 100%;
+                height: auto;
+            }
+            .quill-content-render table {
+                border-collapse: collapse;
+                max-width: 100%;
+            }
+            .quill-content-render table td,
+            .quill-content-render table th {
+                border: 1px solid #ccc;
+                padding: 4px 8px;
+            }
+
+            /* Pastikan paragraf hasil editor tidak diberi jarak berlebihan saat ditampilkan */
+            .quill-content-render p {
+                margin: 0 0 0.5em 0;
+            }
+            .quill-content-render p:last-child {
+                margin-bottom: 0;
+            }
+
             .sticky-toolbar {
             position: sticky;
             top: -1px;
@@ -5023,7 +5092,7 @@
                         </div>
                     `,
                     didOpen: () => {
-                        const configMini = { modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, theme: 'snow' };
+                        const configMini = { modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, theme: 'snow' };
 
                         window.editEditors = {
                             question: new Quill('#edit-q-text', configMini),
@@ -5304,7 +5373,7 @@
                     `,
                     didOpen: () => {
                         const config = { 
-                            modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
+                            modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
                             theme: 'snow', 
                             placeholder: 'Ketik di sini...' 
                         };
@@ -5442,30 +5511,80 @@
                 return String(letter).trim().toUpperCase().charCodeAt(0) - 65;
             }
 
-            // Mengubah HTML hasil konversi Word (mammoth.convertToHtml) menjadi daftar baris teks.
+            // Menghapus N karakter pertama dari sebuah elemen DOM TANPA merusak tag di
+            // dalamnya (bold/italic tetap utuh). Dipakai untuk membuang prefix nomor soal
+            // ("1. ") atau huruf opsi ("a. ") dari HTML, bukan dari teks polos, supaya
+            // format yang menempel pada isi soal/opsi tidak ikut hilang.
+            function stripLeadingChars(el, count) {
+                if (count <= 0) return;
+                const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                let remaining = count;
+                let node;
+                while (remaining > 0 && (node = walker.nextNode())) {
+                    const len = node.textContent.length;
+                    if (len <= remaining) {
+                        node.textContent = '';
+                        remaining -= len;
+                    } else {
+                        node.textContent = node.textContent.slice(remaining);
+                        remaining = 0;
+                    }
+                }
+            }
+
+            // Membuang spasi/enter kosong di awal & akhir sebuah elemen DOM (tanpa
+            // menyentuh teks di tengah), supaya panjang teks match persis dengan hasil
+            // .textContent.trim() saat dipakai untuk menghitung prefix di stripLeadingChars.
+            function trimDomWhitespace(el) {
+                let walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                let node;
+                while ((node = walker.nextNode())) {
+                    const stripped = node.textContent.replace(/^[\s\u00A0]+/, '');
+                    if (stripped !== node.textContent) node.textContent = stripped;
+                    if (node.textContent.length > 0) break;
+                }
+                const textNodes = [];
+                walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                while ((node = walker.nextNode())) textNodes.push(node);
+                for (let i = textNodes.length - 1; i >= 0; i--) {
+                    const n = textNodes[i];
+                    const stripped = n.textContent.replace(/[\s\u00A0]+$/, '');
+                    if (stripped !== n.textContent) n.textContent = stripped;
+                    if (n.textContent.length > 0) break;
+                }
+            }
+
+            // Mengubah HTML hasil konversi Word (mammoth.convertToHtml) menjadi daftar baris.
             // Setiap paragraf (<p>/<li>) DIPECAH LAGI berdasarkan tag <br> di dalamnya, supaya opsi
             // yang diketik pakai Shift+Enter (line break dalam 1 paragraf yang sama) tetap terbaca
             // sebagai baris terpisah, sama seperti opsi yang diketik pakai Enter (paragraf baru).
+            //
+            // Setiap baris menyimpan DUA hal:
+            // `text` = teks polos (dipakai untuk mendeteksi pola "1. ", "a. ", dst via regex)
+            // `node` = elemen <div> berisi HTML asli baris tsb — bold (<strong>) & italic (<em>)
+            //          tetap ada di sini, karena mammoth memang mengonversi keduanya secara default.
             function extractLinesFromWordHtml(html) {
                 const container = document.createElement('div');
                 container.innerHTML = html;
 
                 const lines = [];
-                const nodes = container.querySelectorAll('p, li');
-                nodes.forEach(node => {
-                    const fragments = node.innerHTML.split(/<br\s*\/?>/i);
+                const blockNodes = container.querySelectorAll('p, li');
+                blockNodes.forEach(blockNode => {
+                    const fragments = blockNode.innerHTML.split(/<br\s*\/?>/i);
                     fragments.forEach(fragHtml => {
                         const tmp = document.createElement('div');
                         tmp.innerHTML = fragHtml;
+                        trimDomWhitespace(tmp);
                         const text = (tmp.textContent || '').trim();
-                        if (text) lines.push(text);
+                        if (text) lines.push({ text, node: tmp });
                     });
                 });
                 return lines;
             }
 
-            // Parser inti: mengubah teks hasil ekstraksi Word (format ASTS) menjadi array soal
-            // terstruktur. Versi ini teks-saja — gambar TIDAK diproses/diupload sama sekali.
+            // Parser inti: mengubah hasil ekstraksi Word (format ASTS) menjadi array soal
+            // terstruktur. Bold & italic pada isi soal & opsi tetap dipertahankan
+            // (gambar tetap TIDAK diproses/diupload sama sekali, sesuai desain semula).
             function parseWordSoalText(lines) {
                 const questionRe = /^(\d+)[\.\)]\s*(.*)$/;      // "1. Teks soal" / "31) Teks soal"
                 const optionRe   = /^([a-dA-D])[\.\)]\s*(.*)$/; // "a. Opsi" / "B) Opsi"
@@ -5475,11 +5594,15 @@
 
                 let mainLines = lines;
                 let keyLines = [];
-                const keyStartIdx = lines.findIndex(l => answerKeyHeaderRe.test(l));
+                const keyStartIdx = lines.findIndex(l => answerKeyHeaderRe.test(l.text));
                 if (keyStartIdx !== -1) {
                     mainLines = lines.slice(0, keyStartIdx);
                     keyLines = lines.slice(keyStartIdx + 1);
                 }
+
+                // Bungkus 1 baris HTML (yang sudah mengandung <strong>/<em>) jadi <p>...</p>,
+                // SAMA PERSIS seperti format yang dihasilkan editor Quill saat soal dibuat manual.
+                const wrapLineHtml = (innerHtml) => `<p>${innerHtml}</p>`;
 
                 const questionsMap = {};
                 let currentQ = null;
@@ -5487,32 +5610,41 @@
                 let isComplexSection = false;
 
                 for (const line of mainLines) {
-                    if (complexHeaderRe.test(line)) { isComplexSection = true; currentQ = null; currentOptLetter = null; continue; }
-                    if (skipLineRe.test(line)) { continue; }
+                    const plain = line.text;
+                    if (complexHeaderRe.test(plain)) { isComplexSection = true; currentQ = null; currentOptLetter = null; continue; }
+                    if (skipLineRe.test(plain)) { continue; }
 
-                    const qMatch = line.match(questionRe);
-                    const oMatch = line.match(optionRe);
+                    const qMatch = plain.match(questionRe);
+                    const oMatch = plain.match(optionRe);
 
                     if (qMatch) {
                         const num = parseInt(qMatch[1], 10);
-                        currentQ = { text: qMatch[2] || '', options: [], type: isComplexSection ? 'pilihan_ganda_kompleks' : 'pilihan_ganda' };
+                        // Buang prefix "1. " dari HTML (bukan dari teks polos) supaya
+                        // bold/italic pada isi soal tetap utuh setelah nomor dibuang.
+                        stripLeadingChars(line.node, plain.length - qMatch[2].length);
+                        currentQ = {
+                            htmlParts: [line.node.innerHTML],
+                            options: [],
+                            type: isComplexSection ? 'pilihan_ganda_kompleks' : 'pilihan_ganda'
+                        };
                         questionsMap[num] = currentQ;
                         currentOptLetter = null;
                     } else if (oMatch && currentQ) {
                         currentOptLetter = oMatch[1].toUpperCase();
-                        currentQ.options.push(oMatch[2] || '');
+                        stripLeadingChars(line.node, plain.length - oMatch[2].length);
+                        currentQ.options.push({ htmlParts: [line.node.innerHTML] });
                     } else if (currentQ) {
                         if (currentOptLetter !== null && currentQ.options.length > 0) {
-                            currentQ.options[currentQ.options.length - 1] += ' ' + line;
+                            currentQ.options[currentQ.options.length - 1].htmlParts.push(line.node.innerHTML);
                         } else {
-                            currentQ.text += ' ' + line;
+                            currentQ.htmlParts.push(line.node.innerHTML);
                         }
                     }
                 }
 
                 const answerMap = {};
                 for (const line of keyLines) {
-                    const m = line.match(/^(\d+)[\.\)]\s*([A-Da-d](?:\s*[,;/]\s*[A-Da-d])*)/);
+                    const m = line.text.match(/^(\d+)[\.\)]\s*([A-Da-d](?:\s*[,;/]\s*[A-Da-d])*)/);
                     if (m) {
                         const num = parseInt(m[1], 10);
                         const letters = m[2].toUpperCase().split(/[,;/]/).map(s => s.trim()).filter(Boolean);
@@ -5528,20 +5660,18 @@
                     const q = questionsMap[num];
                     const rawAnswer = answerMap[num];
 
-                    if (!q.text || q.options.length < 2) { skipped.push(num); return; }
+                    // Cek isi soal benar-benar tidak kosong (setelah tag HTML dibuang untuk pengecekan)
+                    const checkDiv = document.createElement('div');
+                    checkDiv.innerHTML = q.htmlParts.join(' ');
+                    const isTextEmpty = !(checkDiv.textContent || '').trim();
+
+                    if (isTextEmpty || q.options.length < 2) { skipped.push(num); return; }
                     if (!rawAnswer) { skipped.push(num); return; }
 
-                    // Bungkus teks polos hasil ekstraksi Word menjadi HTML <p>...</p>,
-                    // SAMA PERSIS seperti format yang dihasilkan editor Quill saat soal
-                    // dibuat manual. Ini WAJIB supaya question_text/options/answer_key
-                    // yang tersimpan di database konsisten formatnya untuk semua soal,
-                    // baik yang diketik manual maupun hasil import Word/Excel.
-                    const wrapP = (str) => `<p>${String(str).trim()
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')}</p>`;
-
-                    const wrappedOptions = q.options.map(o => wrapP(o.trim()));
+                    // Gabungkan multi-baris (soal/opsi yang lanjut di baris berikutnya) dengan
+                    // <br>, supaya bold/italic dari tiap baris asal tetap terjaga.
+                    const wrappedQuestionText = wrapLineHtml(q.htmlParts.join('<br>'));
+                    const wrappedOptions = q.options.map(o => wrapLineHtml(o.htmlParts.join('<br>')));
 
                     let finalAnswerKey;
                     if (q.type === 'pilihan_ganda_kompleks') {
@@ -5551,7 +5681,7 @@
                     } else {
                         const idx = letterToIndex(rawAnswer.split(',')[0]);
                         if (idx < 0 || idx >= q.options.length) { skipped.push(num); return; }
-                        // Ambil dari wrappedOptions (bukan q.options mentah) supaya answer_key
+                        // Ambil dari wrappedOptions (bukan opsi mentah) supaya answer_key
                         // sama persis (termasuk tag <p>) dengan salah satu opsi yang tersimpan.
                         finalAnswerKey = wrappedOptions[idx];
                     }
@@ -5559,7 +5689,7 @@
                     results.push({
                         number: num,
                         question_type: q.type,
-                        question_text: wrapP(q.text),
+                        question_text: wrappedQuestionText,
                         options: wrappedOptions,
                         answer_key: finalAnswerKey
                     });
@@ -6073,7 +6203,7 @@
                     `,
                     didOpen: () => {
                         const config = { 
-                            modules: { toolbar: [['bold', 'italic', 'underline'], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
+                            modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
                             theme: 'snow', 
                             placeholder: 'Ketik di sini...' 
                         };
