@@ -15,6 +15,8 @@
         <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         
@@ -49,6 +51,22 @@
                 border-radius: 5px 5px 0 0;
                 padding: 2px !important;
             }
+
+            /* Ikon tombol Akar / Pangkat / Pecahan di toolbar Quill (soal & opsi jawaban) */
+            .ql-toolbar.ql-snow button.ql-sqrt,
+            .ql-toolbar.ql-snow button.ql-power,
+            .ql-toolbar.ql-snow button.ql-fraction {
+                width: auto;
+                padding: 3px 6px !important;
+                font-weight: bold;
+                font-family: 'Cambria Math', serif;
+            }
+            .ql-toolbar.ql-snow button.ql-sqrt::before { content: "√"; font-size: 16px; }
+            .ql-toolbar.ql-snow button.ql-power::before { content: "xⁿ"; font-size: 13px; }
+            .ql-toolbar.ql-snow button.ql-fraction::before { content: "a/b"; font-size: 11px; }
+            .ql-toolbar.ql-snow button.ql-sqrt:hover,
+            .ql-toolbar.ql-snow button.ql-power:hover,
+            .ql-toolbar.ql-snow button.ql-fraction:hover { color: #06c; }
 
             /* Efek Glassmorphism untuk Form Login */
             .glass-panel {
@@ -2374,6 +2392,7 @@
                 }
                 
                 container.innerHTML = questionHTML;
+                renderMathIn(container); // render rumus $...$ jadi tampilan matematika (KaTeX)
             }
 
             function getQuestionTypeLabel(type) {
@@ -4965,7 +4984,8 @@
                     width: '550px',
                     confirmButtonText: 'Tutup',
                     confirmButtonColor: '#2563eb',
-                    heightAuto: false
+                    heightAuto: false,
+                    didOpen: () => renderMathIn(Swal.getHtmlContainer())
                 });
             }
 
@@ -5092,7 +5112,7 @@
                         </div>
                     `,
                     didOpen: () => {
-                        const configMini = { modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, theme: 'snow' };
+                        const configMini = { modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']], handlers: mathToolbarHandlers } }, theme: 'snow' };
 
                         window.editEditors = {
                             question: new Quill('#edit-q-text', configMini),
@@ -5373,7 +5393,7 @@
                     `,
                     didOpen: () => {
                         const config = { 
-                            modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
+                            modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']], handlers: mathToolbarHandlers } }, 
                             theme: 'snow', 
                             placeholder: 'Ketik di sini...' 
                         };
@@ -5554,6 +5574,209 @@
                 }
             }
 
+            // TOMBOL RUMUS DI TOOLBAR QUILL: Akar, Pangkat, Pecahan.
+            function insertMathTemplate(quillInstance, buildLatex) {
+                const range = quillInstance.getSelection(true) || { index: quillInstance.getLength(), length: 0 };
+                const selectedText = range.length > 0 ? quillInstance.getText(range.index, range.length) : '';
+                const { latex, cursorOffset } = buildLatex(selectedText);
+                quillInstance.deleteText(range.index, range.length, 'user');
+                quillInstance.insertText(range.index, latex, 'user');
+                quillInstance.setSelection(range.index + cursorOffset, 0, 'user');
+            }
+
+            const mathToolbarHandlers = {
+                sqrt: function () {
+                    insertMathTemplate(this.quill, (sel) => {
+                        const latex = sel ? `$\\sqrt{${sel}}$` : `$\\sqrt{}$`;
+                        return { latex, cursorOffset: sel ? latex.length : latex.length - 2 };
+                    });
+                },
+                power: function () {
+                    const current = this.quill.getFormat();
+                    this.quill.format('script', current.script === 'super' ? false : 'super');
+                },
+                fraction: function () {
+                    insertMathTemplate(this.quill, (sel) => {
+                        const latex = sel ? `$\\frac{${sel}}{}$` : `$\\frac{}{}$`;
+                        return { latex, cursorOffset: latex.length - 2 };
+                    });
+                }
+            };
+
+            // ==========================================================================
+            // KONVERSI RUMUS WORD (OMML) -> LATEX, supaya rumus di soal Word ikut terbaca.
+            // Dipakai sebagai pengganti mammoth khusus untuk file .docx (mammoth tidak
+            // mendukung objek rumus bawaan Word / OMML, sehingga rumus akan hilang kalau
+            // hanya lewat mammoth). Hasil akhirnya tetap berupa string HTML <p>...</p>
+            // supaya bisa langsung dipakai oleh extractLinesFromWordHtml() yang sudah ada.
+            // ==========================================================================
+
+            // Ambil teks polos dari sekumpulan node OMML (dipakai sbg "isi" pangkat/akar/pecahan)
+            function ommlChildrenToLatex(node) {
+                let out = '';
+                for (const child of Array.from(node.children)) {
+                    out += ommlNodeToLatex(child);
+                }
+                return out;
+            }
+
+            // Ambil HANYA anak langsung dengan tagName tertentu (bukan cari ke semua turunan),
+            // supaya struktur bersarang (pangkat di dalam pangkat, akar di dalam akar, dst)
+            // tidak salah ambil elemen dari level yang lebih dalam.
+            function directChild(node, tagName) {
+                for (const child of Array.from(node.children)) {
+                    if (child.tagName === tagName) return child;
+                }
+                return null;
+            }
+
+            function ommlNodeToLatex(node) {
+                const tag = node.tagName;
+                switch (tag) {
+                    case 'm:r': {
+                        let t = '';
+                        for (const c of Array.from(node.children)) {
+                            if (c.tagName === 'm:t') t += c.textContent;
+                        }
+                        // Normalisasi simbol supaya aman dirender KaTeX
+                        return t
+                            .replace(/×/g, ' \\times ')
+                            .replace(/÷/g, ' \\div ')
+                            .replace(/−/g, '-');
+                    }
+                    case 'm:sSup': {
+                        const e = directChild(node, 'm:e');
+                        const sup = directChild(node, 'm:sup');
+                        return `{${e ? ommlChildrenToLatex(e) : ''}}^{${sup ? ommlChildrenToLatex(sup) : ''}}`;
+                    }
+                    case 'm:sSub': {
+                        const e = directChild(node, 'm:e');
+                        const sub = directChild(node, 'm:sub');
+                        return `{${e ? ommlChildrenToLatex(e) : ''}}_{${sub ? ommlChildrenToLatex(sub) : ''}}`;
+                    }
+                    case 'm:f': {
+                        const num = directChild(node, 'm:num');
+                        const den = directChild(node, 'm:den');
+                        return `\\frac{${num ? ommlChildrenToLatex(num) : ''}}{${den ? ommlChildrenToLatex(den) : ''}}`;
+                    }
+                    case 'm:rad': {
+                        const e = directChild(node, 'm:e');
+                        const degHideEl = directChild(node, 'm:degHide');
+                        const degEl = directChild(node, 'm:deg');
+                        const degText = degEl ? ommlChildrenToLatex(degEl).trim() : '';
+                        const isHidden = !degText || (degHideEl && degHideEl.getAttribute('m:val') !== '0');
+                        const inner = e ? ommlChildrenToLatex(e) : '';
+                        return isHidden ? `\\sqrt{${inner}}` : `\\sqrt[${degText}]{${inner}}`;
+                    }
+                    case 'm:d': {
+                        // Objek "Bracket" Word: karakter kurung disimpan di atribut m:val, bukan teks.
+                        const dPr = directChild(node, 'm:dPr');
+                        let begChr = '(', endChr = ')';
+                        if (dPr) {
+                            const begEl = directChild(dPr, 'm:begChr');
+                            const endEl = directChild(dPr, 'm:endChr');
+                            if (begEl) begChr = begEl.getAttribute('m:val') ?? begChr;
+                            if (endEl) endChr = endEl.getAttribute('m:val') ?? endChr;
+                        }
+                        const safeDelim = (c) => (c === '' ? '.' : (c === '{' || c === '}' ? '\\' + c : c));
+                        const parts = Array.from(node.children)
+                            .filter(c => c.tagName === 'm:e')
+                            .map(e => ommlChildrenToLatex(e));
+                        return `\\left${safeDelim(begChr)}${parts.join(',\\ ')}\\right${safeDelim(endChr)}`;
+                    }
+                    default:
+                        // elemen pembungkus yang tidak dikenal (mis. m:e langsung) -> masuk ke isinya
+                        return ommlChildrenToLatex(node);
+                }
+            }
+
+            // Ubah 1 elemen <m:oMath> lengkap jadi teks "$...$" siap dipakai KaTeX
+            function ommlToLatexString(oMathNode) {
+                const latex = ommlChildrenToLatex(oMathNode).trim();
+                return latex ? ` $${latex}$ ` : '';
+            }
+
+            function escapeHtmlText(s) {
+                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            // Ubah 1 run teks biasa (<w:r>) jadi HTML, pertahankan bold/italic, dan ubah
+            // <w:br/> jadi <br> supaya baris tetap terpisah sama seperti sebelumnya.
+            function wordRunToHtml(rNode) {
+                const rPr = rNode.getElementsByTagName('w:rPr')[0];
+                let bold = false, italic = false;
+                if (rPr) {
+                    const bEl = rPr.getElementsByTagName('w:b')[0];
+                    const iEl = rPr.getElementsByTagName('w:i')[0];
+                    bold = !!bEl && bEl.getAttribute('w:val') !== '0' && bEl.getAttribute('w:val') !== 'false';
+                    italic = !!iEl && iEl.getAttribute('w:val') !== '0' && iEl.getAttribute('w:val') !== 'false';
+                }
+                let html = '';
+                for (const child of Array.from(rNode.children)) {
+                    if (child.tagName === 'w:t') html += escapeHtmlText(child.textContent || '');
+                    else if (child.tagName === 'w:tab') html += '&nbsp;&nbsp;&nbsp;&nbsp;';
+                    else if (child.tagName === 'w:br') html += '<br>';
+                }
+                if (!html) return '';
+                if (bold) html = `<strong>${html}</strong>`;
+                if (italic) html = `<em>${html}</em>`;
+                return html;
+            }
+
+            // Ubah 1 paragraf (<w:p>) jadi HTML: gabungan teks biasa + rumus ($...$),
+            // gambar (<w:drawing>/<w:pict>) sengaja DILEWATI, sesuai desain semula.
+            function wordParagraphToHtml(pNode) {
+                let html = '';
+                for (const child of Array.from(pNode.children)) {
+                    if (child.tagName === 'w:r') {
+                        html += wordRunToHtml(child);
+                    } else if (child.tagName === 'w:hyperlink') {
+                        for (const r of Array.from(child.getElementsByTagName('w:r'))) html += wordRunToHtml(r);
+                    } else if (child.tagName === 'm:oMath') {
+                        html += ommlToLatexString(child);
+                    } else if (child.tagName === 'm:oMathPara') {
+                        for (const om of Array.from(child.getElementsByTagName('m:oMath'))) {
+                            html += ommlToLatexString(om);
+                        }
+                    }
+                }
+                return html;
+            }
+
+            // Baca file .docx sebagai ZIP (JSZip) -> ambil word/document.xml -> parse XML
+            // -> hasilkan string HTML "<p>...</p>" per paragraf (format yang sama dengan
+            // keluaran mammoth.convertToHtml), lengkap dengan rumus dalam bentuk $LaTeX$.
+            async function convertDocxToHtmlWithEquations(arrayBuffer) {
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                const xmlFile = zip.file('word/document.xml');
+                if (!xmlFile) throw new Error('word/document.xml tidak ditemukan di dalam file .docx');
+                const xmlText = await xmlFile.async('text');
+                const xmlDoc = new DOMParser().parseFromString(xmlText, 'application/xml');
+                if (xmlDoc.getElementsByTagName('parsererror').length) {
+                    throw new Error('Gagal parse XML dari file .docx');
+                }
+                const paragraphs = Array.from(xmlDoc.getElementsByTagName('w:p'));
+                const htmlParts = paragraphs.map(p => `<p>${wordParagraphToHtml(p)}</p>`);
+                return htmlParts.join('');
+            }
+
+            // Panggil KaTeX auto-render pada sebuah elemen supaya teks "$...$" di dalamnya
+            // benar-benar tampil sebagai rumus. Aman dipanggil berkali-kali / elemen kosong.
+            function renderMathIn(el) {
+                if (!el || typeof renderMathInElement !== 'function') return;
+                try {
+                    renderMathInElement(el, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '$', right: '$', display: false }
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.warn('Gagal render rumus KaTeX:', e);
+                }
+            }
+
             // Mengubah HTML hasil konversi Word (mammoth.convertToHtml) menjadi daftar baris.
             // Setiap paragraf (<p>/<li>) DIPECAH LAGI berdasarkan tag <br> di dalamnya, supaya opsi
             // yang diketik pakai Shift+Enter (line break dalam 1 paragraf yang sama) tetap terbaca
@@ -5702,8 +5925,8 @@
                 const file = event.target.files[0];
                 if (!file) return;
 
-                if (typeof mammoth === 'undefined') {
-                    Swal.fire('Error', 'Library pembaca Word (mammoth.js) gagal dimuat. Periksa koneksi internet Anda.', 'error');
+                if (typeof JSZip === 'undefined' && typeof mammoth === 'undefined') {
+                    Swal.fire('Error', 'Library pembaca Word gagal dimuat. Periksa koneksi internet Anda.', 'error');
                     return;
                 }
 
@@ -5711,8 +5934,17 @@
                 reader.onload = async function(e) {
                     try {
                         const arrayBuffer = e.target.result;
-                        // extractRawText: hanya ambil teks polos. Gambar TIDAK diproses/diupload.
-                        const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
+                        let html;
+                        try {
+                            // Jalur utama: parser sendiri berbasis JSZip + XML, supaya rumus
+                            // (OMML) ikut terbaca menjadi $LaTeX$, bukan hilang seperti di mammoth.
+                            html = await convertDocxToHtmlWithEquations(arrayBuffer);
+                        } catch (parseErr) {
+                            console.warn('Parser rumus gagal, fallback ke mammoth (rumus TIDAK akan terbaca):', parseErr);
+                            if (typeof mammoth === 'undefined') throw parseErr;
+                            const result = await mammoth.convertToHtml({ arrayBuffer });
+                            html = result.value;
+                        }
                         const lines = extractLinesFromWordHtml(html);
                         const { results, skipped } = parseWordSoalText(lines);
 
@@ -6203,7 +6435,7 @@
                     `,
                     didOpen: () => {
                         const config = { 
-                            modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }, 
+                            modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']], handlers: mathToolbarHandlers } }, 
                             theme: 'snow', 
                             placeholder: 'Ketik di sini...' 
                         };
