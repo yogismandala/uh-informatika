@@ -2443,6 +2443,8 @@
                 } else if (typeof currentAnswer === 'string' && currentAnswer.trim() !== "") {
                     selectedOptions = currentAnswer.split(',');
                 }
+
+                const validOptions = question.options.filter(opt => opt && opt.trim() !== "");
                 
                 return `
                     <div class="space-y-3">
@@ -2453,14 +2455,17 @@
                         </div>
 
                         <div class="grid grid-cols-1 gap-3">
-                            ${question.options.filter(opt => opt && opt.trim() !== "").map((option, idx) => {
+                            ${validOptions.map((option, idx) => {
+                                // UBAH: cek berdasarkan teks TETAP dilakukan untuk menentukan status "checked",
+                                // tapi value checkbox sekarang berupa INDEX, bukan teks opsi.
                                 const isChecked = selectedOptions.includes(option);
                                 return `
                                     <label class="group flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 
                                         ${isChecked ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}">
                                         
                                         <div class="flex items-center justify-center flex-shrink-0">
-                                            <input type="checkbox" value="${option.replace(/"/g, '&quot;')}" 
+                                            <input type="checkbox" value="${idx}" 
+                                                data-question-index="${currentQuestionIndex}"
                                                 ${isChecked ? 'checked' : ''}
                                                 onchange="saveComplexAnswer(this)"
                                                 class="w-6 h-6 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
@@ -2585,10 +2590,15 @@
             }
 
             function saveComplexAnswer(checkbox) {
-                const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-                const selected = Array.from(checkboxes).map(cb => cb.value);
+                const checkboxes = document.querySelectorAll(
+                    `#questionContainer input[type="checkbox"][data-question-index="${currentQuestionIndex}"]:checked`
+                );
+                const currentQuestion = examQuestions[currentQuestionIndex];
+                const validOptions = currentQuestion.options.filter(opt => opt && opt.trim() !== "");
+                const selected = Array.from(checkboxes).map(cb => validOptions[parseInt(cb.value, 10)]);
+
                 studentAnswers[currentQuestionIndex] = selected;
-                const encoded = JSON.stringify(studentAnswers); // ← Stringify SEKALI
+                const encoded = JSON.stringify(studentAnswers);
                 sessionStorage.setItem('studentAnswers', encoded);
                 localStorage.setItem('studentAnswers', encoded);
                 renderQuestionNav();
@@ -2879,6 +2889,22 @@
                 if (typeof examSubmitted !== 'undefined') examSubmitted = true;
                 if (typeof hasSubmitted !== 'undefined') hasSubmitted = true;
 
+                // reset setelah kirim nilai
+                if (currentUser && currentUser.role === 'siswa') {
+                    try {
+                        const { error: loginStatusError } = await dbClient
+                            .from('users')
+                            .update({ is_login: false })
+                            .eq('username', currentUser.username);
+
+                        if (loginStatusError) {
+                            console.error("Gagal mereset status is_login setelah submit:", loginStatusError);
+                        }
+                    } catch (err) {
+                        console.error("Koneksi bermasalah saat mereset status login setelah submit:", err);
+                    }
+                }
+
                 // Lapor ke Admin secara realtime
                 if (typeof laporKeAdmin === 'function') {
                     await laporKeAdmin(); 
@@ -2909,13 +2935,22 @@
             // Fungsi pembantu untuk membersihkan HTML dan spasi (Letakkan di luar calculateScore)
             function normalizeText(input) {
                 if (!input) return "";
-                // Jika input berupa array (untuk PG Kompleks), bersihkan setiap elemennya
                 if (Array.isArray(input)) return input.map(i => normalizeText(i)).sort().join(',');
                 
-                // Jika input berupa string/HTML
                 const tempDiv = document.createElement("div");
                 tempDiv.innerHTML = input;
-                return tempDiv.textContent || tempDiv.innerText || "";
+                const text = (tempDiv.textContent || tempDiv.innerText || "").trim();
+
+                // UBAH: Kalau opsi tidak ada teksnya sama sekali (misalnya cuma <img>),
+                // pakai URL gambarnya sebagai identitas opsi, bukan dibiarkan jadi string kosong.
+                if (text === "") {
+                    const img = tempDiv.querySelector('img');
+                    if (img && img.getAttribute('src')) {
+                        return img.getAttribute('src').trim();
+                    }
+                }
+
+                return text;
             }
 
             function calculateScore() {
@@ -4715,11 +4750,16 @@
                                 ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
                             </select>
                         </div>
-                        <div class="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 sm:gap-4 mt-3 sm:mt-0">
+                        <div class="grid grid-cols-2 sm:flex sm:flex-row sm:items-stretch w-full sm:w-auto gap-2 sm:gap-3 mt-3 sm:mt-0">
                             <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">📄 Template</button>
-                            <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-4 py-2 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-sm whitespace-nowrap shadow-sm">📥 Download</button>
-                            <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-sm whitespace-nowrap shadow-sm">📤 Upload</button>
-                            <button onclick="triggerUploadWord()" class="w-full flex justify-center items-center px-4 py-2 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-sm whitespace-nowrap shadow-sm">📝 Upload Word</button>
+                            <div class="flex flex-col gap-1 w-full sm:w-32">
+                                <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-3 py-1.5 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-xs whitespace-nowrap shadow-sm">📥 Download Exceel</button>
+                                <button onclick="downloadSoalWord()" class="w-full flex justify-center items-center px-3 py-1.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-xs whitespace-nowrap shadow-sm">📃 Download Word</button>
+                            </div>
+                            <div class="flex flex-col gap-1 w-full sm:w-32">
+                                <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-3 py-1.5 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-xs whitespace-nowrap shadow-sm">📤 Upload Excel</button>
+                                <button onclick="triggerUploadWord()" class="w-full flex justify-center items-center px-3 py-1.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-xs whitespace-nowrap shadow-sm">📝 Upload Word</button>
+                            </div>
                             <input type="file" id="fileUploadSoalWord" accept=".docx" style="display: none;" onchange="handleUploadWord(event)">
                             <button onclick="showAddQuestionForm()" class="w-full flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
                             <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
@@ -4728,7 +4768,8 @@
                     `;
 
                     const guruControls = `
-                        <div class="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
+                        <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
+                            <button onclick="downloadSoalWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📃 Download Word</button>
                             <button onclick="triggerUploadWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📝 Upload Word</button>
                             <button onclick="showGuruAddQuestionForm()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
                             <button onclick="refreshTarget('questions')" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
@@ -4882,7 +4923,17 @@
                     str = String(str);
                     let tmp = document.createElement("DIV");
                     tmp.innerHTML = str;
-                    let text = tmp.textContent || tmp.innerText || "";
+                    let text = (tmp.textContent || tmp.innerText || "").trim();
+
+                    // UBAH: Kalau opsi cuma gambar (tidak ada teks sama sekali),
+                    // pakai src gambar sebagai identitas opsi, bukan dibiarkan kosong.
+                    if (text === "") {
+                        const img = tmp.querySelector('img');
+                        if (img && img.getAttribute('src')) {
+                            text = img.getAttribute('src').trim();
+                        }
+                    }
+
                     return text.toUpperCase().replace(/\s+/g, ' ').trim();
                 };
 
@@ -6212,6 +6263,679 @@
                 } catch (error) {
                     console.error("Gagal mendownload excel:", error);
                     Swal.fire('Error', 'Sistem gagal memproses filter download.', 'error');
+                }
+            }
+
+            // ==================================================================
+            // FITUR BARU: DOWNLOAD SOAL DALAM FORMAT WORD (.docx) SIAP CETAK
+            // ==================================================================
+
+            // ------------------------------------------------------------------
+            // PARSER LATEX -> EQUATION ASLI WORD (OMML), bisa diklik & diedit di Word.
+            // Mendukung: pecahan (\frac), akar (\sqrt, \sqrt[n]{}), pangkat (^),
+            // indeks bawah (_), gabungan pangkat+indeks, huruf Yunani, dan simbol umum.
+            // Kalau ada bentuk yang tidak dikenali/terlalu rumit, akan otomatis
+            // "gagal" dengan aman dan sistem akan mundur memakai versi gambar.
+            // ------------------------------------------------------------------
+            const LATEX_GREEK = {
+                alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', varepsilon: 'ε', zeta: 'ζ',
+                eta: 'η', theta: 'θ', vartheta: 'ϑ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν',
+                xi: 'ξ', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ', varphi: 'φ',
+                chi: 'χ', psi: 'ψ', omega: 'ω',
+                Alpha: 'Α', Beta: 'Β', Gamma: 'Γ', Delta: 'Δ', Epsilon: 'Ε', Zeta: 'Ζ', Eta: 'Η', Theta: 'Θ',
+                Iota: 'Ι', Kappa: 'Κ', Lambda: 'Λ', Mu: 'Μ', Nu: 'Ν', Xi: 'Ξ', Pi: 'Π', Rho: 'Ρ', Sigma: 'Σ',
+                Tau: 'Τ', Upsilon: 'Υ', Phi: 'Φ', Chi: 'Χ', Psi: 'Ψ', Omega: 'Ω'
+            };
+            const LATEX_SYMBOLS = {
+                times: '×', cdot: '⋅', div: '÷', pm: '±', mp: '∓', leq: '≤', le: '≤', geq: '≥', ge: '≥',
+                neq: '≠', ne: '≠', approx: '≈', equiv: '≡', sim: '∼', infty: '∞', partial: '∂',
+                rightarrow: '→', to: '→', Rightarrow: '⇒', leftarrow: '←', leftrightarrow: '↔',
+                in: '∈', notin: '∉', ni: '∋', forall: '∀', exists: '∃', therefore: '∴', because: '∵',
+                cup: '∪', cap: '∩', subset: '⊂', supset: '⊃', subseteq: '⊆', supseteq: '⊇',
+                emptyset: '∅', varnothing: '∅', angle: '∠', perp: '⊥', parallel: '∥', deg: '°',
+                ldots: '…', cdots: '⋯', dots: '…', sum: '∑', prod: '∏', int: '∫', sqrt: '√',
+                circ: '∘', propto: '∝', langle: '⟨', rangle: '⟩', vert: '|', Vert: '‖',
+                lceil: '⌈', rceil: '⌉', lfloor: '⌊', rfloor: '⌋', quad: '  ', qquad: '    ',
+                prime: '′'
+            };
+
+            function findMatchingBraceIdx(str, openIdx) {
+                let depth = 0;
+                for (let k = openIdx; k < str.length; k++) {
+                    if (str[k] === '{') depth++;
+                    else if (str[k] === '}') { depth--; if (depth === 0) return k; }
+                }
+                return str.length;
+            }
+
+            // Ubah teks LaTeX menjadi array MathComponent (docx.MathRun / MathFraction / MathRadical / dst).
+            function latexToMathComponents(latex) {
+                let i = 0;
+                const nodes = [];
+                let textBuf = '';
+
+                const flushText = () => { if (textBuf) { nodes.push(new docx.MathRun(textBuf)); textBuf = ''; } };
+
+                // Ambil "satu unit" berikutnya sebagai string mentah: grup {...}, satu perintah \xxx, atau satu karakter.
+                const readUnit = () => {
+                    while (latex[i] === ' ') i++;
+                    if (latex[i] === '{') {
+                        const close = findMatchingBraceIdx(latex, i);
+                        const inner = latex.slice(i + 1, close);
+                        i = close + 1;
+                        return inner;
+                    } else if (latex[i] === '\\') {
+                        let j = i + 1;
+                        if (/[{}%$_^\\&#]/.test(latex[j] || '')) { const s = '\\' + latex[j]; i = j + 1; return s; }
+                        let name = '';
+                        while (j < latex.length && /[a-zA-Z]/.test(latex[j])) { name += latex[j]; j++; }
+                        const s = '\\' + name;
+                        i = j;
+                        return s;
+                    } else if (i < latex.length) {
+                        const c = latex[i]; i++; return c;
+                    }
+                    return '';
+                };
+
+                const popLastAsBase = () => {
+                    if (textBuf.length > 0) {
+                        const lastChar = textBuf.slice(-1);
+                        textBuf = textBuf.slice(0, -1);
+                        flushText();
+                        return [new docx.MathRun(lastChar)];
+                    } else if (nodes.length > 0) {
+                        const last = nodes.pop();
+                        return (last && last.__group) ? last.nodes : [last];
+                    }
+                    return [new docx.MathRun('')];
+                };
+
+                while (i < latex.length) {
+                    const ch = latex[i];
+
+                    if (ch === '\\') {
+                        let j = i + 1;
+                        if (/[{}%$_^\\&#]/.test(latex[j] || '')) { textBuf += latex[j]; i = j + 1; continue; }
+                        let name = '';
+                        while (j < latex.length && /[a-zA-Z]/.test(latex[j])) { name += latex[j]; j++; }
+                        i = j;
+                        while (latex[i] === ' ') i++;
+
+                        if (name === 'frac' || name === 'dfrac' || name === 'tfrac' || name === 'cfrac') {
+                            flushText();
+                            const num = readUnit();
+                            const den = readUnit();
+                            nodes.push(new docx.MathFraction({ numerator: latexToMathComponents(num), denominator: latexToMathComponents(den) }));
+                            continue;
+                        }
+                        if (name === 'sqrt') {
+                            flushText();
+                            let degree = null;
+                            if (latex[i] === '[') {
+                                const close = latex.indexOf(']', i);
+                                if (close === -1) throw new Error('sqrt tanpa penutup ]');
+                                degree = latex.slice(i + 1, close);
+                                i = close + 1;
+                            }
+                            const rad = readUnit();
+                            const opts = { children: latexToMathComponents(rad) };
+                            if (degree !== null) opts.degree = latexToMathComponents(degree);
+                            nodes.push(new docx.MathRadical(opts));
+                            continue;
+                        }
+                        if (name === 'text' || name === 'mathrm' || name === 'operatorname' || name === 'mathbf' || name === 'textbf') {
+                            flushText();
+                            const t = readUnit();
+                            nodes.push(new docx.MathRun(t));
+                            continue;
+                        }
+                        if (name === 'left' || name === 'right') {
+                            let delim = '';
+                            if (latex[i] === '\\') {
+                                let k = i + 1;
+                                if (/[{}]/.test(latex[k] || '')) { delim = latex[k]; i = k + 1; }
+                                else {
+                                    let dn = '';
+                                    while (k < latex.length && /[a-zA-Z]/.test(latex[k])) { dn += latex[k]; k++; }
+                                    delim = LATEX_SYMBOLS[dn] || '';
+                                    i = k;
+                                }
+                            } else if (latex[i] === '.') { i++; }
+                            else { delim = latex[i]; i++; }
+                            if (delim) textBuf += delim;
+                            continue;
+                        }
+                        if (name === '' ) { continue; } // command tak dikenal tanpa nama, lewati
+                        if (LATEX_GREEK[name]) { textBuf += LATEX_GREEK[name]; continue; }
+                        if (LATEX_SYMBOLS[name] !== undefined) { textBuf += LATEX_SYMBOLS[name]; continue; }
+                        // perintah tak dikenal: gagal total supaya seluruh rumus fallback ke gambar (lebih aman)
+                        throw new Error('Perintah LaTeX tidak didukung: \\' + name);
+                    }
+
+                    if (ch === '{') {
+                        const close = findMatchingBraceIdx(latex, i);
+                        const inner = latex.slice(i + 1, close);
+                        flushText();
+                        nodes.push({ __group: true, nodes: latexToMathComponents(inner) });
+                        i = close + 1;
+                        continue;
+                    }
+
+                    if (ch === '}') { i++; continue; } // penutup nyasar, lewati saja
+
+                    if (ch === '^' || ch === '_') {
+                        const isSup = ch === '^';
+                        i++;
+                        const scriptRaw = readUnit();
+                        const scriptNodes = latexToMathComponents(scriptRaw);
+
+                        // Cek apakah langsung diikuti pasangannya (mis. x_1^2) supaya jadi satu
+                        // elemen gabungan pangkat+indeks yang rapi, bukan bertumpuk.
+                        let k = i;
+                        while (latex[k] === ' ') k++;
+                        let otherNodes = null;
+                        if (latex[k] === (isSup ? '_' : '^')) {
+                            i = k + 1;
+                            const otherRaw = readUnit();
+                            otherNodes = latexToMathComponents(otherRaw);
+                        }
+
+                        const base = popLastAsBase();
+                        if (otherNodes) {
+                            nodes.push(new docx.MathSubSuperScript({
+                                children: base,
+                                subScript: isSup ? otherNodes : scriptNodes,
+                                superScript: isSup ? scriptNodes : otherNodes
+                            }));
+                        } else if (isSup) {
+                            nodes.push(new docx.MathSuperScript({ children: base, superScript: scriptNodes }));
+                        } else {
+                            nodes.push(new docx.MathSubScript({ children: base, subScript: scriptNodes }));
+                        }
+                        continue;
+                    }
+
+                    textBuf += ch;
+                    i++;
+                }
+                flushText();
+
+                // Ratakan grup {...} yang tidak terpakai sebagai basis pangkat/indeks
+                const flat = [];
+                for (const n of nodes) {
+                    if (n && n.__group) flat.push(...n.nodes);
+                    else flat.push(n);
+                }
+                return flat;
+            }
+
+            // Coba ubah rumus jadi Equation ASLI Word (bisa diedit). Kalau gagal / tidak didukung,
+            // otomatis pakai versi gambar (fallback) supaya rumus tetap tampil dengan benar.
+            async function latexToMathOrImageRun(latex, displayMode) {
+                try {
+                    if (typeof docx.Math !== 'function') throw new Error('docx.Math tidak tersedia');
+                    const comps = latexToMathComponents(latex.trim());
+                    if (!comps || comps.length === 0) throw new Error('Hasil parsing kosong');
+                    return new docx.Math({ children: comps });
+                } catch (e) {
+                    console.warn('Rumus dibuat sebagai gambar (bukan equation asli) karena:', latex, e.message);
+                    return await latexToImageRun(latex, displayMode);
+                }
+            }
+
+            // Panaskan/pastikan font KaTeX (untuk akar, pecahan, pangkat, dll) sudah benar-benar
+            // selesai diunduh & siap dipakai SEBELUM kita mulai "memotret" rumus jadi gambar.
+            // Kalau ini dilewati, hasil screenshot rumus bisa berantakan (huruf tumpang tindih,
+            // garis akar/pecahan hilang atau salah posisi) karena font-nya belum termuat sempurna.
+            let _katexFontsWarmed = false;
+            async function warmUpKatexFonts() {
+                if (_katexFontsWarmed || typeof katex === 'undefined') return;
+                const warm = document.createElement('div');
+                warm.style.position = 'fixed';
+                warm.style.left = '-99999px';
+                warm.style.top = '0';
+                warm.style.fontSize = '20px';
+                document.body.appendChild(warm);
+                try {
+                    katex.render('\\sqrt{\\frac{a^{2}+b^{2}}{c}}', warm, { throwOnError: false, displayMode: true });
+                } catch (e) { /* abaikan */ }
+                try {
+                    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+                } catch (e) { /* abaikan */ }
+                // beri sedikit jeda tambahan untuk memastikan browser selesai me-layout font barunya
+                await new Promise(r => setTimeout(r, 150));
+                if (warm.parentNode) warm.parentNode.removeChild(warm);
+                _katexFontsWarmed = true;
+            }
+
+            // Ubah 1 rumus LaTeX ("$...$" / "$$...$$") menjadi gambar (ImageRun) via KaTeX + html2canvas
+            // (dipakai sebagai CADANGAN kalau latexToMathComponents gagal memparsing rumusnya)
+            async function latexToImageRun(latex, displayMode) {
+                let holder;
+                try {
+                    if (typeof katex === 'undefined') throw new Error('KaTeX belum siap dimuat');
+                    await warmUpKatexFonts();
+
+                    holder = document.createElement('div');
+                    holder.style.position = 'fixed';
+                    holder.style.left = '-99999px';
+                    holder.style.top = '0';
+                    holder.style.display = 'inline-block';
+                    holder.style.whiteSpace = 'nowrap';
+                    holder.style.background = '#ffffff';
+                    holder.style.padding = '3px 4px';
+                    holder.style.fontSize = '20px';
+                    holder.style.lineHeight = 'normal';
+                    holder.style.color = '#000000';
+                    document.body.appendChild(holder);
+
+                    katex.render(latex, holder, { throwOnError: false, displayMode: !!displayMode });
+
+                    // Beri browser waktu untuk selesai me-layout ulang rumus sebelum ditangkap
+                    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+                    const scale = 3;
+                    const canvas = await html2canvas(holder, { backgroundColor: '#ffffff', scale, useCORS: true });
+
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const buffer = await (await fetch(dataUrl)).arrayBuffer();
+
+                    let width = canvas.width / scale;
+                    let height = canvas.height / scale;
+                    const maxW = 260;
+                    if (width > maxW) { height = height * (maxW / width); width = maxW; }
+                    if (width < 1) width = 1;
+                    if (height < 1) height = 1;
+
+                    return new docx.ImageRun({ data: buffer, transformation: { width, height } });
+                } catch (e) {
+                    console.warn('Gagal render rumus ke gambar, fallback ke teks biasa:', latex, e);
+                    return new docx.TextRun({ text: latex });
+                } finally {
+                    if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
+                }
+            }
+
+            // Ubah <img src="..."> (base64 atau URL) menjadi ImageRun docx, dibatasi lebar maksimal
+            async function imgToImageRun(src, maxWidth) {
+                try {
+                    const buffer = await (await fetch(src)).arrayBuffer();
+                    const dims = await new Promise((resolve) => {
+                        const im = new Image();
+                        im.onload = () => resolve({ w: im.naturalWidth || 300, h: im.naturalHeight || 200 });
+                        im.onerror = () => resolve({ w: 300, h: 200 });
+                        im.src = src;
+                    });
+                    let w = dims.w, h = dims.h;
+                    const cap = maxWidth || 350;
+                    if (w > cap) { h = h * (cap / w); w = cap; }
+                    return new docx.ImageRun({ data: buffer, transformation: { width: w, height: h } });
+                } catch (e) {
+                    console.warn('Gagal memuat gambar untuk file Word:', e);
+                    return null;
+                }
+            }
+
+            // Susuri 1 node HTML (misalnya isi <p> dari editor Quill) menjadi array run docx
+            // (TextRun / ImageRun / Math), sambil menjaga format bold/italic/underline serta mengubah
+            // rumus "$...$" menjadi Equation (atau gambar) dan tag <img> menjadi gambar juga.
+            async function htmlNodeToRuns(node, fmt) {
+                fmt = fmt || { bold: false, italics: false, underline: false };
+                let runs = [];
+                for (const child of Array.from(node.childNodes)) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        const text = child.textContent;
+                        if (!text) continue;
+                        const regex = /\$\$([^$]+)\$\$|\$([^$]+)\$/g;
+                        let lastIndex = 0;
+                        let match;
+                        while ((match = regex.exec(text)) !== null) {
+                            if (match.index > lastIndex) {
+                                const plain = text.slice(lastIndex, match.index);
+                                if (plain) runs.push(new docx.TextRun({ text: plain, bold: fmt.bold, italics: fmt.italics, underline: fmt.underline ? {} : undefined }));
+                            }
+                            const isDisplay = !!match[1];
+                            const latex = (match[1] || match[2] || '').trim();
+                            if (latex) runs.push(await latexToMathOrImageRun(latex, isDisplay));
+                            lastIndex = regex.lastIndex;
+                        }
+                        if (lastIndex < text.length) {
+                            const plain = text.slice(lastIndex);
+                            if (plain) runs.push(new docx.TextRun({ text: plain, bold: fmt.bold, italics: fmt.italics, underline: fmt.underline ? {} : undefined }));
+                        }
+                    } else if (child.nodeType === Node.ELEMENT_NODE) {
+                        const tag = child.tagName.toLowerCase();
+                        if (tag === 'img') {
+                            const src = child.getAttribute('src');
+                            if (src) {
+                                const imgRun = await imgToImageRun(src, 350);
+                                if (imgRun) runs.push(imgRun);
+                            }
+                            continue;
+                        }
+                        if (tag === 'br') {
+                            runs.push(new docx.TextRun({ text: '', break: 1 }));
+                            continue;
+                        }
+                        const nextFmt = {
+                            bold: fmt.bold || tag === 'strong' || tag === 'b',
+                            italics: fmt.italics || tag === 'em' || tag === 'i',
+                            underline: fmt.underline || tag === 'u'
+                        };
+                        runs = runs.concat(await htmlNodeToRuns(child, nextFmt));
+                    }
+                }
+                return runs;
+            }
+
+            // Ubah HTML (boleh berisi lebih dari satu <p>) menjadi ARRAY paragraf docx siap pakai.
+            // `prefixRuns` (misal nomor soal "1." atau huruf opsi "a.") hanya ditambahkan di paragraf pertama.
+            // `indentCfg` = { textIndent, numberIndent } dalam twips (1 cm = 567 twips):
+            //   - numberIndent: posisi nomor/huruf (mis. "1." atau "a.")
+            //   - textIndent  : posisi mulai teks setelah tab, dan posisi baris lanjutan/paragraf berikutnya
+            // Ini membuat baris kedua & seterusnya (kalau teks panjang / soal punya beberapa paragraf)
+            // sejajar dengan TEKS, bukan turun lagi ke bawah nomor/huruf.
+            async function htmlToDocxParagraphs(html, prefixRuns, indentCfg) {
+                const container = document.createElement('div');
+                container.innerHTML = html || '';
+                let blocks = Array.from(container.querySelectorAll('p, li'));
+                if (blocks.length === 0) blocks = [container];
+
+                const textIndent = indentCfg ? indentCfg.textIndent : 0;
+                const numberIndent = indentCfg ? indentCfg.numberIndent : 0;
+                const hangingAmount = textIndent - numberIndent;
+
+                const paragraphs = [];
+                for (let i = 0; i < blocks.length; i++) {
+                    const runs = await htmlNodeToRuns(blocks[i], {});
+                    const children = i === 0 ? [...(prefixRuns || []), ...runs] : runs;
+                    if (children.length === 0) children.push(new docx.TextRun({ text: '' }));
+
+                    const paragraphOpts = { children, spacing: { after: 80 } };
+                    if (indentCfg) {
+                        if (i === 0) {
+                            paragraphOpts.indent = { left: textIndent, hanging: hangingAmount > 0 ? hangingAmount : 0 };
+                            paragraphOpts.tabStops = [{ type: docx.TabStopType.LEFT, position: textIndent }];
+                        } else {
+                            paragraphOpts.indent = { left: textIndent };
+                        }
+                    }
+                    paragraphs.push(new docx.Paragraph(paragraphOpts));
+                }
+                return paragraphs;
+            }
+
+            function getOptionsArray(q) {
+                let opts = q.options;
+                try {
+                    if (typeof opts === 'string' && opts.trim() !== '') opts = JSON.parse(opts);
+                } catch (e) { opts = []; }
+                if (!Array.isArray(opts)) opts = [];
+                return opts.filter(o => o !== undefined && o !== null && String(o).trim() !== '');
+            }
+
+            // Pastikan library docx & html2canvas benar-benar sudah siap sebelum dipakai.
+            // Kalau gagal dimuat lewat CDN utama (mis. lambat / sempat gagal saat load halaman),
+            // coba lagi sekali lagi termasuk lewat CDN cadangan (unpkg) sebelum benar-benar menyerah.
+            function loadScriptOnce(src) {
+                return new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => resolve(true);
+                    s.onerror = () => reject(new Error('Gagal memuat ' + src));
+                    document.head.appendChild(s);
+                });
+            }
+            async function ensureWordLibsReady() {
+                if (typeof docx === 'undefined') {
+                    try { await loadScriptOnce('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js'); } catch (e) { /* lanjut coba cadangan */ }
+                }
+                if (typeof docx === 'undefined') {
+                    try { await loadScriptOnce('https://unpkg.com/docx@8.5.0/build/index.umd.js'); } catch (e) { /* biarkan, akan dicek lagi di bawah */ }
+                }
+                if (typeof html2canvas === 'undefined') {
+                    try { await loadScriptOnce('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (e) { /* lanjut coba cadangan */ }
+                }
+                if (typeof html2canvas === 'undefined') {
+                    try { await loadScriptOnce('https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (e) { /* biarkan, akan dicek lagi di bawah */ }
+                }
+            }
+
+            async function downloadSoalWord() {
+                await ensureWordLibsReady();
+                if (typeof docx === 'undefined' || typeof html2canvas === 'undefined') {
+                    Swal.fire('Error', 'Library pembuat file Word gagal dimuat dari server CDN. Coba muat ulang halaman (refresh) lalu ulangi, atau periksa apakah jaringan/sekolah memblokir akses ke cdn.jsdelivr.net / unpkg.com.', 'error');
+                    return;
+                }
+                try {
+                    const isAdmin = currentUser.role === 'admin' || currentUser.class === 'admin';
+
+                    let accessibleQuestions = [];
+                    if (isAdmin) {
+                        accessibleQuestions = allQuestions;
+                    } else {
+                        accessibleQuestions = allQuestions.filter(q => {
+                            const grade = q.question_class ? String(q.question_class).charAt(0) : '';
+                            return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                        });
+                    }
+
+                    if (!accessibleQuestions || accessibleQuestions.length === 0) {
+                        Swal.fire('Info', 'Tidak ada soal yang tersedia untuk didownload.', 'info');
+                        return;
+                    }
+
+                    const uniqueSubjects = [...new Set(accessibleQuestions.map(q => q.subject).filter(Boolean))];
+
+                    const { value: formValues } = await Swal.fire({
+                        title: 'Download Soal (Word)',
+                        html: `
+                            <div style="text-align:left; font-family: sans-serif; font-size:13px;">
+                                <p style="color:#666; margin-bottom:12px;">Atur data soal & kop naskah yang ingin diekspor ke file Word (.docx):</p>
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Filter Kelas:</label>
+                                    <select id="wordFilterClass" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; background:white;">
+                                        <option value="ALL">✨ Semua Tingkat Kelas</option>
+                                        <option value="7">Kelas 7</option>
+                                        <option value="8">Kelas 8</option>
+                                        <option value="9">Kelas 9</option>
+                                    </select>
+                                </div>
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Filter Mata Pelajaran / Bab:</label>
+                                    <select id="wordFilterSubject" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; background:white;">
+                                        <option value="ALL">✨ Semua Mapel / Bab</option>
+                                        ${uniqueSubjects.map(s => `<option value="${s}">${s}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <hr style="margin:12px 0; border-color:#eee;">
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Judul Naskah Ujian:</label>
+                                    <input id="wordJudul" type="text" value="ASESMEN SUMATIF" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                                </div>
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Tahun Pelajaran:</label>
+                                    <input id="wordTahun" type="text" value="TAHUN PELAJARAN 2026/2027" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <div style="flex:1;">
+                                        <label style="display:block; font-weight:bold; margin-bottom:4px;">Tanggal:</label>
+                                        <input id="wordTanggal" type="text" placeholder="23 September 2026" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label style="display:block; font-weight:bold; margin-bottom:4px;">Waktu:</label>
+                                        <input id="wordWaktu" type="text" placeholder="90 Menit" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                                    </div>
+                                </div>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: '🚀 Buat File Word',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#2563eb',
+                        cancelButtonColor: '#d33',
+                        preConfirm: () => ({
+                            selectedClass: document.getElementById('wordFilterClass').value,
+                            selectedSubject: document.getElementById('wordFilterSubject').value,
+                            judul: document.getElementById('wordJudul').value || 'ASESMEN SUMATIF',
+                            tahun: document.getElementById('wordTahun').value || '',
+                            tanggal: document.getElementById('wordTanggal').value || '-',
+                            waktu: document.getElementById('wordWaktu').value || '-'
+                        })
+                    });
+
+                    if (!formValues) return;
+                    const { selectedClass, selectedSubject, judul, tahun, tanggal, waktu } = formValues;
+
+                    let finalSoal = accessibleQuestions.filter(q => {
+                        const grade = q.question_class ? String(q.question_class).charAt(0) : '';
+                        const matchClass = (selectedClass === 'ALL' || grade === selectedClass);
+                        const matchSubject = (selectedSubject === 'ALL' || q.subject === selectedSubject);
+                        return matchClass && matchSubject;
+                    });
+
+                    if (finalSoal.length === 0) {
+                        Swal.fire('Tidak Ditemukan', 'Tidak ada data soal yang cocok dengan kombinasi filter tersebut.', 'warning');
+                        return;
+                    }
+
+                    showLoading();
+
+                    const groups = {
+                        pilihan_ganda: finalSoal.filter(q => q.question_type === 'pilihan_ganda' || !q.question_type),
+                        pilihan_ganda_kompleks: finalSoal.filter(q => q.question_type === 'pilihan_ganda_kompleks'),
+                        benar_salah: finalSoal.filter(q => q.question_type === 'benar_salah'),
+                        isian_singkat: finalSoal.filter(q => q.question_type === 'isian_singkat')
+                    };
+
+                    const sectionDefs = [
+                        { key: 'pilihan_ganda', heading: 'Pilihan Ganda', instruksi: 'Pilihlah salah satu jawaban a, b, c atau d yang paling benar!' },
+                        { key: 'pilihan_ganda_kompleks', heading: 'Pilihan Ganda Kompleks', instruksi: 'Pilihlah jawaban yang benar (jawaban benar bisa lebih dari satu)!' },
+                        { key: 'benar_salah', heading: 'Benar / Salah', instruksi: 'Berilah tanda centang pada kolom BENAR atau SALAH sesuai pernyataan berikut!' },
+                        { key: 'isian_singkat', heading: 'Isian Singkat', instruksi: 'Isilah titik-titik di bawah ini dengan jawaban yang tepat!' }
+                    ];
+
+                    const headerChildren = [];
+                    headerChildren.push(new docx.Paragraph({
+                        alignment: docx.AlignmentType.CENTER,
+                        children: [new docx.TextRun({ text: judul.toUpperCase(), bold: true })]
+                    }));
+                    if (tahun) {
+                        headerChildren.push(new docx.Paragraph({
+                            alignment: docx.AlignmentType.CENTER,
+                            children: [new docx.TextRun({ text: tahun.toUpperCase(), bold: true })]
+                        }));
+                    }
+                    headerChildren.push(new docx.Paragraph({}));
+                    headerChildren.push(new docx.Paragraph({
+                        children: [new docx.TextRun({ text: `Mata Pelajaran\t\t: ${selectedSubject === 'ALL' ? '-' : selectedSubject}\t\t\t\t\tTanggal\t: ${tanggal}` })]
+                    }));
+                    headerChildren.push(new docx.Paragraph({
+                        children: [new docx.TextRun({ text: `Kelas\t\t\t: ${selectedClass === 'ALL' ? 'Semua Kelas' : selectedClass}\t\t\t\t\tWaktu\t: ${waktu}` })]
+                    }));
+                    headerChildren.push(new docx.Paragraph({}));
+
+                    const bodyChildren = [];
+
+                    // Indentasi gantung: nomor/huruf di posisi awal, teks (dan baris lanjutannya / paragraf
+                    // berikutnya kalau soal lebih dari satu baris) sejajar rapi di posisi berikut.
+                    // Nilainya sengaja dibuat kecil (satuan twips, 567 twips = 1 cm) karena halaman dibuat 2 kolom.
+                    const QUESTION_INDENT = { numberIndent: 0, textIndent: 300 };
+                    const OPTION_INDENT = { numberIndent: 300, textIndent: 580 };
+
+                    let nomor = 1;
+                    for (const sec of sectionDefs) {
+                        const list = groups[sec.key];
+                        if (!list || list.length === 0) continue;
+
+                        bodyChildren.push(new docx.Paragraph({ children: [new docx.TextRun({ text: sec.heading, bold: true })] }));
+                        bodyChildren.push(new docx.Paragraph({
+                            children: [new docx.TextRun({ text: sec.instruksi, italics: true })],
+                            spacing: { after: 150 }
+                        }));
+
+                        for (const q of list) {
+                            const numberRuns = [new docx.TextRun({ text: `${nomor}.\t` })];
+                            const qParagraphs = await htmlToDocxParagraphs(q.question_text || '', numberRuns, QUESTION_INDENT);
+                            bodyChildren.push(...qParagraphs);
+
+                            if (q.question_image) {
+                                const imgRun = await imgToImageRun(q.question_image, 260);
+                                if (imgRun) bodyChildren.push(new docx.Paragraph({ children: [imgRun], indent: { left: QUESTION_INDENT.textIndent } }));
+                            }
+
+                            const opts = getOptionsArray(q);
+                            if (sec.key === 'isian_singkat') {
+                                bodyChildren.push(new docx.Paragraph({
+                                    children: [new docx.TextRun({ text: 'Jawab: ....................................' })],
+                                    indent: { left: QUESTION_INDENT.textIndent },
+                                    spacing: { after: 150 }
+                                }));
+                            } else if (sec.key === 'benar_salah' && opts.length === 0) {
+                                bodyChildren.push(new docx.Paragraph({
+                                    children: [new docx.TextRun({ text: '(   )  Benar     (   )  Salah' })],
+                                    indent: { left: QUESTION_INDENT.textIndent },
+                                    spacing: { after: 150 }
+                                }));
+                            } else if (opts.length === 0) {
+                                bodyChildren.push(new docx.Paragraph({ spacing: { after: 150 } }));
+                            } else {
+                                for (let idx = 0; idx < opts.length; idx++) {
+                                    const label = String.fromCharCode(97 + idx);
+                                    const prefixRuns = [new docx.TextRun({ text: `${label}.\t` })];
+                                    const optParagraphs = await htmlToDocxParagraphs(String(opts[idx]), prefixRuns, OPTION_INDENT);
+                                    bodyChildren.push(...optParagraphs);
+                                }
+                                bodyChildren.push(new docx.Paragraph({ spacing: { after: 100 } }));
+                            }
+                            nomor++;
+                        }
+                    }
+
+                    const doc = new docx.Document({
+                        sections: [
+                            {
+                                properties: {
+                                    page: { margin: { top: 850, bottom: 850, left: 850, right: 850 } }
+                                },
+                                children: headerChildren
+                            },
+                            {
+                                properties: {
+                                    type: docx.SectionType.CONTINUOUS, // supaya lanjut di kertas yang sama, tidak pindah halaman baru
+                                    column: { count: 2, space: 350 },
+                                    page: { margin: { top: 850, bottom: 850, left: 850, right: 850 } }
+                                },
+                                children: bodyChildren
+                            }
+                        ]
+                    });
+
+                    const blob = await docx.Packer.toBlob(doc);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const namaFile = `Soal_${(selectedSubject === 'ALL' ? 'SemuaMapel' : selectedSubject).replace(/[^a-zA-Z0-9]/g, '_')}_Kelas${selectedClass === 'ALL' ? 'Semua' : selectedClass}.docx`;
+                    a.href = url;
+                    a.download = namaFile;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    hideLoading();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: `File Word berisi ${finalSoal.length} soal berhasil dibuat.`,
+                        timer: 2200,
+                        showConfirmButton: false
+                    });
+
+                } catch (error) {
+                    console.error('Gagal membuat file Word:', error);
+                    hideLoading();
+                    Swal.fire('Error', 'Gagal membuat file Word: ' + (error.message || 'Terjadi kesalahan'), 'error');
                 }
             }
 
