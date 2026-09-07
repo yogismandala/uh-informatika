@@ -4695,12 +4695,13 @@
                 };
 
                 // Helper HTML untuk item pertanyaan
-                const getQuestionItemHTML = (q, grade) => {
+                const getQuestionItemHTML = (q, grade, nomorUrut) => {
                     if (isAdmin) {
                         return `
                             <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})' class="flex justify-between items-start gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex gap-2 mb-2 flex-wrap">
+                                        <span class="px-2 py-1 bg-gray-700 text-white rounded text-xs font-bold">No. ${nomorUrut}</span>
                                         <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">${q.subject}</span>
                                         <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                     </div>
@@ -4719,6 +4720,7 @@
                             <div onclick='showQuestionDetail(${JSON.stringify(q).replace(/'/g, "&apos;")})' class="flex justify-between items-start gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex gap-2 mb-2 flex-wrap">
+                                        <span class="px-2 py-1 bg-gray-700 text-white rounded text-xs font-bold">No. ${nomorUrut}</span>
                                         <span class="px-2 py-1 ${isOwner ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'} rounded text-xs font-semibold">${q.subject}</span>
                                         <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                     </div>
@@ -4877,7 +4879,16 @@
                     existingItems.forEach(item => { if (item.id) itemMap.set(item.id, item); });
 
                     // Loop dan Update/Insert Div Soal
+                    let nomorPerMapel = 0;
+                    let mapelSebelumnya = null;
                     dataForGrade.forEach(q => {
+                        if (q.subject !== mapelSebelumnya) {
+                            nomorPerMapel = 1;
+                            mapelSebelumnya = q.subject;
+                        } else {
+                            nomorPerMapel++;
+                        }
+                        const nomorUrut = nomorPerMapel;
                         const uniqueId = `q-item-${q.id}`;
                         let div = itemMap.get(uniqueId);
                         
@@ -4885,7 +4896,7 @@
 
                         if (div) {
                             // UPDATE
-                            div.innerHTML = getQuestionItemHTML(q, grade);
+                            div.innerHTML = getQuestionItemHTML(q, grade, nomorUrut);
                             // Class reset just in case ownership changed in the UI somehow
                             div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
                             
@@ -4896,7 +4907,7 @@
                             div = document.createElement('div');
                             div.id = uniqueId;
                             div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
-                            div.innerHTML = getQuestionItemHTML(q, grade);
+                            div.innerHTML = getQuestionItemHTML(q, grade, nomorUrut);
                             listContainer.appendChild(div);
                         }
                     });
