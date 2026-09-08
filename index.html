@@ -5650,7 +5650,7 @@
             const mathToolbarHandlers = {
                 sqrt: function () {
                     insertMathTemplate(this.quill, (sel) => {
-                        const latex = sel ? `$\\sqrt{${sel}}$` : `$\\sqrt{}$`;
+                        const latex = sel ? `\(\sqrt{${sel}}\)` : `\(\sqrt{}\)`;
                         return { latex, cursorOffset: sel ? latex.length : latex.length - 2 };
                     });
                 },
@@ -5660,8 +5660,8 @@
                 },
                 fraction: function () {
                     insertMathTemplate(this.quill, (sel) => {
-                        const latex = sel ? `$\\frac{${sel}}{}$` : `$\\frac{}{}$`;
-                        return { latex, cursorOffset: latex.length - 2 };
+                        const latex = sel ? `\(\frac{${sel}}{}\)` : `\(\frac{}{}\)`;
+                        return { latex, cursorOffset: latex.length - 3 };
                     });
                 }
             };
@@ -5756,7 +5756,7 @@
             // Ubah 1 elemen <m:oMath> lengkap jadi teks "$...$" siap dipakai KaTeX
             function ommlToLatexString(oMathNode) {
                 const latex = ommlChildrenToLatex(oMathNode).trim();
-                return latex ? ` $${latex}$ ` : '';
+                return latex ? ` \\(${latex}\\) ` : '';
             }
 
             function escapeHtmlText(s) {
@@ -5823,15 +5823,15 @@
                 return htmlParts.join('');
             }
 
-            // Panggil KaTeX auto-render pada sebuah elemen supaya teks "$...$" di dalamnya
+            // Panggil KaTeX auto-render pada sebuah elemen supaya teks "\\(...\\)" di dalamnya
             // benar-benar tampil sebagai rumus. Aman dipanggil berkali-kali / elemen kosong.
             function renderMathIn(el) {
                 if (!el || typeof renderMathInElement !== 'function') return;
                 try {
                     renderMathInElement(el, {
                         delimiters: [
-                            { left: '$$', right: '$$', display: true },
-                            { left: '$', right: '$', display: false }
+                            { left: '\\[', right: '\\]', display: true },
+                            { left: '\\(', right: '\\)', display: false }
                         ],
                         throwOnError: false
                     });
@@ -6521,7 +6521,7 @@
                 _katexFontsWarmed = true;
             }
 
-            // Ubah 1 rumus LaTeX ("$...$" / "$$...$$") menjadi gambar (ImageRun) via KaTeX + html2canvas
+            // Ubah 1 rumus LaTeX ("\\(...\\)" / "\\[...\\]") menjadi gambar (ImageRun) via KaTeX + html2canvas
             // (dipakai sebagai CADANGAN kalau latexToMathComponents gagal memparsing rumusnya)
             async function latexToImageRun(latex, displayMode) {
                 let holder;
@@ -6599,7 +6599,7 @@
                     if (child.nodeType === Node.TEXT_NODE) {
                         const text = child.textContent;
                         if (!text) continue;
-                        const regex = /\$\$([^$]+)\$\$|\$([^$]+)\$/g;
+                        const regex = /\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)/g;
                         let lastIndex = 0;
                         let match;
                         while ((match = regex.exec(text)) !== null) {
