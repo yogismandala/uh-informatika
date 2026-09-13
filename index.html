@@ -5167,7 +5167,10 @@
                             </div>
 
                             <div>
-                                <label class="title-opt bg-blue-600 text-xs font-bold uppercase">Pertanyaan</label>
+                                <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                                    <label class="title-opt bg-blue-600 text-xs font-bold uppercase mb-0">Pertanyaan</label>
+                                    <button type="button" onclick="rapikanDialogInEditor('edit')" title="Rapikan teks dialog/soal cerita (Nama : ucapan) jadi teks sejajar kolom (tanpa tabel). Blok sebagian teks dulu kalau cuma mau merapikan bagian itu saja." class="px-2.5 py-1 bg-teal-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-teal-700 transition">🧹 Rapikan Dialog/Cerita</button>
+                                </div>
                                 <div id="edit-q-text" class="editor-container box-soal bg-white shadow-sm border-2 rounded-xl overflow-hidden" style="min-height: 120px;"></div>
                             </div>
                             
@@ -5444,7 +5447,10 @@
                             </div>
 
                             <div class="mb-6">
-                                <label class="title-opt bg-blue-600 shadow-sm">Pertanyaan Utama</label>
+                                <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                                    <label class="title-opt bg-blue-600 shadow-sm mb-0">Pertanyaan Utama</label>
+                                    <button type="button" onclick="rapikanDialogInEditor('add')" title="Rapikan teks dialog/soal cerita (Nama : ucapan) jadi teks sejajar kolom (tanpa tabel). Blok sebagian teks dulu kalau cuma mau merapikan bagian itu saja." class="px-2.5 py-1 bg-teal-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-teal-700 transition">🧹 Rapikan Dialog/Cerita</button>
+                                </div>
                                 <div id="add-q-text" class="editor-container box-soal rounded-xl overflow-hidden w-full"></div>
                             </div>
                             
@@ -5713,6 +5719,92 @@
 
             function tablePlaceholderText(id) {
                 return `📊 [TABEL ${id}] (klik 2x untuk edit)`;
+            }
+
+            // FITUR "RAPIKAN DIALOG/CERITA"
+            function parseDialogTextIntoRows(text) {
+                const lines = String(text || '').split(/\r?\n/);
+                const speakerRe = /^([A-Za-z][A-Za-z.'-]{0,20}(?:\s+[A-Za-z][A-Za-z.'-]{0,20}){0,3})\s*[:\t]\s*:?\s*(.*)$/;
+                const rows = [];
+
+                lines.forEach(rawLine => {
+                    const line = rawLine.trim().replace(/\s+/g, ' ');
+                    if (!line) return; // lewati baris kosong
+
+                    if (/^\(.*\)$/.test(line)) {
+                        // Baris keterangan/narasi (mis. "(the bell is ringing)") -> baris sendiri
+                        rows.push({ speaker: '', text: line });
+                        return;
+                    }
+
+                    const m = line.match(speakerRe);
+                    if (m && m[1].trim().length > 0) {
+                        rows.push({ speaker: m[1].trim(), text: m[2].trim() });
+                    } else if (rows.length > 0) {
+                        // Kelanjutan ucapan sebelumnya yang terpotong baris baru
+                        rows[rows.length - 1].text = (rows[rows.length - 1].text + ' ' + line).trim();
+                    } else {
+                        rows.push({ speaker: '', text: line });
+                    }
+                });
+
+                return rows;
+            }
+
+            // Susun baris {speaker, text} jadi HTML paragraf dengan "hanging indent":
+            function buildAlignedDialogueHtml(rows) {
+                const maxLen = rows.reduce((m, r) => r.speaker ? Math.max(m, r.speaker.length) : m, 0);
+                const indentCh = maxLen + 3; // panjang "Nama" (di-pad) + " : "
+                const baseStyle = "margin:0 0 6px 0; font-family:'Courier New', Courier, monospace; " +
+                    "white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; " +
+                    "background: transparent; text-align: left;";
+
+                return rows.map(r => {
+                    if (!r.speaker) {
+                        return `<p style="${baseStyle}">${escapeHtmlText(r.text)}</p>`;
+                    }
+                    const paddedName = r.speaker.padEnd(maxLen, ' ');
+                    const lineText = escapeHtmlText(`${paddedName} : ${r.text}`);
+                    const hangingStyle = `${baseStyle} padding-left: ${indentCh}ch; text-indent: -${indentCh}ch;`;
+                    return `<p style="${hangingStyle}">${lineText}</p>`;
+                }).join('');
+            }
+
+            // Handler tombol "Rapikan Dialog/Cerita".
+            // Kalau ada teks yang diblok, HANYA itu yang dirapikan; kalau tidak,
+            // seluruh isi kolom Pertanyaan yang dirapikan.
+            function rapikanDialogInEditor(scope) {
+                const editors = scope === 'edit' ? window.editEditors : window.addEditors;
+                const quillInstance = editors && editors.question;
+                if (!quillInstance) return;
+
+                const selection = quillInstance.getSelection(true) || { index: 0, length: quillInstance.getLength() };
+                const hasSelection = selection.length > 0;
+                const rangeIndex = hasSelection ? selection.index : 0;
+                const rangeLength = hasSelection ? selection.length : quillInstance.getLength();
+
+                const rawText = quillInstance.getText(rangeIndex, rangeLength);
+                const rows = parseDialogTextIntoRows(rawText);
+
+                if (rows.length < 2) {
+                    alert(hasSelection
+                        ? 'Tidak terdeteksi pola dialog (Nama : ucapan) yang cukup pada teks yang diblok. Pastikan setiap baris berbentuk "Nama : ucapan" lalu coba lagi.'
+                        : 'Tidak terdeteksi pola dialog (Nama : ucapan) yang cukup pada teks soal ini. Pastikan setiap baris berbentuk "Nama : ucapan" lalu coba lagi.');
+                    return;
+                }
+
+                const scopeLabel = hasSelection ? 'Teks yang diblok' : 'Seluruh isi kolom Pertanyaan';
+                const ok = confirm(`Ditemukan ${rows.length} baris dialog. ${scopeLabel} akan diganti dengan versi teks sejajar (kolom pakai spasi). Lanjutkan?`);
+                if (!ok) return;
+
+                const html = buildAlignedDialogueHtml(rows);
+
+                if (hasSelection) {
+                    quillInstance.deleteText(rangeIndex, rangeLength, 'user');
+                    quillInstance.clipboard.dangerouslyPasteHTML(rangeIndex, html, 'user');
+                } else {
+                    quillInstance.root.innerHTML = html;
+                }
             }
 
             // Ubah grid data sel (array of array of string) jadi HTML <table> biasa.
@@ -7569,7 +7661,10 @@
                             </div>
 
                             <div class="mb-6">
-                                <label class="title-opt bg-blue-600 shadow-sm">Pertanyaan Utama</label>
+                                <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                                    <label class="title-opt bg-blue-600 shadow-sm mb-0">Pertanyaan Utama</label>
+                                    <button type="button" onclick="rapikanDialogInEditor('add')" title="Rapikan teks dialog/soal cerita (Nama : ucapan) jadi teks sejajar kolom (tanpa tabel). Blok sebagian teks dulu kalau cuma mau merapikan bagian itu saja." class="px-2.5 py-1 bg-teal-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-teal-700 transition">🧹 Rapikan Dialog/Cerita</button>
+                                </div>
                                 <div id="add-q-text" class="editor-container box-soal rounded-xl overflow-hidden w-full"></div>
                             </div>
                             
