@@ -5236,6 +5236,7 @@
                             window.editEditors[key].container.addEventListener('click', () => { window.editEditors[key].focus(); });
                             wireTableClickToEdit(window.editEditors[key]);
                         });
+                        attachDialogSelectionTracker(window.editEditors.question);
 
                         if (['pilihan_ganda', 'benar_salah'].includes(q.question_type)) {
                             const normalize = (str) => {
@@ -5516,6 +5517,7 @@
                         Object.keys(window.addEditors).forEach(key => {
                             wireTableClickToEdit(window.addEditors[key]);
                         });
+                        attachDialogSelectionTracker(window.addEditors.question);
 
                         const typeSelect = document.getElementById('add-type');
                         const handleUIChange = () => {
@@ -5725,14 +5727,14 @@
             function parseDialogTextIntoRows(text) {
                 const lines = String(text || '').split(/\r?\n/);
                 const speakerRe = /^([A-Za-z][A-Za-z.'-]{0,20}(?:\s+[A-Za-z][A-Za-z.'-]{0,20}){0,3})\s*[:\t]\s*:?\s*(.*)$/;
+                const closingQuoteRe = /["'\u201d\u2019]\s*[.!?]*$/; // ucapan sebelumnya sudah diakhiri tanda kutip penutup
                 const rows = [];
 
                 lines.forEach(rawLine => {
                     const line = rawLine.trim().replace(/\s+/g, ' ');
-                    if (!line) return; // lewati baris kosong
+                    if (!line) return;
 
                     if (/^\(.*\)$/.test(line)) {
-                        // Baris keterangan/narasi (mis. "(the bell is ringing)") -> baris sendiri
                         rows.push({ speaker: '', text: line });
                         return;
                     }
@@ -5740,15 +5742,33 @@
                     const m = line.match(speakerRe);
                     if (m && m[1].trim().length > 0) {
                         rows.push({ speaker: m[1].trim(), text: m[2].trim() });
-                    } else if (rows.length > 0) {
-                        // Kelanjutan ucapan sebelumnya yang terpotong baris baru
-                        rows[rows.length - 1].text = (rows[rows.length - 1].text + ' ' + line).trim();
+                        return;
+                    }
+
+                    const prevRow = rows[rows.length - 1];
+                    const prevSudahTertutup = prevRow && closingQuoteRe.test(prevRow.text);
+                    if (prevRow && !prevSudahTertutup) {
+                        prevRow.text = (prevRow.text + ' ' + line).trim();
                     } else {
                         rows.push({ speaker: '', text: line });
                     }
                 });
 
                 return rows;
+            }
+
+            // BARU: pantau blok teks supaya tidak hilang saat fokus pindah ke tombol.
+            function attachDialogSelectionTracker(quillInstance) {
+                if (!quillInstance || quillInstance.__dialogSelectionTrackerAttached) return;
+                quillInstance.__dialogSelectionTrackerAttached = true;
+                quillInstance.__lastDialogSelection = null;
+                quillInstance.on('selection-change', function (range) {
+                    if (range && range.length > 0) {
+                        quillInstance.__lastDialogSelection = { index: range.index, length: range.length };
+                    } else if (range !== null) {
+                        quillInstance.__lastDialogSelection = null;
+                    }
+                });
             }
 
             // Susun baris {speaker, text} jadi HTML paragraf dengan "hanging indent":
@@ -5778,10 +5798,19 @@
                 const quillInstance = editors && editors.question;
                 if (!quillInstance) return;
 
-                const selection = quillInstance.getSelection(true) || { index: 0, length: quillInstance.getLength() };
-                const hasSelection = selection.length > 0;
-                const rangeIndex = hasSelection ? selection.index : 0;
-                const rangeLength = hasSelection ? selection.length : quillInstance.getLength();
+                // PENTING: kalau tidak ada blok sama sekali, activeSelection harus NULL
+                // (bukan diisi "seluruh dokumen"), supaya hasSelection tidak salah kebaca true.
+                const liveSelection = quillInstance.getSelection();
+                const cachedSelection = quillInstance.__lastDialogSelection;
+                const activeSelection =
+                    (liveSelection && liveSelection.length > 0) ? liveSelection :
+                    (cachedSelection && cachedSelection.length > 0) ? cachedSelection :
+                    null;
+
+                const hasSelection = !!activeSelection;
+                const rangeIndex = hasSelection ? activeSelection.index : 0;
+                const rangeLength = hasSelection ? activeSelection.length : quillInstance.getLength();
+                quillInstance.__lastDialogSelection = null;
 
                 const rawText = quillInstance.getText(rangeIndex, rangeLength);
                 const rows = parseDialogTextIntoRows(rawText);
@@ -5800,8 +5829,28 @@
                 const html = buildAlignedDialogueHtml(rows);
 
                 if (hasSelection) {
-                    quillInstance.deleteText(rangeIndex, rangeLength, 'user');
-                    quillInstance.clipboard.dangerouslyPasteHTML(rangeIndex, html, 'user');
+                    // Manipulasi DOM langsung (BUKAN lewat clipboard), supaya gaya kustom
+                    // kita tidak ikut disaring/dibuang oleh mekanisme "paste" bawaan Quill.
+                    const lineBlots = quillInstance.getLines(rangeIndex, rangeLength || 1);
+                    if (lineBlots.length > 0) {
+                        const firstNode = lineBlots[0].domNode;
+                        const lastNode = lineBlots[lineBlots.length - 1].domNode;
+                        const parent = firstNode.parentNode;
+
+                        const temp = document.createElement('div');
+                        temp.innerHTML = html;
+                        const newNodes = Array.from(temp.childNodes);
+
+                        newNodes.forEach(node => parent.insertBefore(node, firstNode));
+
+                        let node = firstNode;
+                        while (node) {
+                            const next = node.nextSibling;
+                            parent.removeChild(node);
+                            if (node === lastNode) break;
+                            node = next;
+                        }
+                    }
                 } else {
                     quillInstance.root.innerHTML = html;
                 }
@@ -7730,6 +7779,7 @@
                         Object.keys(window.addEditors).forEach(key => {
                             wireTableClickToEdit(window.addEditors[key]);
                         });
+                        attachDialogSelectionTracker(window.addEditors.question);
 
                         const typeSelect = document.getElementById('add-type');
                         const handleUIChange = () => {
