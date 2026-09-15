@@ -652,16 +652,73 @@
                 }
             }
 
+            // FUNGSI HELPER GENERIK: Ambil SEMUA baris dari tabel manapun di Supabase,
+            // menembus limit default 1000 baris per query, memakai pagination .range().
+            // queryModifier (opsional): fungsi untuk menambahkan filter seperti .eq() sebelum di-paginate.
+            async function fetchAllRows(tableName, selectColumns = '*', orderColumn = 'id', queryModifier = null) {
+                const PAGE_SIZE = 1000;
+                let from = 0;
+                let allRows = [];
+                while (true) {
+                    let query = dbClient
+                        .from(tableName)
+                        .select(selectColumns)
+                        .order(orderColumn, { ascending: true });
+
+                    if (queryModifier) {
+                        query = queryModifier(query);
+                    }
+
+                    const { data: pageData, error: pageError } = await query.range(from, from + PAGE_SIZE - 1);
+
+                    if (pageError) throw pageError;
+
+                    allRows = allRows.concat(pageData || []);
+
+                    if (!pageData || pageData.length < PAGE_SIZE) {
+                        break;
+                    }
+                    from += PAGE_SIZE;
+                }
+                return allRows;
+            }
+
+            // FUNGSI HELPER: Ambil SEMUA baris dari tabel 'questions' di Supabase.
+            // Supabase/PostgREST membatasi maksimal 1000 baris per query secara default,
+            // jadi kita harus mengambilnya bertahap (pagination) memakai .range()
+            // agar soal ke-1001 dst tetap terbaca oleh aplikasi.
+            async function fetchAllQuestions() {
+                const PAGE_SIZE = 1000;
+                let from = 0;
+                let allRows = [];
+                while (true) {
+                    const { data: pageData, error: pageError } = await dbClient
+                        .from('questions')
+                        .select('*')
+                        .order('id', { ascending: true })
+                        .range(from, from + PAGE_SIZE - 1);
+
+                    if (pageError) throw pageError;
+
+                    allRows = allRows.concat(pageData || []);
+
+                    if (!pageData || pageData.length < PAGE_SIZE) {
+                        break; // halaman terakhir, sisa data < PAGE_SIZE
+                    }
+                    from += PAGE_SIZE;
+                }
+                return allRows;
+            }
+
             // 3. FUNGSI MEMUAT DATA SOAL DAN HASIL UJIAN
             async function loadExamData(silent = false) {
                 try {
                     if (!silent) showLoading();                    
                     // --- A. AMBIL DATA SOAL DARI SUPABASE ---
-                    const { data: questionsData, error: questionsError } = await dbClient
-                        .from('questions')
-                        .select('*')
-                        .order('id', { ascending: true });
-                    if (questionsError) {
+                    let questionsData;
+                    try {
+                        questionsData = await fetchAllQuestions();
+                    } catch (questionsError) {
                         console.error("Error load questions:", questionsError);
                         showToast('Gagal memuat soal', 'error');
                         return false;
@@ -674,27 +731,23 @@
                         };
                     });
                     // --- BAGIAN YANG DIUBAH: B & C (OPTIMALISASI FILTER DATABASE) ---
-                    const userRole = currentUser ? currentUser.role : null;                    
-                    // Buat query dasar untuk tabel examresult
-                    let resultsQuery = dbClient
-                        .from('examresult')
-                        .select('*')
-                        .order('timestamp', { ascending: false });
+                    const userRole = currentUser ? currentUser.role : null;
 
-                    // Lakukan penyaringan langsung di tingkat database (Server-side Filtering)
-                    if (userRole === 'siswa' && currentUser) {
-                        // Jika siswa, HANYA ambil data nilainya sendiri (Sangat menghemat bandwidth 1060 siswa)
-                        resultsQuery = resultsQuery.eq('student_name', currentUser.name);
-                    } else if (!userRole) {
-                        // Jika belum login (misal saat pertama kali web dimuat), jangan ambil data apapun
-                        resultsQuery = resultsQuery.eq('student_name', 'BELUM_LOGIN_NO_DATA');
-                    } 
-                    // Jika role adalah 'admin' atau 'guru', query tidak ditambahkan .eq() agar bisa melihat semua nilai siswa
-
-                    // Eksekusi query ke Supabase
-                    const { data: resultsData, error: resultsError } = await resultsQuery;
-
-                    if (resultsError) {
+                    // Siapkan filter (Server-side Filtering), lalu ambil SEMUA baris via pagination
+                    let resultsData;
+                    try {
+                        resultsData = await fetchAllRows('examresult', '*', 'timestamp', (query) => {
+                            if (userRole === 'siswa' && currentUser) {
+                                // Jika siswa, HANYA ambil data nilainya sendiri (Sangat menghemat bandwidth 1060 siswa)
+                                return query.eq('student_name', currentUser.name);
+                            } else if (!userRole) {
+                                // Jika belum login (misal saat pertama kali web dimuat), jangan ambil data apapun
+                                return query.eq('student_name', 'BELUM_LOGIN_NO_DATA');
+                            }
+                            // Jika role adalah 'admin' atau 'guru', query tidak ditambahkan .eq() agar bisa melihat semua nilai siswa
+                            return query;
+                        });
+                    } catch (resultsError) {
                         console.error("Error mengambil riwayat nilai:", resultsError);
                         showToast('Gagal memuat riwayat nilai.', 'error');
                         return false;
@@ -904,19 +957,16 @@
 
             // Fungsi Fetch Data Awal (Tetap Dipertahankan untuk render pertama kali)
             async function ambilDataTerbaru() {
-                const { data, error } = await dbClient
-                    .from('monitoring')
-                    .select('*')
-                    .order('last_update', { ascending: false }); 
-
-                if (error) {
-                    console.error("❌ Gagal muat data:", error.message);
-                } else {
+                try {
+                    const data = await fetchAllRows('monitoring', '*', 'last_update');
+                    data.reverse(); // supaya urutan kembali dari terbaru ke terlama
                     if (data) {
                         data.forEach(siswa => {
                             updateBarisTabel(siswa);
                         });
                     }
+                } catch (error) {
+                    console.error("❌ Gagal muat data:", error.message);
                 }
             }
 
@@ -1469,15 +1519,15 @@
                     }    
                     try {
                         // Tarik SEMUA DATA secara Paralel (bersamaan) agar jauh lebih cepat
-                        const [usersRes, resultsRes, questionsRes] = await Promise.all([
-                            dbClient.from('users').select('id, username, name, role, class, is_login'),
-                            dbClient.from('examresult').select('*').order('timestamp', { ascending: false }),
-                            dbClient.from('questions').select('*').order('id', { ascending: true })
+                        const [usersData, resultsData, questionsData] = await Promise.all([
+                            fetchAllRows('users', 'id, username, name, role, class, is_login'),
+                            fetchAllRows('examresult', '*', 'timestamp'),
+                            fetchAllQuestions()
                         ]);
-                        
-                        allUsers = usersRes.data || [];
-                        allExamResults = resultsRes.data || [];
-                        allQuestions = questionsRes.data || [];
+
+                        allUsers = usersData || [];
+                        allExamResults = resultsData || [];
+                        allQuestions = questionsData || [];
                     } catch (err) {
                         console.error("Gagal memuat data admin:", err);
                     }
@@ -1497,7 +1547,7 @@
                     
                     try {
                         // Tarik HANYA SOAL untuk Guru (sesuai permintaan untuk menghemat beban)
-                        const { data: questionsData } = await dbClient.from('questions').select('*');
+                        const questionsData = await fetchAllQuestions();
                         allQuestions = questionsData || [];
                     } catch (err) {
                         console.error("Gagal memuat data guru:", err);
@@ -8687,11 +8737,7 @@
                     
                     if (target === 'users') {
                         // 1. AMBIL DATA USERS DARI SUPABASE
-                        const { data: usersData, error: usersError } = await dbClient
-                            .from('users')
-                            .select('*');
-                            
-                        if (usersError) throw usersError;
+                        const usersData = await fetchAllRows('users', '*');
                         
                         allUsers = usersData || [];
                         renderUsersSection();
@@ -8699,13 +8745,7 @@
                         
                     } else if (target === 'examResults') {
                         // 2. AMBIL DATA NILAI DARI SUPABASE
-                        const { data: resultsData, error: resultsError } = await dbClient
-                            .from('examresult')
-                            .select('*')
-                            .order('timestamp', { ascending: false });
-                            
-                        if (resultsError) throw resultsError;
-                        
+                        const resultsData = await fetchAllRows('examresult', '*', 'timestamp');
                         const fullResults = resultsData || [];
                         
                         // Filter nilai sesuai dengan role (guru/admin lihat semua, siswa lihat miliknya sendiri)
@@ -8720,12 +8760,7 @@
                         
                     } else if (target === 'questions') {
                         // 3. AMBIL DATA SOAL DARI SUPABASE
-                        const { data: questionsData, error: questionsError } = await dbClient
-                            .from('questions')
-                            .select('*')
-                            .order('id', { ascending: true });
-                            
-                        if (questionsError) throw questionsError;
+                        const questionsData = await fetchAllQuestions();
                         
                         allQuestions = questionsData || [];
                         
