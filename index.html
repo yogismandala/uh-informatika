@@ -783,11 +783,12 @@
 
                 // PERBAIKAN: Gunakan 1 Kunci Memori yang Konstan
                 // Tidak akan bocor ke mapel 2 karena sudah ada sessionStorage.clear() saat logout
-                let waktuLogin = sessionStorage.getItem('waktuLogin');
+                let waktuLogin = sessionStorage.getItem('waktuLogin') || localStorage.getItem('waktuLogin_' + currentUser.username);
                 if (!waktuLogin) {
                     waktuLogin = new Date().toLocaleTimeString('id-ID');
-                    sessionStorage.setItem('waktuLogin', waktuLogin);
                 }
+                sessionStorage.setItem('waktuLogin', waktuLogin);
+                localStorage.setItem('waktuLogin_' + currentUser.username, waktuLogin);
 
                 let waktuSelesai = sessionStorage.getItem('waktuSelesai') || "-";
                 // =========================================================
@@ -1285,7 +1286,7 @@
                     };     
             
                     await loadExamQuestions();
-                    renderExamPage();
+                    if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
                 } else {
                     // Jika tidak ada data ujian aktif, pastikan variabel dibersihkan dan tampilkan login
                     currentUser = null;
@@ -2929,7 +2930,7 @@
                 // Siapkan data untuk dikirim ke database SEBELUM hapus apapun
                 const score = typeof calculateScore === 'function' ? calculateScore() : 0;
                 const answersString = typeof studentAnswers !== 'undefined' ? JSON.stringify(studentAnswers) : "{}";
-                const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || "-";
+                const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || localStorage.getItem('waktuLogin_' + currentUser.username) || "-";
                 const waktuSelesaiSiswa = sessionStorage.getItem('waktuSelesai') || new Date().toLocaleTimeString('id-ID');
 
                 const examData = {
