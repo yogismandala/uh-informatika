@@ -1,9 +1,9 @@
 {
-  "name": "SMPN 11 Tangerang - Ujian Online",
+  "name": "Informatika - Ujian Online",
   "short_name": "SMPN 11 TNG",
-  "description": "Aplikasi ujian online (ASTS) SMPN 11 Tangerang",
+  "description": "Aplikasi ujian online - SMPN 11 Tangerang",
   "id": "/index.html",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
