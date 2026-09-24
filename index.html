@@ -5,9 +5,15 @@
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="SMPN 11 TNG">
+        <meta name="theme-color" content="#1e3a8a">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">
         <title>SMPN 11 TANGERANG</title>
+        <link rel="manifest" href="manifest.json">
         <link rel="icon" type="image/png" href="https://i.ibb.co.com/99y5fNyw/LOGO-11.png">
+        <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+        <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
@@ -20,8 +26,6 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         
-        
-
         <style>
             #questionContainer .flex.items-center p,
             #questionContainer .flex.items-start p {
@@ -1287,6 +1291,7 @@
             
                     await loadExamQuestions();
                     if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
+                    renderExamPage();
                 } else {
                     // Jika tidak ada data ujian aktif, pastikan variabel dibersihkan dan tampilkan login
                     currentUser = null;
@@ -8797,6 +8802,15 @@
             }
 
             init();
+        </script>
+        <script>
+            // Registrasi Service Worker agar aplikasi bisa diinstal (PWA)
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('service-worker.js')
+                        .catch((err) => console.warn('Gagal mendaftarkan service worker:', err));
+                });
+            }
         </script>
     </body>
 </html>
