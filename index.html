@@ -687,28 +687,26 @@
                 return allRows;
             }
 
-            // FUNGSI HELPER: Ambil SEMUA baris dari tabel 'questions' di Supabase.
-            // Supabase/PostgREST membatasi maksimal 1000 baris per query secara default,
-            // jadi kita harus mengambilnya bertahap (pagination) memakai .range()
             // agar soal ke-1001 dst tetap terbaca oleh aplikasi.
-            async function fetchAllQuestions() {
+            async function fetchAllQuestions(queryModifier = null) {
                 const PAGE_SIZE = 1000;
                 let from = 0;
                 let allRows = [];
                 while (true) {
-                    const { data: pageData, error: pageError } = await dbClient
+                    let query = dbClient
                         .from('questions')
                         .select('*')
-                        .order('id', { ascending: true })
-                        .range(from, from + PAGE_SIZE - 1);
+                        .order('id', { ascending: true });
+
+                    if (queryModifier) {
+                        query = queryModifier(query);
+                    }
+
+                    const { data: pageData, error: pageError } = await query.range(from, from + PAGE_SIZE - 1);
 
                     if (pageError) throw pageError;
-
                     allRows = allRows.concat(pageData || []);
-
-                    if (!pageData || pageData.length < PAGE_SIZE) {
-                        break; // halaman terakhir, sisa data < PAGE_SIZE
-                    }
+                    if (!pageData || pageData.length < PAGE_SIZE) break;
                     from += PAGE_SIZE;
                 }
                 return allRows;
@@ -718,10 +716,17 @@
             async function loadExamData(silent = false) {
                 try {
                     if (!silent) showLoading();                    
+                    const userRole = currentUser ? currentUser.role : null;
+
                     // --- A. AMBIL DATA SOAL DARI SUPABASE ---
                     let questionsData;
                     try {
-                        questionsData = await fetchAllQuestions();
+                        questionsData = await fetchAllQuestions((query) => {
+                            if (userRole === 'siswa' && typeof currentExam !== 'undefined' && currentExam && currentExam.subject) {
+                                return query.eq('subject', currentExam.subject);
+                            }
+                            return query;
+                        });
                     } catch (questionsError) {
                         console.error("Error load questions:", questionsError);
                         showToast('Gagal memuat soal', 'error');
@@ -735,8 +740,6 @@
                         };
                     });
                     // --- BAGIAN YANG DIUBAH: B & C (OPTIMALISASI FILTER DATABASE) ---
-                    const userRole = currentUser ? currentUser.role : null;
-
                     // Siapkan filter (Server-side Filtering), lalu ambil SEMUA baris via pagination
                     let resultsData;
                     try {
@@ -787,12 +790,13 @@
 
                 // PERBAIKAN: Gunakan 1 Kunci Memori yang Konstan
                 // Tidak akan bocor ke mapel 2 karena sudah ada sessionStorage.clear() saat logout
-                let waktuLogin = sessionStorage.getItem('waktuLogin') || localStorage.getItem('waktuLogin_' + currentUser.username);
+                const waktuLoginKey = 'waktuLogin_' + currentUser.username + '_' + namaMapel;
+                let waktuLogin = sessionStorage.getItem('waktuLogin') || localStorage.getItem(waktuLoginKey);
                 if (!waktuLogin) {
                     waktuLogin = new Date().toLocaleTimeString('id-ID');
                 }
                 sessionStorage.setItem('waktuLogin', waktuLogin);
-                localStorage.setItem('waktuLogin_' + currentUser.username, waktuLogin);
+                localStorage.setItem(waktuLoginKey, waktuLogin);
 
                 let waktuSelesai = sessionStorage.getItem('waktuSelesai') || "-";
                 // =========================================================
@@ -2310,15 +2314,82 @@
                 }
             }
 
+            
+            const SPLIT_SCREEN_THRESHOLD = 0.65; // 65% — ubah angka ini sesuai kebutuhan
+
+            function isScreenRatioViolated() {
+                const widthRatio = window.innerWidth / screen.width;
+                const heightRatio = window.innerHeight / screen.height;
+                return widthRatio < SPLIT_SCREEN_THRESHOLD || heightRatio < SPLIT_SCREEN_THRESHOLD;
+            }
+
+            let lastViolationTimestamp = 0;
+            const VIOLATION_DEBOUNCE_MS = 800; // cegah dobel hitung jika beberapa event tumpang tindih
+
+            function recordViolation() {
+                const now = Date.now();
+                if (now - lastViolationTimestamp < VIOLATION_DEBOUNCE_MS) return;
+                lastViolationTimestamp = now;
+
+                violationCount++;
+                localStorage.setItem('violationCount', violationCount.toString());
+                updateViolationDisplay();
+                showViolationWarning();
+            }
+
+            function checkSplitScreenViolation() {
+                if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
+                    if (isScreenRatioViolated()) {
+                        recordViolation();
+                    }
+                }
+            }
+
+            // Debounce resize agar tidak terlalu sensitif (mis. address bar mobile muncul/hilang sesaat)
+            let splitScreenResizeTimer = null;
+            function handleResizeViolation() {
+                clearTimeout(splitScreenResizeTimer);
+                splitScreenResizeTimer = setTimeout(checkSplitScreenViolation, 500);
+            }
+
+            // Saat keluar dari fullscreen, beri jeda singkat lalu cek rasio layar
+            // (menghindari false positive jika siswa keluar fullscreen tapi window tetap penuh)
+            function handleFullscreenViolation() {
+                if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
+                    setTimeout(checkSplitScreenViolation, 300);
+                }
+            }
+
+            // screen, misalnya klik address bar) tidak ikut dihitung pelanggaran.
+            function handleBlurViolation() {
+                if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
+                    if (isScreenRatioViolated()) {
+                        recordViolation();
+                    }
+                }
+            }
+
             // 3. Fungsi utamanya menjadi jauh lebih pendek dan aman
             function setupViolationDetection() {
                 // Hapus listener lama untuk mencegah penumpukan (Event Leak)
                 document.removeEventListener('visibilitychange', handleVisibilityViolation);
                 document.removeEventListener('contextmenu', handleContextMenuViolation);
+                document.removeEventListener('fullscreenchange', handleFullscreenViolation);
+                document.removeEventListener('webkitfullscreenchange', handleFullscreenViolation);
+                document.removeEventListener('mozfullscreenchange', handleFullscreenViolation);
+                document.removeEventListener('MSFullscreenChange', handleFullscreenViolation);
+                window.removeEventListener('resize', handleResizeViolation);
+                window.removeEventListener('blur', handleBlurViolation);
                 
                 // Pasang listener yang baru
                 document.addEventListener('visibilitychange', handleVisibilityViolation);
                 document.addEventListener('contextmenu', handleContextMenuViolation);
+                document.addEventListener('fullscreenchange', handleFullscreenViolation);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenViolation);
+                document.addEventListener('mozfullscreenchange', handleFullscreenViolation);
+                document.addEventListener('MSFullscreenChange', handleFullscreenViolation);
+                window.addEventListener('resize', handleResizeViolation);
+                window.addEventListener('blur', handleBlurViolation);
             }
             
             function updateViolationDisplay() {
@@ -2342,8 +2413,9 @@
             }
             
             function showViolationWarning() {
+                document.querySelectorAll('.violation-warning-popup').forEach(el => el.remove());
                 const warningDiv = document.createElement('div');
-                warningDiv.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                warningDiv.className = 'violation-warning-popup fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
                 warningDiv.innerHTML = `
                     <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
                         <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
@@ -2468,6 +2540,32 @@
                 
                 container.innerHTML = questionHTML;
                 renderMathIn(container); // render rumus $...$ jadi tampilan matematika (KaTeX)
+            }
+
+            // Fungsi ringan: cuma mengubah warna pilihan yang diklik,
+            // TANPA membangun ulang gambar soal & rumus KaTeX (biar tidak berat/lag).
+            function updateOptionHighlight() {
+                const currentQuestion = examQuestions[currentQuestionIndex];
+                const labels = document.querySelectorAll('#questionContainer label');
+
+                labels.forEach(label => {
+                    const input = label.querySelector('input[type="radio"]');
+                    if (!input) return;
+
+                    if (currentQuestion.question_type === 'benar_salah') {
+                        const color = input.value === 'Benar' ? 'green' : 'red';
+                        label.classList.remove('border-green-500','bg-green-50','border-red-500','bg-red-50','border-gray-300','bg-white','hover:bg-gray-50');
+                        if (input.checked) {
+                            label.classList.add(`border-${color}-500`, `bg-${color}-50`);
+                        } else {
+                            label.classList.add('border-gray-300','bg-white','hover:bg-gray-50');
+                        }
+                    } else {
+                        label.classList.remove('border-blue-500','bg-blue-50','border-gray-300');
+                        label.classList.add(input.checked ? 'border-blue-500' : 'border-gray-300');
+                        if (input.checked) label.classList.add('bg-blue-50');
+                    }
+                });
             }
 
             function getQuestionTypeLabel(type) {
@@ -2627,9 +2725,9 @@
                 sessionStorage.setItem('studentAnswers', encodedAnswers);
                 localStorage.setItem('studentAnswers', encodedAnswers);
 
-                // 3. Update navigasi dan tampilan
+                // 3. Update navigasi dan tampilan (ringan, tanpa render ulang gambar & rumus)
                 renderQuestionNav();
-                renderQuestion(); 
+                updateOptionHighlight(); 
             }
 
             function saveAnswer(indexOrText) {
@@ -2656,10 +2754,10 @@
                 // 4. Update warna navigasi nomor soal
                 renderQuestionNav();
 
-                // 5. LOGIKA RENDER ULANG (CRITICAL)
-                // Kita HANYA memblokir render ulang jika tipenya 'isian_singkat'.
-                // Selain itu (pilihan ganda, benar_salah, kompleks), WAJIB render ulang agar UI berubah.
-                if (currentQuestion.question_type !== 'isian_singkat') {
+                // 5. UPDATE TAMPILAN PILIHAN (ringan, tanpa render ulang gambar & rumus)
+                if (currentQuestion.question_type === 'pilihan_ganda' || currentQuestion.question_type === 'benar_salah') {
+                    updateOptionHighlight();
+                } else if (currentQuestion.question_type !== 'isian_singkat') {
                     renderQuestion();
                 }
             }
@@ -2935,7 +3033,7 @@
                 // Siapkan data untuk dikirim ke database SEBELUM hapus apapun
                 const score = typeof calculateScore === 'function' ? calculateScore() : 0;
                 const answersString = typeof studentAnswers !== 'undefined' ? JSON.stringify(studentAnswers) : "{}";
-                const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || localStorage.getItem('waktuLogin_' + currentUser.username) || "-";
+                const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || localStorage.getItem('waktuLogin_' + currentUser.username + '_' + currentExam.subject) || "-";
                 const waktuSelesaiSiswa = sessionStorage.getItem('waktuSelesai') || new Date().toLocaleTimeString('id-ID');
 
                 const examData = {
@@ -4310,27 +4408,7 @@
                 
                 document.getElementById('addUserForm').addEventListener('submit', addUser);
             }
-            //untuk hasil nilai
-            function generateClassOptionsForFilter() {
-                // 1. Ambil list kelas unik
-                const uniqueClasses = [...new Set(allExamResults.map(item => item.student_class))].sort();            
-                return uniqueClasses.map(c => {
-                    // --- PEMBERSIHAN DATA ---
-                    // Ubah data kelas (c) menjadi String dan buang spasi (trim)
-                    const classValue = String(c || "").trim();
-                    
-                    // Ubah state yang dipilih menjadi String dan buang spasi (trim)
-                    const selectedValue = String(filterState.class || "").trim();
-
-                    // --- BANDINGKAN ---
-                    // Jika nilainya sama persis, tambahkan atribut 'selected'
-                    const isSelected = (classValue === selectedValue) ? 'selected' : '';
-
-                    // Return HTML Option
-                    return `<option value="${classValue}" ${isSelected}>${classValue}</option>`;
-                }).join('');
-            }
-
+            
             //untuk tambah user
             function generateClassOptions() {
                 let options = '';
@@ -5458,6 +5536,25 @@
             }
 
             async function showAddQuestionForm() {
+                const isGuru = currentUser?.role === 'GURU' || currentUser?.role === 'guru';
+
+                // Kelas: kalau guru sudah punya kelas tetap, kunci ke kelas itu saja
+                const hasClass = isGuru && currentUser.class && currentUser.class.trim() !== '';
+                const classOptions = hasClass
+                    ? `<option value="${currentUser.class}">Kelas ${currentUser.class}</option>`
+                    : `<option value="" disabled selected>-- Pilih Jenjang Kelas --</option>
+                    <option value="7">Kelas 7</option>
+                    <option value="8">Kelas 8</option>
+                    <option value="9">Kelas 9</option>`;
+
+                // Mapel: kalau guru sudah punya mapel tetap, kunci ke mapel itu saja
+                const hasSubject = isGuru && currentUser.subject && currentUser.subject.trim() !== '';
+                const subjectOptions = hasSubject
+                    ? `<option value="${currentUser.subject}">${currentUser.subject}</option>`
+                    : `<option value="" disabled selected>-- Pilih Mata Pelajaran --</option>` +
+                    (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris'])
+                        .map(s => `<option value="${s}">${s}</option>`).join('');
+
                 Swal.fire({
                     title: '➕ Tambah Soal Baru',
                     width: '800px',
@@ -5477,18 +5574,14 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
-                                    <select id="add-class" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate">
-                                        <option value="" disabled selected>-- Pilih Jenjang Kelas --</option>
-                                        <option value="7">Kelas 7</option>
-                                        <option value="8">Kelas 8</option>
-                                        <option value="9">Kelas 9</option>
+                                    <select id="add-class" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate" ${hasClass ? 'disabled' : ''}>
+                                        ${classOptions}
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
-                                    <select id="add-subject" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate">
-                                        <option value="" disabled selected>-- Pilih Mata Pelajaran --</option>
-                                        ${(typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}">${s}</option>`).join('')}
+                                    <select id="add-subject" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate" ${hasSubject ? 'disabled' : ''}>
+                                        ${subjectOptions}
                                     </select>
                                 </div>
                                 <div>
@@ -5510,7 +5603,7 @@
                                 </div>
                                 <div id="add-q-text" class="editor-container box-soal rounded-xl overflow-hidden w-full"></div>
                             </div>
-                            
+
                             <div id="options-wrapper" class="space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                     <div id="cont-opt-0" class="flex flex-col">
@@ -5549,7 +5642,7 @@
                                 <div id="key-manual-container" class="flex-grow max-w-md" style="display: none;">
                                     <input type="text" id="manual-key-input" class="w-full p-2 border-2 border-gray-300 rounded-lg font-bold" placeholder="Ketik jawaban...">
                                 </div>
-                                
+
                                 <div class="flex-shrink-0">
                                     <p class="text-[10px] text-green-600 font-medium italic" id="key-hint-text">*Pilih huruf jawaban benar</p>
                                 </div>
@@ -5557,12 +5650,12 @@
                         </div>
                     `,
                     didOpen: () => {
-                        const config = { 
-                            modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction', 'table'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]], handlers: mathToolbarHandlers } }, 
-                            theme: 'snow', 
-                            placeholder: 'Ketik di sini...' 
+                        const config = {
+                            modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction', 'table'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]], handlers: mathToolbarHandlers } },
+                            theme: 'snow',
+                            placeholder: 'Ketik di sini...'
                         };
-                        
+
                         window.addEditors = {
                             question: new Quill('#add-q-text', config),
                             opt0: new Quill('#add-opt-0', config),
@@ -5608,8 +5701,13 @@
                     confirmButtonText: '💾 Simpan Soal',
                     confirmButtonColor: '#10B981',
                     preConfirm: async () => {
+                        // Baca langsung dari elemen HTML. Aman walau select dalam kondisi disabled.
+                        const qClass = document.getElementById('add-class').value || '-';
+                        const qSubject = document.getElementById('add-subject').value || '-';
+
                         try {
-                            const type = document.getElementById('add-type').value;
+                            const type = document.getElementById('add-type').value || 'pilihan_ganda';
+
                             const processEditor = async (ed) => {
                                 const imgs = ed.root.querySelectorAll('img');
                                 for (let img of imgs) {
@@ -5633,14 +5731,14 @@
                                 ];
 
                                 if (type === 'benar_salah') {
-                                    finalOptions = rawOptions.slice(0, 2);
+                                    finalOptions = rawOptions.slice(0, 2); // Hanya simpan A dan B
                                 } else {
-                                    finalOptions = rawOptions;
+                                    finalOptions = rawOptions; // Simpan semua A, B, C, D
                                 }
 
                                 if (type === 'pilihan_ganda' || type === 'benar_salah') {
                                     const selectedIdx = document.getElementById('select-correct-opt').value;
-                                    key = finalOptions[selectedIdx]; 
+                                    key = finalOptions[selectedIdx];
                                 } else if (type === 'pilihan_ganda_kompleks') {
                                     key = document.getElementById('manual-key-input').value.toUpperCase().replace(/\s+/g, '').split(',').filter(k => k !== '').join(',');
                                     if (!key) throw new Error("Kunci jawaban kompleks harus diisi");
@@ -5651,44 +5749,50 @@
                                 key = document.getElementById('manual-key-input').value.trim();
                             }
 
-                            // --- BAGIAN YANG DIUBAH: PAYLOAD SUPABASE ---
                             const payload = {
-                                question_text: qText,
-                                question_class: document.getElementById('add-class').value,
-                                subject: document.getElementById('add-subject').value,
-                                question_type: type,
-                                options: JSON.stringify(finalOptions),
-                                answer_key: key
+                                question_text: qText || '',
+                                question_class: String(qClass),
+                                subject: String(qSubject),
+                                question_type: String(type),
+                                options: JSON.stringify(finalOptions || []),
+                                answer_key: String(key || '')
                             };
 
-                            // --- BAGIAN YANG DIUBAH: FETCH DIGANTI DBCLIENT (SUPABASE) ---
                             const { data, error } = await dbClient
                                 .from('questions')
                                 .insert([payload])
-                                .select(); // Mengambil id data yang baru dibuat
+                                .select();
 
                             if (error) throw new Error(error.message);
 
-                            // Kembalikan data beserta ID baru dari Supabase
                             return { ...payload, id: data[0].id, security_token: btoa(unescape(encodeURIComponent(key))) };
                         } catch (err) {
                             Swal.showValidationMessage(`Gagal: ${err.message}`);
                         }
                     }
-                }).then(result => {
-                    if (result.isConfirmed) {
-                        // Push ke array lokal untuk mengupdate tampilan tanpa harus reload dari database
-                        allQuestions.push({
-                            ...result.value,
-                            options: JSON.parse(result.value.options),
-                            correct_answer: result.value.answer_key
-                        });
-                        Swal.fire('Tersimpan!', 'Soal berhasil ditambahkan.', 'success').then(() => {
-                            if(typeof renderQuestionsSection === 'function') renderQuestionsSection();
-                        });
+                }).then(async result => {
+                    if (result.isConfirmed && result.value) {
+                        // Refresh dari Supabase kalau tersedia, biar data tabel soal akurat
+                        if (typeof loadExamData === 'function') {
+                            await loadExamData(true);
+                        } else if (typeof allQuestions !== 'undefined') {
+                            allQuestions.push({
+                                ...result.value,
+                                options: result.value.options ? JSON.parse(result.value.options) : [],
+                                correct_answer: result.value.answer_key
+                            });
+                        }
+
+                        showToast('Soal berhasil ditambahkan!', 'success');
+
+                        if (typeof renderQuestionsSection === 'function') {
+                            renderQuestionsSection();
+                        }
                     }
                 });
             }
+            // Alias supaya tombol lama onclick="showGuruAddQuestionForm()" tetap jalan tanpa perlu ubah HTML
+            const showGuruAddQuestionForm = showAddQuestionForm;
 
             function triggerUploadWord() {
                 const input = document.getElementById('fileUploadSoalWord');
@@ -7707,276 +7811,6 @@
                 reader.readAsArrayBuffer(file);
             }
 
-            function showGuruAddQuestionForm() { //guru nambah soal
-                const isGuru = currentUser.role === 'GURU' || currentUser.role === 'guru';
-                
-                // Tentukan opsi kelas (Jika guru punya kelas, kunci ke kelas itu saja)
-                let classOptions = "";
-                const hasClass = isGuru && currentUser.class && currentUser.class.trim() !== '';
-                if (hasClass) {
-                    classOptions = `<option value="${currentUser.class}">Kelas ${currentUser.class}</option>`;
-                } else {
-                    classOptions = `<option value="7">Kelas 7</option><option value="8">Kelas 8</option><option value="9">Kelas 9</option>`;
-                }
-
-                // Tentukan opsi mapel (Kunci ke mapel guru jika ada)
-                const hasSubject = isGuru && currentUser.subject && currentUser.subject.trim() !== '';
-                const subjectOptions = hasSubject 
-                    ? `<option value="${currentUser.subject}">${currentUser.subject}</option>` 
-                    : (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}">${s}</option>`).join('');
-
-                Swal.fire({
-                    title: '➕ Tambah Soal Baru',
-                    width: '800px',
-                    html: `
-                        <style>
-                            .editor-container { cursor: text; transition: all 0.2s; border-width: 2px !important; }
-                            .editor-container:focus-within { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-                            .ql-editor { min-height: 100px; font-size: 15px; }
-                            .ql-container.ql-snow { border: none !important; }
-                            .ql-toolbar.ql-snow { border: none !important; border-bottom: 2px solid #000000 !important; background: #fafafa; border-radius: 8px 8px 0 0; }
-                            .box-soal { border-color: #3b82f6 !important; background-color: #eff6ff; }
-                            .box-a { border-color: #10b981 !important; background-color: #ecfdf5; }
-                            label.title-opt { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; margin-bottom: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-                        </style>
-
-                        <div class="text-left space-y-6" style="max-height: 75vh; overflow-y: auto; padding: 15px;">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
-                                <div>
-                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
-                                    <select id="add-class" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate" ${hasClass ? 'disabled' : ''}>
-                                        ${classOptions}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
-                                    <select id="add-subject" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate" ${hasSubject ? 'disabled' : ''}>
-                                        ${subjectOptions}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-black text-purple-600 uppercase mb-1">Tipe Soal</label>
-                                    <select id="add-type" class="w-full p-3 md:p-2 bg-white border-2 border-purple-200 rounded-lg shadow-sm font-bold text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 truncate">
-                                        <option value="pilihan_ganda" selected>Pilihan Ganda</option>
-                                        <option value="pilihan_ganda_kompleks">PG Kompleks</option>
-                                        <option value="benar_salah">Benar / Salah</option>
-                                        <option value="isian_singkat">Isian / Essai</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="mb-6">
-                                <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
-                                    <label class="title-opt bg-blue-600 shadow-sm mb-0">Pertanyaan Utama</label>
-                                    <button type="button" onclick="rapikanDialogInEditor('add')" title="Rapikan teks dialog/soal cerita (Nama : ucapan) jadi teks sejajar kolom (tanpa tabel). Blok sebagian teks dulu kalau cuma mau merapikan bagian itu saja." class="px-2.5 py-1 bg-teal-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-teal-700 transition">🧹 Rapikan Dialog/Cerita</button>
-                                </div>
-                                <div id="add-q-text" class="editor-container box-soal rounded-xl overflow-hidden w-full"></div>
-                            </div>
-                            
-                            <div id="options-wrapper" class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                    <div id="cont-opt-0" class="flex flex-col">
-                                        <label class="title-opt bg-emerald-500 shadow-sm self-start">Opsi A</label>
-                                        <div id="add-opt-0" class="editor-container box-a rounded-xl overflow-hidden w-full"></div>
-                                    </div>
-                                    <div id="cont-opt-1">
-                                        <label class="title-opt bg-emerald-500 shadow-sm self-start">Opsi B</label>
-                                        <div id="add-opt-1" class="editor-container box-a rounded-xl overflow-hidden w-full"></div>
-                                    </div>
-                                    <div id="cont-opt-2">
-                                        <label class="title-opt bg-emerald-500 shadow-sm self-start">Opsi C</label>
-                                        <div id="add-opt-2" class="editor-container box-a rounded-xl overflow-hidden w-full"></div>
-                                    </div>
-                                    <div id="cont-opt-3">
-                                        <label class="title-opt bg-emerald-500 shadow-sm self-start">Opsi D</label>
-                                        <div id="add-opt-3" class="editor-container box-a rounded-xl overflow-hidden w-full"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mt-4 p-4 border-t-2 border-green-500 bg-green-50 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div class="flex-shrink-0">
-                                    <label class="text-sm font-black text-green-700 flex items-center">
-                                        <span class="mr-2 text-lg">✅</span> KUNCI JAWABAN:
-                                    </label>
-                                </div>
-
-                                <div id="key-dropdown-container" class="flex-grow max-w-xs">
-                                    <select id="select-correct-opt" class="w-full p-2 border-2 border-green-300 rounded-lg text-lg font-black text-green-800 outline-none">
-                                        <option value="0">A</option><option value="1">B</option>
-                                        <option id="drop-opt-2" value="2">C</option><option id="drop-opt-3" value="3">D</option>
-                                    </select>
-                                </div>
-
-                                <div id="key-manual-container" class="flex-grow max-w-md" style="display: none;">
-                                    <input type="text" id="manual-key-input" class="w-full p-2 border-2 border-gray-300 rounded-lg font-bold" placeholder="Ketik jawaban...">
-                                </div>
-                                
-                                <div class="flex-shrink-0">
-                                    <p class="text-[10px] text-green-600 font-medium italic" id="key-hint-text">*Pilih huruf jawaban benar</p>
-                                </div>
-                            </div>
-                        </div>
-                    `,
-                    didOpen: () => {
-                        const config = { 
-                            modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction', 'table'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]], handlers: mathToolbarHandlers } }, 
-                            theme: 'snow', 
-                            placeholder: 'Ketik di sini...' 
-                        };
-                        
-                        window.addEditors = {
-                            question: new Quill('#add-q-text', config),
-                            opt0: new Quill('#add-opt-0', config),
-                            opt1: new Quill('#add-opt-1', config),
-                            opt2: new Quill('#add-opt-2', config),
-                            opt3: new Quill('#add-opt-3', config)
-                        };
-                        Object.keys(window.addEditors).forEach(key => {
-                            wireTableClickToEdit(window.addEditors[key]);
-                        });
-                        attachDialogSelectionTracker(window.addEditors.question);
-
-                        const typeSelect = document.getElementById('add-type');
-                        const handleUIChange = () => {
-                            const type = typeSelect.value || 'pilihan_ganda';
-                            const isBS = type === 'benar_salah';
-                            const isPG = type === 'pilihan_ganda';
-                            const isComplex = type === 'pilihan_ganda_kompleks';
-                            const isEssay = type === 'isian_singkat';
-
-                            // Kontrol visibilitas Opsi C dan D
-                            document.getElementById('cont-opt-2').style.display = (isPG || isComplex) ? 'block' : 'none';
-                            document.getElementById('cont-opt-3').style.display = (isPG || isComplex) ? 'block' : 'none';
-                            document.getElementById('drop-opt-2').style.display = isPG ? 'block' : 'none';
-                            document.getElementById('drop-opt-3').style.display = isPG ? 'block' : 'none';
-                            document.getElementById('options-wrapper').style.display = isEssay ? 'none' : 'block';
-
-                            const useDropdown = isPG || isBS;
-                            document.getElementById('key-dropdown-container').style.display = useDropdown ? 'block' : 'none';
-                            document.getElementById('key-manual-container').style.display = useDropdown ? 'none' : 'block';
-
-                            // Auto-fill Benar/Salah
-                            if (isBS) {
-                                window.addEditors.opt0.root.innerHTML = '<p>Benar</p>';
-                                window.addEditors.opt1.root.innerHTML = '<p>Salah</p>';
-                            }
-
-                            document.getElementById('key-hint-text').textContent = isComplex ? "*Gunakan koma (Contoh: A, C)" : (isEssay ? "*Ketik jawaban singkat" : "*Pilih huruf jawaban benar");
-                        };
-
-                        typeSelect.addEventListener('change', handleUIChange);
-                        handleUIChange();
-                    },
-                    showCancelButton: true,
-                    confirmButtonText: '💾 Simpan Soal',
-                    confirmButtonColor: '#10B981',
-                    preConfirm: async () => {
-
-                        // Ambil langsung dari element HTML. Meskipun HTML-nya disabled, value tetap bisa dibaca dengan aman.
-                        // Jika kosong, berikan string '-' agar Supabase tidak error karena null.
-                        const qClass = document.getElementById('add-class').value || '-';
-                        const qSubject = document.getElementById('add-subject').value || '-';
-                        
-                        try {
-                            const type = document.getElementById('add-type').value || 'pilihan_ganda';
-                            const processEditor = async (ed) => {
-                                const imgs = ed.root.querySelectorAll('img');
-                                for (let img of imgs) {
-                                    if (img.src.startsWith('data:image') && typeof compressImage === 'function') {
-                                        img.src = await compressImage(img.src);
-                                    }
-                                }
-                                return resolveEditorTablesInHtml(ed, ed.root.innerHTML);
-                            };
-
-                            Swal.showLoading();
-                            const qText = await processEditor(window.addEditors.question);
-                            let finalOptions = [], key = "";
-
-                            if (type !== 'isian_singkat') {
-                                // Ambil semua input mentah
-                                const rawOptions = [
-                                    await processEditor(window.addEditors.opt0),
-                                    await processEditor(window.addEditors.opt1),
-                                    await processEditor(window.addEditors.opt2),
-                                    await processEditor(window.addEditors.opt3)
-                                ];
-
-                                // --- LOGIKA UTAMA: Potong Opsi jika Benar/Salah ---
-                                if (type === 'benar_salah') {
-                                    finalOptions = rawOptions.slice(0, 2); // Hanya simpan A dan B
-                                } else {
-                                    finalOptions = rawOptions; // Simpan semua A, B, C, D
-                                }
-
-                                // Penentuan Kunci
-                                if (type === 'pilihan_ganda' || type === 'benar_salah') {
-                                    const selectedIdx = document.getElementById('select-correct-opt').value;
-                                    key = finalOptions[selectedIdx]; 
-                                } else if (type === 'pilihan_ganda_kompleks') {
-                                    key = document.getElementById('manual-key-input').value.toUpperCase().replace(/\s+/g, '').split(',').filter(k => k !== '').join(',');
-                                    if (!key) throw new Error("Kunci jawaban kompleks harus diisi");
-                                } else {
-                                    key = document.getElementById('manual-key-input').value;
-                                }
-                            } else {
-                                key = document.getElementById('manual-key-input').value.trim();
-                            }
-
-                            // PAYLOAD SUPABASE
-                            const payload = {
-                                question_text: qText || '',
-                                question_class: String(qClass),
-                                subject: String(qSubject),
-                                question_type: String(type),
-                                options: JSON.stringify(finalOptions || []), 
-                                answer_key: String(key || '')
-                            };
-
-                            // Lakukan Insert ke Supabase
-                            const { data, error } = await dbClient
-                                .from('questions')
-                                .insert([payload])
-                                .select();
-
-                            if (error) throw new Error(error.message);
-
-                            // Mengembalikan data beserta ID auto-increment dari Supabase
-                            return { ...payload, id: data[0].id, security_token: btoa(unescape(encodeURIComponent(key))) };
-                        } catch (err) {
-                            Swal.showValidationMessage(`Gagal: ${err.message}`);
-                        }
-                    }
-                }).then(async result => {
-                    if (result.isConfirmed && result.value) {
-                        
-                        // Memanggil dari Supabase diam-diam agar tabel soal terupdate akurat
-                        if (typeof loadExamData === 'function') {
-                            await loadExamData(true);
-                        } else {
-                            if (typeof allQuestions !== 'undefined') {
-                                allQuestions.push({
-                                    ...result.value,
-                                    options: result.value.options ? JSON.parse(result.value.options) : [],
-                                    correct_answer: result.value.answer_key
-                                });
-                            }
-                        }
-
-                        // Jalankan Toast sukses
-                        showToast('Soal berhasil ditambahkan!', 'success');
-
-                        // --- PERBAIKAN DI SINI ---
-                        // Panggil fungsi render utama (Otomatis menyesuaikan Role)
-                        if (typeof renderQuestionsSection === 'function') {
-                            renderQuestionsSection();
-                        }
-                        // -------------------------
-                    }
-                });
-            }
-
             async function deleteQuestion(questionId) {
                 // Membuat modal konfirmasi manual
                 const confirmDiv = document.createElement('div');
@@ -8611,70 +8445,6 @@
                 }
             }
 
-            // 1. FUNGSI LOAD SETTINGS DARI SUPABASE (SINKRON)
-            async function loadSupabaseSettings() {
-                try {
-                    const { data, error } = await dbClient
-                        .from('settings')
-                        .select('*')
-                        .eq('id', 1)
-                        .single();
-
-                    // Jika error karena baris id=1 belum ada, kita biarkan pakai default awal
-                    if (error && error.code !== 'PGRST116') { 
-                        throw error;
-                    }
-
-                    if (data) {
-                        // Masukkan data pengaturan umum ke memori lokal
-                        examSettings.exam_duration = parseInt(data.exam_duration) || 60;
-                        examSettings.max_questions = parseInt(data.max_questions) || 0;
-                        examSettings.shuffle_questions = !!data.shuffle_questions;
-                        examSettings.shuffle_answers = !!data.shuffle_answers;
-                        examSettings.show_score = data.show_score !== false;
-                        examSettings.limit_one_attempt = !!data.limit_one_attempt;
-                        
-                        // --- TAMBAHAN: Ambil batas minimal waktu kumpul dari database ---
-                        examSettings.minTimeToSubmit = parseInt(data.min_time_to_submit) || 0;
-                        
-                        // Ambil data jadwal dari Supabase secara aman
-                        let databaseJadwal = data.jadwal;
-                        if (typeof databaseJadwal === 'string') {
-                            try { 
-                                databaseJadwal = JSON.parse(databaseJadwal); 
-                            } catch(e) { 
-                                console.error("Gagal parse string jadwal:", e);
-                                databaseJadwal = []; 
-                            }
-                        }
-                        
-                        // PASTIKAN memori lokal diisi data dari database, BUKAN data default aplikasi lagi
-                        examSettings.active_subjects = Array.isArray(databaseJadwal) ? databaseJadwal : [];
-                    } else {
-                        console.warn("Baris data id=1 belum ada di Supabase. Menggunakan nilai default awal.");
-                        examSettings.active_subjects = examSettings.active_subjects || [];
-                        examSettings.minTimeToSubmit = examSettings.minTimeToSubmit || 0; // Tambahan default
-                    }
-
-                    // Simpan juga ke localStorage agar sinkron dengan fungsi validasi submit ujian Anda
-                    localStorage.setItem('minTimeToSubmit', (examSettings.minTimeToSubmit || 0).toString());
-
-                    // Jika form pengaturan saat ini sedang terbuka di layar, refresh tampilannya
-                    if (document.getElementById('settingsForm')) {
-                        renderSettingsSection();
-                    }
-                    
-                    // Jika tabel/halaman jadwal pelajaran sedang terbuka di layar, refresh juga tampilannya
-                    if (typeof renderJadwalSection === 'function' && document.getElementById('jadwalTable')) {
-                        renderJadwalSection();
-                    }
-
-                } catch (e) {
-                    console.error("Gagal load settings dari Supabase:", e);
-                    showToast('Gagal memuat pengaturan dari database', 'error');
-                }
-            }
-
             // 2. FUNGSI SIMPAN SETTINGS KE SUPABASE
             async function saveSettings(e) {
                 if (e) e.preventDefault();
@@ -8743,7 +8513,7 @@
                     
                     if (target === 'users') {
                         // 1. AMBIL DATA USERS DARI SUPABASE
-                        const usersData = await fetchAllRows('users', '*');
+                        const usersData = await fetchAllRows('users', 'id, username, name, role, class, is_login');
                         
                         allUsers = usersData || [];
                         renderUsersSection();
@@ -8751,15 +8521,13 @@
                         
                     } else if (target === 'examResults') {
                         // 2. AMBIL DATA NILAI DARI SUPABASE
-                        const resultsData = await fetchAllRows('examresult', '*', 'timestamp');
-                        const fullResults = resultsData || [];
-                        
-                        // Filter nilai sesuai dengan role (guru/admin lihat semua, siswa lihat miliknya sendiri)
-                        if (currentUser.role === 'admin' || currentUser.role === 'guru') {
-                            allExamResults = fullResults;
-                        } else {
-                            allExamResults = fullResults.filter(r => r.student_name === currentUser.name);
-                        }
+                        const resultsData = await fetchAllRows('examresult', '*', 'timestamp', (query) => {
+                            if (currentUser.role === 'admin' || currentUser.role === 'guru') {
+                                return query;
+                            }
+                            return query.eq('student_name', currentUser.name);
+                        });
+                        allExamResults = resultsData || [];
                         
                         renderResultsSection();
                         showToast('Data Hasil Ujian berhasil diperbarui', 'success');
