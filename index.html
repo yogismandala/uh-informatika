@@ -1645,6 +1645,7 @@
                                     <li>Berdoalah sebelum mengerjakan soal ujian.</li>
                                     <li>Waktu ujian akan berjalan otomatis saat Anda masuk.</li>
                                     <li>Dilarang keluar dari aplikasi atau merefresh halaman saat ujian berlangsung.</li>
+                                    <li>Maksimal pelanggaran 5x, ketika pelanggaran mencapai 5x otomatis selesai</li>
                                     <li>${infoAttempt}</li>
                                     <li>Kerjakan dengan jujur dan teliti.</li>
                                 </ul>
@@ -2330,19 +2331,21 @@
                 violationCount++;
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
-                showViolationWarning();
+                const isLastViolation = violationCount >= MAX_VIOLATION_AUTOSUBMIT;
+                if (!isLastViolation) showViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
                 if (typeof laporKeAdmin === 'function') laporKeAdmin();
 
                 // Kumpul otomatis jika pelanggaran mencapai batas
                 if (violationCount >= MAX_VIOLATION_AUTOSUBMIT && !autoSubmitByViolationRunning) {
                     autoSubmitByViolationRunning = true;
+                    document.querySelectorAll('.violation-warning-popup').forEach(el => el.remove());
                     Swal.fire({
                         icon: 'error',
                         title: 'Batas Pelanggaran Tercapai',
                         text: 'Ujian Anda dikumpulkan otomatis karena pelanggaran mencapai ' + MAX_VIOLATION_AUTOSUBMIT + ' kali.',
                         allowOutsideClick: false,
                         showConfirmButton: false,
-                        timer: 3000,
+                        timer: 8000,
                         timerProgressBar: true
                     });
                     Promise.resolve(submitExam(true))
@@ -3124,6 +3127,7 @@
                 // Jika SUKSES: baru tandai selesai dan bersihkan data lokal
                 if (typeof examSubmitted !== 'undefined') examSubmitted = true;
                 if (typeof hasSubmitted !== 'undefined') hasSubmitted = true;
+                document.querySelectorAll('.violation-warning-popup').forEach(el => el.remove());
 
                 // reset setelah kirim nilai
                 if (currentUser && currentUser.role === 'siswa') {
