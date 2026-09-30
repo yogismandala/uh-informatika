@@ -2296,14 +2296,8 @@
             
             // 1. Pisahkan logika visibility change ke fungsi tersendiri
             function handleVisibilityViolation() {
-                if (currentUser?.role === 'siswa' && currentExam && !examSubmitted) {
-                    if (document.hidden && !isRefreshing) {
-                        violationCount++;
-                        localStorage.setItem('violationCount', violationCount.toString());
-                        updateViolationDisplay();
-                        showViolationWarning();
-                    }
-                }
+                if (document.hidden) markFocusLost();
+                else markFocusRegained();
             }
 
             // 2. Pisahkan logika klik kanan ke fungsi tersendiri
@@ -2335,6 +2329,36 @@
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
                 showViolationWarning();
+                if (typeof laporKeAdmin === 'function') laporKeAdmin();   // <-- BARIS BARU
+            }
+
+            // ===== DETEKSI HILANG FOKUS (Circle to Search / Google Lens / Assistant / pindah app) =====
+            // Prinsip: 1 kejadian hilang fokus = 1 pelanggaran. Tidak dihitung lagi
+            // sampai halaman ujian kembali mendapat fokus.
+            let focusLostActive = false;
+            let focusLostTimer = null;
+            const FOCUS_LOST_CONFIRM_MS = 400; // jeda konfirmasi agar blur sesaat tidak salah hitung
+
+            function isExamActive() {
+                return currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing;
+            }
+
+            function markFocusLost() {
+                if (!isExamActive() || focusLostActive) return;
+                clearTimeout(focusLostTimer);
+                focusLostTimer = setTimeout(() => {
+                    // konfirmasi: masih tidak fokus / masih tersembunyi?
+                    if (!isExamActive() || focusLostActive) return;
+                    if (document.hidden || !document.hasFocus()) {
+                        focusLostActive = true;
+                        recordViolation();
+                    }
+                }, FOCUS_LOST_CONFIRM_MS);
+            }
+
+            function markFocusRegained() {
+                clearTimeout(focusLostTimer);
+                if (document.hasFocus() && !document.hidden) focusLostActive = false;
             }
 
             function checkSplitScreenViolation() {
@@ -2360,14 +2384,8 @@
                 }
             }
 
-            // screen, misalnya klik address bar) tidak ikut dihitung pelanggaran.
-            function handleBlurViolation() {
-                if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
-                    if (isScreenRatioViolated()) {
-                        recordViolation();
-                    }
-                }
-            }
+            function handleBlurViolation() { markFocusLost(); }
+            function handleFocusRegained() { markFocusRegained(); }
 
             // 3. Fungsi utamanya menjadi jauh lebih pendek dan aman
             function setupViolationDetection() {
@@ -2380,6 +2398,9 @@
                 document.removeEventListener('MSFullscreenChange', handleFullscreenViolation);
                 window.removeEventListener('resize', handleResizeViolation);
                 window.removeEventListener('blur', handleBlurViolation);
+                window.removeEventListener('focus', handleFocusRegained);
+                window.removeEventListener('pagehide', handleBlurViolation);
+                window.removeEventListener('pageshow', handleFocusRegained);
                 
                 // Pasang listener yang baru
                 document.addEventListener('visibilitychange', handleVisibilityViolation);
@@ -2390,6 +2411,19 @@
                 document.addEventListener('MSFullscreenChange', handleFullscreenViolation);
                 window.addEventListener('resize', handleResizeViolation);
                 window.addEventListener('blur', handleBlurViolation);
+                window.addEventListener('focus', handleFocusRegained);
+                window.addEventListener('pagehide', handleBlurViolation);
+                window.addEventListener('pageshow', handleFocusRegained);
+
+                // Polling cadangan: sebagian HP tidak memicu event blur saat overlay
+                // sistem (Circle to Search / Lens) muncul, tapi document.hasFocus() tetap false.
+                if (window._focusPoll) clearInterval(window._focusPoll);
+                focusLostActive = false;
+                window._focusPoll = setInterval(() => {
+                    if (!isExamActive()) return;
+                    if (document.hidden || !document.hasFocus()) markFocusLost();
+                    else markFocusRegained();
+                }, 700);
             }
             
             function updateViolationDisplay() {
