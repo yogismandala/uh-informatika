@@ -2318,6 +2318,8 @@
             }
 
             let lastViolationTimestamp = 0;
+            const MAX_VIOLATION_AUTOSUBMIT = 5;   // batas pelanggaran -> kumpul otomatis
+            let autoSubmitByViolationRunning = false;
             const VIOLATION_DEBOUNCE_MS = 800; // cegah dobel hitung jika beberapa event tumpang tindih
 
             function recordViolation() {
@@ -2329,7 +2331,24 @@
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
                 showViolationWarning();
-                if (typeof laporKeAdmin === 'function') laporKeAdmin();   // <-- BARIS BARU
+                if (typeof laporKeAdmin === 'function') laporKeAdmin();
+
+                // Kumpul otomatis jika pelanggaran mencapai batas
+                if (violationCount >= MAX_VIOLATION_AUTOSUBMIT && !autoSubmitByViolationRunning) {
+                    autoSubmitByViolationRunning = true;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Batas Pelanggaran Tercapai',
+                        text: 'Ujian Anda dikumpulkan otomatis karena pelanggaran mencapai ' + MAX_VIOLATION_AUTOSUBMIT + ' kali.',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                    Promise.resolve(submitExam(true))
+                        .catch(err => console.error('Auto-submit pelanggaran gagal:', err))
+                        .finally(() => { autoSubmitByViolationRunning = false; }); // boleh dicoba lagi jika gagal kirim
+                }
             }
 
             // ===== DETEKSI HILANG FOKUS (Circle to Search / Google Lens / Assistant / pindah app) =====
