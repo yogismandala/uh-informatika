@@ -2356,7 +2356,7 @@
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
                 const isLastViolation = violationCount >= MAX_VIOLATION_AUTOSUBMIT;
-                if (!isLastViolation) queueViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
+                if (!isLastViolation) showViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
                 if (typeof laporKeAdmin === 'function') laporKeAdmin();
 
                 // Kumpul otomatis jika pelanggaran mencapai batas
@@ -2422,13 +2422,7 @@
             }
 
             function markFocusRegained() {
-                if (isPageFocused()) {
-                    focusLostActive = false;
-                    if (pendingViolationWarning) {
-                        pendingViolationWarning = false;
-                        if (isExamActive()) showViolationWarning();
-                    }
-                }
+                if (isPageFocused());
             }
 
             function checkSplitScreenViolation() {
