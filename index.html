@@ -2370,22 +2370,8 @@
                 }
             }
 
-            // Popup peringatan ditunda sampai siswa KEMBALI ke halaman ujian,
-            // supaya benar-benar terbaca (bukan muncul saat siswa sudah di luar aplikasi).
-            let pendingViolationWarning = false;
-            function queueViolationWarning() {
-                if (!document.hidden && document.hasFocus()) showViolationWarning(); // masih di halaman (mis. split screen)
-                else pendingViolationWarning = true;                                // tampilkan setelah kembali
-            }
-
             function markFocusRegained() {
-                if (document.hasFocus() && !document.hidden) {
-                    focusLostActive = false;
-                    if (pendingViolationWarning) {
-                        pendingViolationWarning = false;
-                        if (isExamActive()) showViolationWarning();
-                    }
-                }
+                if (document.hasFocus() && !document.hidden) focusLostActive = false;
             }
 
             function checkSplitScreenViolation() {
