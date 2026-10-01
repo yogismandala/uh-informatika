@@ -1214,11 +1214,19 @@
                 }
             }
 
-            // INITIALIZATION
-            // Mendeteksi jika user menekan tombol refresh atau menutup halaman
             window.onbeforeunload = function() {
                 isRefreshing = true;
             };
+            // Cadangan: di HP, beforeunload sering tidak terpicu saat refresh.
+            // pagehide (bukan dari bfcache) = halaman akan dimuat ulang/ditutup, BUKAN pelanggaran.
+            window.addEventListener('pagehide', function(e) {
+                if (!e.persisted) isRefreshing = true;
+            });
+            // Jika halaman dipulihkan dari bfcache, aktifkan lagi deteksi
+            window.addEventListener('pageshow', function(e) {
+                if (e.persisted) isRefreshing = false;
+                if (typeof markFocusRegained === 'function') markFocusRegained();
+            });
 
             function activateFullscreen() {
                 let element = document.documentElement; // Mengambil seluruh halaman
@@ -1296,6 +1304,18 @@
                     await loadExamQuestions();
                     if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
                     renderExamPage();
+
+                    // Jika setelah refresh pelanggaran sudah mencapai batas, langsung kumpulkan
+                    if (violationCount >= MAX_VIOLATION_AUTOSUBMIT) {
+                        setTimeout(() => {
+                            if (!examSubmitted && !autoSubmitByViolationRunning) {
+                                autoSubmitByViolationRunning = true;
+                                Promise.resolve(submitExam(true))
+                                    .catch(err => console.error('Auto-submit pelanggaran gagal:', err))
+                                    .finally(() => { autoSubmitByViolationRunning = false; });
+                            }
+                        }, 800);
+                    }
                 } else {
                     // Jika tidak ada data ujian aktif, pastikan variabel dibersihkan dan tampilkan login
                     currentUser = null;
@@ -2427,8 +2447,6 @@
                 window.removeEventListener('resize', handleResizeViolation);
                 window.removeEventListener('blur', handleBlurViolation);
                 window.removeEventListener('focus', handleFocusRegained);
-                window.removeEventListener('pagehide', handleBlurViolation);
-                window.removeEventListener('pageshow', handleFocusRegained);
                 
                 // Pasang listener yang baru
                 document.addEventListener('visibilitychange', handleVisibilityViolation);
@@ -2440,8 +2458,6 @@
                 window.addEventListener('resize', handleResizeViolation);
                 window.addEventListener('blur', handleBlurViolation);
                 window.addEventListener('focus', handleFocusRegained);
-                window.addEventListener('pagehide', handleBlurViolation);
-                window.addEventListener('pageshow', handleFocusRegained);
 
                 // Polling cadangan: sebagian HP tidak memicu event blur saat overlay
                 // sistem (Circle to Search / Lens) muncul, tapi document.hasFocus() tetap false.
