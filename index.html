@@ -2309,7 +2309,7 @@
             }
 
             
-            const SPLIT_SCREEN_THRESHOLD = 0.65; // 65% — ubah angka ini sesuai kebutuhan
+            const SPLIT_SCREEN_THRESHOLD = 0.75; // 75% — ubah angka ini sesuai kebutuhan
 
             function getOrientedScreenSize() {
                 const longSide = Math.max(screen.width, screen.height);
@@ -2404,7 +2404,7 @@
             let splitScreenResizeTimer = null;
             function handleResizeViolation() {
                 clearTimeout(splitScreenResizeTimer);
-                splitScreenResizeTimer = setTimeout(checkSplitScreenViolation, 900);
+                splitScreenResizeTimer = setTimeout(checkSplitScreenViolation, 700);
             }
 
             // Saat keluar dari fullscreen, beri jeda singkat lalu cek rasio layar
