@@ -1646,6 +1646,7 @@
                                     <li>Waktu ujian akan berjalan otomatis saat Anda masuk.</li>
                                     <li>Dilarang keluar dari aplikasi atau merefresh halaman saat ujian berlangsung.</li>
                                     <li>Maksimal pelanggaran 5x, ketika pelanggaran mencapai 5x otomatis selesai</li>
+                                    <li>HP sudah dalam MODE JANGAN GANGGU sebelum masuk ruang ujian</li>
                                     <li>${infoAttempt}</li>
                                     <li>Kerjakan dengan jujur dan teliti.</li>
                                 </ul>
@@ -2358,8 +2359,6 @@
             // Prinsip: 1 kejadian hilang fokus = 1 pelanggaran. Tidak dihitung lagi
             // sampai halaman ujian kembali mendapat fokus.
             let focusLostActive = false;
-            let focusLostTimer = null;
-            const FOCUS_LOST_CONFIRM_MS = 400; // jeda konfirmasi agar blur sesaat tidak salah hitung
 
             function isExamActive() {
                 return currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing;
@@ -2367,19 +2366,13 @@
 
             function markFocusLost() {
                 if (!isExamActive() || focusLostActive) return;
-                clearTimeout(focusLostTimer);
-                focusLostTimer = setTimeout(() => {
-                    // konfirmasi: masih tidak fokus / masih tersembunyi?
-                    if (!isExamActive() || focusLostActive) return;
-                    if (document.hidden || !document.hasFocus()) {
-                        focusLostActive = true;
-                        recordViolation();
-                    }
-                }, FOCUS_LOST_CONFIRM_MS);
+                if (document.hidden || !document.hasFocus()) {
+                    focusLostActive = true;
+                    recordViolation();
+                }
             }
 
             function markFocusRegained() {
-                clearTimeout(focusLostTimer);
                 if (document.hasFocus() && !document.hidden) focusLostActive = false;
             }
 
