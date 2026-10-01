@@ -1217,6 +1217,16 @@
             window.onbeforeunload = function() {
                 isRefreshing = true;
             };
+            // Cadangan: di HP, beforeunload sering tidak terpicu saat refresh.
+            // pagehide (bukan dari bfcache) = halaman akan dimuat ulang/ditutup, BUKAN pelanggaran.
+            window.addEventListener('pagehide', function(e) {
+                if (!e.persisted) isRefreshing = true;
+            });
+            // Jika halaman dipulihkan dari bfcache, aktifkan lagi deteksi
+            window.addEventListener('pageshow', function(e) {
+                if (e.persisted) isRefreshing = false;
+                if (typeof markFocusRegained === 'function') markFocusRegained();
+            });
 
             function activateFullscreen() {
                 let element = document.documentElement; // Mengambil seluruh halaman
@@ -1294,6 +1304,18 @@
                     await loadExamQuestions();
                     if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
                     renderExamPage();
+
+                    // Jika setelah refresh pelanggaran sudah mencapai batas, langsung kumpulkan
+                    if (violationCount >= MAX_VIOLATION_AUTOSUBMIT) {
+                        setTimeout(() => {
+                            if (!examSubmitted && !autoSubmitByViolationRunning) {
+                                autoSubmitByViolationRunning = true;
+                                Promise.resolve(submitExam(true))
+                                    .catch(err => console.error('Auto-submit pelanggaran gagal:', err))
+                                    .finally(() => { autoSubmitByViolationRunning = false; });
+                            }
+                        }, 800);
+                    }
                 } else {
                     // Jika tidak ada data ujian aktif, pastikan variabel dibersihkan dan tampilkan login
                     currentUser = null;
@@ -2296,7 +2318,7 @@
             
             // 1. Pisahkan logika visibility change ke fungsi tersendiri
             function handleVisibilityViolation() {
-                if (document.hidden) markFocusLost();
+                if (document.hidden) markFocusLost('visibility');
                 else markFocusRegained();
             }
 
@@ -2322,7 +2344,10 @@
             let autoSubmitByViolationRunning = false;
             const VIOLATION_DEBOUNCE_MS = 800; // cegah dobel hitung jika beberapa event tumpang tindih
 
-            function recordViolation() {
+            function recordViolation(src) {
+                window._lastViolationSrc = src || 'unknown';
+                // DEBUG (opsional, hapus tanda // untuk melihat penyebab pelanggaran di layar):
+                // showToast('Pelanggaran dari: ' + window._lastViolationSrc, 'error');
                 const now = Date.now();
                 if (now - lastViolationTimestamp < VIOLATION_DEBOUNCE_MS) return;
                 lastViolationTimestamp = now;
@@ -2331,7 +2356,7 @@
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
                 const isLastViolation = violationCount >= MAX_VIOLATION_AUTOSUBMIT;
-                if (!isLastViolation) showViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
+                if (!isLastViolation) queueViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
                 if (typeof laporKeAdmin === 'function') laporKeAdmin();
 
                 // Kumpul otomatis jika pelanggaran mencapai batas
@@ -2358,26 +2383,62 @@
             // sampai halaman ujian kembali mendapat fokus.
             let focusLostActive = false;
 
+            // Di Safari iOS, document.hasFocus() dan event blur TIDAK andal, jadi di iOS
+            // hanya visibilitychange (hidden) yang dipakai sebagai tanda keluar aplikasi.
+            const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const IS_IPHONE = /iPhone|iPod/.test(navigator.userAgent);
+
+            // Masa tenggang setelah halaman dimuat/refresh: status fokus belum stabil
+            const PAGE_LOADED_AT = Date.now();
+            const LOAD_GRACE_MS = 3000;
+            function inLoadGrace() { return (Date.now() - PAGE_LOADED_AT) < LOAD_GRACE_MS; }
+
+            // Apakah halaman benar-benar sedang di depan?
+            function isPageFocused() {
+                if (document.hidden) return false;
+                return IS_IOS ? true : document.hasFocus();
+            }
+
             function isExamActive() {
                 return currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing;
             }
 
-            function markFocusLost() {
+            function markFocusLost(src) {
                 if (!isExamActive() || focusLostActive) return;
-                if (document.hidden || !document.hasFocus()) {
+                // hidden = benar-benar keluar; selain itu (blur/polling) abaikan saat masa tenggang
+                if (!document.hidden && inLoadGrace()) return;
+                if (!isPageFocused()) {
                     focusLostActive = true;
-                    recordViolation();
+                    recordViolation(src || 'focus');
                 }
             }
 
+            // Popup peringatan ditunda sampai siswa KEMBALI ke halaman ujian,
+            let pendingViolationWarning = false;
+            function queueViolationWarning() {
+                if (isPageFocused()) showViolationWarning(); // masih di halaman (mis. split screen)
+                else pendingViolationWarning = true;                                // tampilkan setelah kembali
+            }
+
             function markFocusRegained() {
-                if (document.hasFocus() && !document.hidden) focusLostActive = false;
+                if (isPageFocused()) {
+                    focusLostActive = false;
+                    if (pendingViolationWarning) {
+                        pendingViolationWarning = false;
+                        if (isExamActive()) showViolationWarning();
+                    }
+                }
             }
 
             function checkSplitScreenViolation() {
+                // iPhone tidak punya split screen; innerHeight/screen.height di Safari
+                // dipengaruhi toolbar & rotasi sehingga memicu pelanggaran palsu.
+                if (IS_IPHONE) return;
+                if (inLoadGrace()) return;
                 if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
                     if (isScreenRatioViolated()) {
-                        recordViolation();
+                        recordViolation('ratio');
                     }
                 }
             }
@@ -2397,7 +2458,7 @@
                 }
             }
 
-            function handleBlurViolation() { markFocusLost(); }
+            function handleBlurViolation() { if (IS_IOS) return; markFocusLost('blur'); }
             function handleFocusRegained() { markFocusRegained(); }
 
             // 3. Fungsi utamanya menjadi jauh lebih pendek dan aman
@@ -2412,8 +2473,6 @@
                 window.removeEventListener('resize', handleResizeViolation);
                 window.removeEventListener('blur', handleBlurViolation);
                 window.removeEventListener('focus', handleFocusRegained);
-                window.removeEventListener('pagehide', handleBlurViolation);
-                window.removeEventListener('pageshow', handleFocusRegained);
                 
                 // Pasang listener yang baru
                 document.addEventListener('visibilitychange', handleVisibilityViolation);
@@ -2425,16 +2484,15 @@
                 window.addEventListener('resize', handleResizeViolation);
                 window.addEventListener('blur', handleBlurViolation);
                 window.addEventListener('focus', handleFocusRegained);
-                window.addEventListener('pagehide', handleBlurViolation);
-                window.addEventListener('pageshow', handleFocusRegained);
 
                 // Polling cadangan: sebagian HP tidak memicu event blur saat overlay
                 // sistem (Circle to Search / Lens) muncul, tapi document.hasFocus() tetap false.
                 if (window._focusPoll) clearInterval(window._focusPoll);
                 focusLostActive = false;
                 window._focusPoll = setInterval(() => {
+                    if (IS_IOS) return;   // hasFocus() di Safari iOS tidak andal
                     if (!isExamActive()) return;
-                    if (document.hidden || !document.hasFocus()) markFocusLost();
+                    if (!isPageFocused()) markFocusLost('poll');
                     else markFocusRegained();
                 }, 600);
             }
