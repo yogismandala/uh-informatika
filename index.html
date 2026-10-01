@@ -2311,9 +2311,19 @@
             
             const SPLIT_SCREEN_THRESHOLD = 0.65; // 65% — ubah angka ini sesuai kebutuhan
 
+            function getOrientedScreenSize() {
+                const longSide = Math.max(screen.width, screen.height);
+                const shortSide = Math.min(screen.width, screen.height);
+                const isLandscape = window.innerWidth >= window.innerHeight;
+                return isLandscape
+                    ? { w: longSide, h: shortSide }
+                    : { w: shortSide, h: longSide };
+            }
+
             function isScreenRatioViolated() {
-                const widthRatio = window.innerWidth / screen.width;
-                const heightRatio = window.innerHeight / screen.height;
+                const { w, h } = getOrientedScreenSize();
+                const widthRatio = window.innerWidth / w;
+                const heightRatio = window.innerHeight / h;
                 return widthRatio < SPLIT_SCREEN_THRESHOLD || heightRatio < SPLIT_SCREEN_THRESHOLD;
             }
 
@@ -2394,7 +2404,7 @@
             let splitScreenResizeTimer = null;
             function handleResizeViolation() {
                 clearTimeout(splitScreenResizeTimer);
-                splitScreenResizeTimer = setTimeout(checkSplitScreenViolation, 500);
+                splitScreenResizeTimer = setTimeout(checkSplitScreenViolation, 900);
             }
 
             // Saat keluar dari fullscreen, beri jeda singkat lalu cek rasio layar
@@ -2418,6 +2428,7 @@
                 document.removeEventListener('mozfullscreenchange', handleFullscreenViolation);
                 document.removeEventListener('MSFullscreenChange', handleFullscreenViolation);
                 window.removeEventListener('resize', handleResizeViolation);
+                window.removeEventListener('orientationchange', handleResizeViolation);
                 window.removeEventListener('blur', handleBlurViolation);
                 window.removeEventListener('focus', handleFocusRegained);
                 window.removeEventListener('pagehide', handleBlurViolation);
@@ -2431,6 +2442,7 @@
                 document.addEventListener('mozfullscreenchange', handleFullscreenViolation);
                 document.addEventListener('MSFullscreenChange', handleFullscreenViolation);
                 window.addEventListener('resize', handleResizeViolation);
+                window.addEventListener('orientationchange', handleResizeViolation);
                 window.addEventListener('blur', handleBlurViolation);
                 window.addEventListener('focus', handleFocusRegained);
                 window.addEventListener('pagehide', handleBlurViolation);
