@@ -2318,7 +2318,7 @@
             
             // 1. Pisahkan logika visibility change ke fungsi tersendiri
             function handleVisibilityViolation() {
-                if (document.hidden) markFocusLost('visibility');
+                if (document.hidden) markFocusLost();
                 else markFocusRegained();
             }
 
@@ -2344,10 +2344,7 @@
             let autoSubmitByViolationRunning = false;
             const VIOLATION_DEBOUNCE_MS = 800; // cegah dobel hitung jika beberapa event tumpang tindih
 
-            function recordViolation(src) {
-                window._lastViolationSrc = src || 'unknown';
-                // DEBUG (opsional, hapus tanda // untuk melihat penyebab pelanggaran di layar):
-                // showToast('Pelanggaran dari: ' + window._lastViolationSrc, 'error');
+            function recordViolation() {
                 const now = Date.now();
                 if (now - lastViolationTimestamp < VIOLATION_DEBOUNCE_MS) return;
                 lastViolationTimestamp = now;
@@ -2383,56 +2380,26 @@
             // sampai halaman ujian kembali mendapat fokus.
             let focusLostActive = false;
 
-            // Di Safari iOS, document.hasFocus() dan event blur TIDAK andal, jadi di iOS
-            // hanya visibilitychange (hidden) yang dipakai sebagai tanda keluar aplikasi.
-            const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            const IS_IPHONE = /iPhone|iPod/.test(navigator.userAgent);
-
-            // Masa tenggang setelah halaman dimuat/refresh: status fokus belum stabil
-            const PAGE_LOADED_AT = Date.now();
-            const LOAD_GRACE_MS = 3000;
-            function inLoadGrace() { return (Date.now() - PAGE_LOADED_AT) < LOAD_GRACE_MS; }
-
-            // Apakah halaman benar-benar sedang di depan?
-            function isPageFocused() {
-                if (document.hidden) return false;
-                return IS_IOS ? true : document.hasFocus();
-            }
-
             function isExamActive() {
                 return currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing;
             }
 
-            function markFocusLost(src) {
+            function markFocusLost() {
                 if (!isExamActive() || focusLostActive) return;
-                // hidden = benar-benar keluar; selain itu (blur/polling) abaikan saat masa tenggang
-                if (!document.hidden && inLoadGrace()) return;
-                if (!isPageFocused()) {
+                if (document.hidden || !document.hasFocus()) {
                     focusLostActive = true;
-                    recordViolation(src || 'focus');
+                    recordViolation();
                 }
             }
 
-            // Popup peringatan ditunda sampai siswa KEMBALI ke halaman ujian,
-            let pendingViolationWarning = false;
-            function queueViolationWarning() {
-                if (isPageFocused()) showViolationWarning(); // masih di halaman (mis. split screen)
-                else pendingViolationWarning = true;                                // tampilkan setelah kembali
-            }
-
             function markFocusRegained() {
-                if (isPageFocused());
+                if (document.hasFocus() && !document.hidden) focusLostActive = false;
             }
 
             function checkSplitScreenViolation() {
-                // iPhone tidak punya split screen; innerHeight/screen.height di Safari
-                // dipengaruhi toolbar & rotasi sehingga memicu pelanggaran palsu.
-                if (IS_IPHONE) return;
-                if (inLoadGrace()) return;
                 if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
                     if (isScreenRatioViolated()) {
-                        recordViolation('ratio');
+                        recordViolation();
                     }
                 }
             }
@@ -2452,7 +2419,7 @@
                 }
             }
 
-            function handleBlurViolation() { if (IS_IOS) return; markFocusLost('blur'); }
+            function handleBlurViolation() { markFocusLost(); }
             function handleFocusRegained() { markFocusRegained(); }
 
             // 3. Fungsi utamanya menjadi jauh lebih pendek dan aman
@@ -2484,9 +2451,8 @@
                 if (window._focusPoll) clearInterval(window._focusPoll);
                 focusLostActive = false;
                 window._focusPoll = setInterval(() => {
-                    if (IS_IOS) return;   // hasFocus() di Safari iOS tidak andal
                     if (!isExamActive()) return;
-                    if (!isPageFocused()) markFocusLost('poll');
+                    if (document.hidden || !document.hasFocus()) markFocusLost();
                     else markFocusRegained();
                 }, 600);
             }
