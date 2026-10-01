@@ -1,9 +1,9 @@
 // service-worker.js
-// Cache sederhana untuk "app shell" saja (file HTML, manifest, ikon).
-// Semua permintaan ke Supabase / API lain SELALU diambil dari jaringan (tidak di-cache),
-// supaya data soal/nilai/login tetap live dan tidak pernah "basi".
+// App shell: HTML selalu coba ambil dari jaringan dulu (network-first) supaya perubahan
+// aplikasi langsung sampai ke siswa. Cache hanya dipakai jika offline.
+// Request ke Supabase / API lain tidak pernah di-cache.
 
-const CACHE_NAME = "asts-smpn11-shell-v2";
+const CACHE_NAME = "uh-informatika-v2";   // NAIKKAN angka ini setiap kali ada perubahan besar
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -34,27 +34,43 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Hanya proses request GET ke origin sendiri.
-  // Request ke Supabase / domain lain dibiarkan lewat apa adanya (tidak di-cache).
+  // Hanya GET ke origin sendiri. Supabase / domain lain dibiarkan lewat apa adanya.
   if (url.origin !== self.location.origin || event.request.method !== "GET") {
     return;
   }
 
+  const isHTML =
+    event.request.mode === "navigate" ||
+    (event.request.headers.get("accept") || "").includes("text/html");
+
+  if (isHTML) {
+    // NETWORK-FIRST untuk halaman HTML
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return networkResponse;
+        })
+        .catch(() =>
+          caches.match(event.request).then((cached) =>
+            cached ||
+            caches.match("./index.html").then((fallback) =>
+              fallback || new Response("Offline", { status: 503, statusText: "Offline" })
+            )
+          )
+        )
+    );
+    return;
+  }
+
+  // CACHE-FIRST untuk file statis (ikon, manifest, dll)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-
-      return fetch(event.request)
-        .then((networkResponse) => {
-          return networkResponse;
-        })
-        .catch(() => {
-          // PENTING: harus selalu mengembalikan sebuah Response, jangan pernah undefined,
-          // atau Chrome akan menganggap ada error dan bisa menggagalkan syarat instalasi PWA.
-          return caches.match("./index.html").then((fallback) => {
-            return fallback || new Response("Offline", { status: 503, statusText: "Offline" });
-          });
-        });
+      return fetch(event.request).catch(
+        () => new Response("Offline", { status: 503, statusText: "Offline" })
+      );
     })
   );
 });
