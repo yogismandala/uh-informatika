@@ -1646,7 +1646,7 @@
                                     <li>Waktu ujian akan berjalan otomatis saat Anda masuk.</li>
                                     <li>Dilarang keluar dari aplikasi atau merefresh halaman saat ujian berlangsung.</li>
                                     <li>Maksimal pelanggaran 5x, ketika pelanggaran mencapai 5x otomatis selesai</li>
-                                    <li>HP sudah dalam MODE JANGAN GANGGU sebelum masuk ruang ujian</li>
+                                    <li>Aktifkan MODE JANGAN GANGGU di HP Anda sebelum masuk ruang ujian</li>
                                     <li>${infoAttempt}</li>
                                     <li>Kerjakan dengan jujur dan teliti.</li>
                                 </ul>
@@ -2333,7 +2333,7 @@
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
                 const isLastViolation = violationCount >= MAX_VIOLATION_AUTOSUBMIT;
-                if (!isLastViolation) showViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
+                if (!isLastViolation) queueViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
                 if (typeof laporKeAdmin === 'function') laporKeAdmin();
 
                 // Kumpul otomatis jika pelanggaran mencapai batas
@@ -2372,8 +2372,21 @@
                 }
             }
 
+            // Popup peringatan ditunda sampai siswa KEMBALI ke halaman ujian,
+            let pendingViolationWarning = false;
+            function queueViolationWarning() {
+                if (!document.hidden && document.hasFocus()) showViolationWarning(); // masih di halaman (mis. split screen)
+                else pendingViolationWarning = true;                                // tampilkan setelah kembali
+            }
+
             function markFocusRegained() {
-                if (document.hasFocus() && !document.hidden) focusLostActive = false;
+                if (document.hasFocus() && !document.hidden) {
+                    focusLostActive = false;
+                    if (pendingViolationWarning) {
+                        pendingViolationWarning = false;
+                        if (isExamActive()) showViolationWarning();
+                    }
+                }
             }
 
             function checkSplitScreenViolation() {
@@ -2438,7 +2451,7 @@
                     if (!isExamActive()) return;
                     if (document.hidden || !document.hasFocus()) markFocusLost();
                     else markFocusRegained();
-                }, 700);
+                }, 600);
             }
             
             function updateViolationDisplay() {
