@@ -3,7 +3,7 @@
 // aplikasi langsung sampai ke siswa. Cache hanya dipakai jika offline.
 // Request ke Supabase / API lain tidak pernah di-cache.
 
-const CACHE_NAME = "uh-informatika-v2";   // NAIKKAN angka ini setiap kali ada perubahan besar
+const CACHE_NAME = "uh-informatika-v3";   // NAIKKAN angka ini setiap kali ada perubahan besar
 const APP_SHELL = [
   "./",
   "./index.html",
