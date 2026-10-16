@@ -2203,13 +2203,20 @@
                             </div>
                         </div>
                         
-                        <div class="flex-1 overflow-y-auto p-2 md:p-4">
+                        <div class="flex-1 overflow-y-auto p-2 md:p-4 pb-2 md:pb-4">
                             <div class="max-w-4xl mx-auto">
                                 <div id="questionContainer" class="bg-white rounded-xl shadow-custom p-3 md:p-5 mb-3 md:mb-4"></div>
                             </div>
                         </div>
 
-                        <div class="flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
+                        <div class="relative flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
+                            <button onclick="toggleCoretan()" title="Kertas Buram"
+                                class="absolute bottom-full left-3 mb-1 z-20 bg-yellow-500 hover:bg-yellow-600 text-white
+                                    w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg border border-white
+                                    flex items-center justify-center opacity-80 hover:opacity-100
+                                    active:scale-95 transition-all duration-200">
+                                <span class="text-base md:text-xl">📝</span>
+                            </button>
                             <div id="navigationButtons" class="max-w-4xl mx-auto flex gap-1.5"></div>
                         </div>
 
@@ -2233,15 +2240,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <button onclick="toggleCoretan()" class="fixed bottom-16 md:bottom-20 left-4 bg-yellow-500 hover:bg-yellow-600 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-md z-[60] flex items-center justify-center transition-all duration-300 opacity-60 hover:opacity-100 hover:scale-110 border border-white group" title="Kertas Buram">
-                            <span class="text-base md:text-xl drop-shadow-sm">📝</span>
-                            
-                            <span class="absolute left-12 md:left-14 bg-gray-800 text-white text-[10px] md:text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-sm">
-                                Kertas Buram
-                            </span>
-                        </button>
-
                         <div id="coretanModal" class="hidden fixed inset-0 z-[70] bg-black/70 flex items-center justify-center backdrop-blur-sm p-2 md:p-4 transition-opacity">
                             <div class="bg-white w-full max-w-4xl h-[90vh] md:h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border-4 border-gray-300 relative">
                                 
@@ -3561,14 +3559,14 @@
                                         <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${primaryColor};">${score}</p>
                                     </div>
                                 </div>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Terima kasih telah menyelesaikan ujian.</p>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Terima kasih telah menyelesaikan ujian.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             ` : `
                                 <div class="bg-blue-50 rounded-xl p-6 mb-6">
-                                    <p class="text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Hasil ujian Anda telah disimpan. Nilai akan diumumkan kemudian.</p>
+                                    <p class="text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Hasil ujian Anda telah disimpan. Nilai akan diumumkan kemudian.</p>
                                 </div>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Terima kasih telah menyelesaikan ujian.</p>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Terima kasih telah menyelesaikan ujian.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             `}
                             
                             <button onclick="logout()" 
