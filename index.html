@@ -242,14 +242,11 @@
                 width: 100%;
                 /* Gunakan min-height: 100vh agar responsif menyesuaikan layar mobile */
                 min-height: 100vh; 
-                
                 /* Gunakan flexbox agar isi di dalamnya (header, konten) tersusun rapi */
                 display: flex;
                 flex-direction: column;
-                
                 /* Menerapkan smooth scrolling untuk perangkat sentuh */
                 -webkit-overflow-scrolling: touch;
-                
                 /* Properti bawaan Anda sebelumnya */
                 position: relative;
                 z-index: 10;
@@ -446,9 +443,7 @@
                 console.error("Library Supabase belum terpasang di <head>!");
             }
 
-            // ============================================
             // GLOBAL VARIABLES
-            // ============================================
             let currentUser = null;
             let currentExam = null;
             let examQuestions = [];
@@ -488,12 +483,14 @@
                 "Uji Pemahaman BAB II",
                 "Uji Pemahaman BAB III",
                 "Uji Pemahaman BAB IV",
-                "Uji Pemahaman TENGAH SEMESTER",
+                "Uji Pemahaman TENGAH SEMESTER GANJIL",
+                "Uji Pemahaman TENGAH SEMESTER GENAP",
+                "Uji Pemahaman AKHIR SEMESTER GANJIL",
+                "Uji Pemahaman AKHIR SEMESTER GENAP",
                 "ULANGAN HARIAN",
                 "REMEDIAL"
             ];
             
-            // LOADING FUNCTIONS
             // FUNGSI HELPER FILTER
             // --- 2. FUNGSI UPDATE FILTER ---
             function updateFilter(key, value) {
@@ -2191,12 +2188,17 @@
                                 </div>
                                 <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                                     <div class="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg" style="background-color: ${violationCount > 0 ? '#fee2e2' : '#dcfce7'};">
-                                        <span class="text-base md:text-lg">${violationCount > 0 ? '🚨' : '✅'}</span>
-                                        <span class="text-xs md:text-sm font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${violationCount > 0 ? '#dc2626' : '#16a34a'};">
+                                        <span class="text-xs md:text-xs">${violationCount > 0 ? '🚨' : '✅'}</span>
+                                        <span class="text-xs md:text-xm font-semibold" style="font-family: ${customFont}, ${baseFontStack}; color: ${violationCount > 0 ? '#dc2626' : '#16a34a'};">
                                             Pelanggaran: <span id="violationCount">${violationCount}</span>
                                         </span>
                                     </div>
+                                    <div class="flex items-center gap-2">
                                     <div id="timer" class="text-lg md:text-xl font-bold" style="font-family: ${customFont}, ${baseFontStack};"></div>
+                                    <button onclick="toggleNavModal()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-1.5 py-0.5 rounded-lg text-xs md:text-xs font-semibold transition flex-shrink-0">
+                                        📋 Soal
+                                    </button>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -2204,22 +2206,35 @@
                         <div class="flex-1 overflow-y-auto p-2 md:p-4">
                             <div class="max-w-4xl mx-auto">
                                 <div id="questionContainer" class="bg-white rounded-xl shadow-custom p-3 md:p-5 mb-3 md:mb-4"></div>
-                                
-                                <div id="navigationButtons" class="flex flex-wrap gap-2 justify-center mb-3 md:mb-4">
-                                </div>
-                                
-                                <div class="bg-white rounded-xl shadow-custom p-3 md:p-4 mb-4">
-                                    <h3 class="font-bold mb-2 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Navigasi Soal</h3>
-                                    <div id="questionNav" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
-                                </div>
                             </div>
+                        </div>
+
+                        <div class="flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
+                            <div id="navigationButtons" class="max-w-4xl mx-auto flex gap-1.5"></div>
                         </div>
 
                         <div class="flex-none text-white text-center py-0.1 px-4 text-[11px] shadow-[0_-2px_4px_rgba(0,0,0,0.05)]" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${primaryColor}; filter: brightness(90%);">
                             <span class="opacity-80 font-medium">SMPN 11 TANGERANG</span>
                         </div>
 
-                        <button onclick="toggleCoretan()" class="fixed bottom-4 md:bottom-6 left-4 bg-yellow-500 hover:bg-yellow-600 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-md z-[60] flex items-center justify-center transition-all duration-300 opacity-60 hover:opacity-100 hover:scale-110 border border-white group" title="Kertas Buram">
+                        <div id="navModal" class="hidden fixed inset-0 z-[65] bg-black/60 flex items-center justify-center backdrop-blur-sm p-3" onclick="if(event.target===this) toggleNavModal()">
+                            <div class="bg-white w-full max-w-lg max-h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                                <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200">
+                                    <h3 class="font-bold text-gray-700 text-sm md:text-base">Daftar Soal</h3>
+                                    <button onclick="toggleNavModal()" class="text-gray-500 hover:text-gray-800 text-lg leading-none px-2">✕</button>
+                                </div>
+                                <div class="p-3 overflow-y-auto">
+                                    <div id="questionNav" class="grid grid-cols-5 sm:grid-cols-8 gap-1.5"></div>
+                                </div>
+                                <div class="flex flex-wrap gap-3 px-4 py-2 border-t border-gray-200 text-[11px] text-gray-600">
+                                    <span><span class="inline-block w-3 h-3 rounded bg-green-500 align-middle"></span> Dijawab</span>
+                                    <span><span class="inline-block w-3 h-3 rounded bg-yellow-500 align-middle"></span> Ragu-ragu</span>
+                                    <span><span class="inline-block w-3 h-3 rounded bg-gray-200 align-middle"></span> Belum dijawab</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="toggleCoretan()" class="fixed bottom-16 md:bottom-20 left-4 bg-yellow-500 hover:bg-yellow-600 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-md z-[60] flex items-center justify-center transition-all duration-300 opacity-60 hover:opacity-100 hover:scale-110 border border-white group" title="Kertas Buram">
                             <span class="text-base md:text-xl drop-shadow-sm">📝</span>
                             
                             <span class="absolute left-12 md:left-14 bg-gray-800 text-white text-[10px] md:text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-sm">
@@ -2676,72 +2691,64 @@
                             <span class="text-5xl">⚠️</span>
                         </div>
                         <h2 class="text-2xl font-bold text-red-600 mb-3">PERINGATAN!</h2>
-                        <p class="text-gray-700 mb-4">Anda terdeteksi keluar dari halaman ujian atau membuka tab/aplikasi lain.</p>
+                        <p class="text-gray-700 mb-4">Sistem mendeteksi jendela ujian hilang fokus.</p>
                         <div class="bg-red-50 rounded-lg p-4 mb-4">
-                            <p class="text-red-800 font-semibold">Jumlah Pelanggaran: ${violationCount}</p>
+                            <p class="text-red-800 font-semibold">Pelanggaran ke-${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p>
                         </div>
-                        <p class="text-sm text-gray-600 mb-6">Pelanggaran akan tercatat dan dilaporkan ke admin. Tetap fokus pada ujian Anda!</p>
-                        <button onclick="this.closest('div.fixed').remove()" 
+                        <p class="text-sm text-gray-600 mb-6">Perhatian: Jika Anda melanggar hingga ${MAX_VIOLATION_AUTOSUBMIT} kali, ujian akan otomatis terkirim!</p>
+                        <button onclick="activateFullscreen(); this.closest('div.fixed').remove()" 
                             class="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
                             Saya Mengerti, Lanjutkan Ujian
                         </button>
                     </div>
                 `;
                 document.body.appendChild(warningDiv);
-                
-                // Auto close after 10 seconds
-                setTimeout(() => {
-                    if (warningDiv.parentElement) {
-                        warningDiv.remove();
-                    }
-                }, 10000);
             }
 
             function renderNavigationButtons() {
                 const { config, customFont, baseFontStack, baseSize } = RC;
-                
+
                 const navContainer = document.getElementById('navigationButtons');
                 if (!navContainer) return;
-                
+
+                const isFirstQuestion = currentQuestionIndex === 0;
                 const isLastQuestion = currentQuestionIndex === examQuestions.length - 1;
-                
+
                 let buttonsHTML = '';
-                
-                if (currentQuestionIndex > 0) {
-                    buttonsHTML += `
-                        <button onclick="previousQuestion()" 
-                            class="bg-red-500 hover:bg-red-600 text-white px-4 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition flex-shrink-0"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            ⬅️ Sebelumnya
-                        </button>
-                    `;
-                }
-                
+
                 buttonsHTML += `
-                    <button onclick="toggleDoubt()" 
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition flex-shrink-0"
+                    <button onclick="previousQuestion()" ${isFirstQuestion ? 'disabled' : ''}
+                        class="flex-1 bg-blue-500 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'} text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition"
+                        style="font-family: ${customFont}, ${baseFontStack};">
+                        ⬅️ Sebelumnya
+                    </button>
+                `;
+
+                buttonsHTML += `
+                    <button onclick="toggleDoubt()"
+                        class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition"
                         style="font-family: ${customFont}, ${baseFontStack};">
                         ⚠️ Ragu-ragu
                     </button>
                 `;
-                
+
                 if (isLastQuestion) {
                     buttonsHTML += `
-                        <button onclick="submitExam()" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-4 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-bold transition flex-shrink-0"
+                        <button onclick="submitExam()"
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-bold transition"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             ✅ Selesai
                         </button>
                     `;
                 } else {
                     buttonsHTML += `
-                        <button onclick="nextQuestion()" 
-                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition flex-shrink-0"
+                        <button onclick="nextQuestion()"
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             Berikutnya ➡️
                         </button>
                     `;
-                }                
+                }
                 navContainer.innerHTML = buttonsHTML;
             }
 
@@ -3063,6 +3070,11 @@
                 }
             }
 
+            function toggleNavModal() {
+                const m = document.getElementById('navModal');
+                if (m) m.classList.toggle('hidden');
+            }
+
             function goToQuestion(index) {
                 currentQuestionIndex = index;
                 sessionStorage.setItem('currentQuestionIndex', currentQuestionIndex.toString());
@@ -3070,6 +3082,7 @@
                 renderQuestionNav();
                 renderNavigationButtons();
                 scrollQuestionToTop();
+                toggleNavModal();
             }
 
             function previousQuestion() {
@@ -3189,6 +3202,13 @@
                 }
             });
 
+            function isQuestionAnswered(idx) {
+                const a = studentAnswers[idx];
+                if (a === undefined || a === null || a === '') return false;
+                if (Array.isArray(a)) return a.length > 0;
+                return true;
+            }
+
             async function submitExam(isAutoSubmit = false, submitReason = null) {
                 if (examSubmitted || hasSubmitted) return;
                 if (!navigator.onLine) {
@@ -3266,10 +3286,30 @@
 
                 // Konfirmasi dari siswa jika klik kumpul manual
                 if (!isAutoSubmit) {
+                    const totalSoal = examQuestions.length;
+                    let terjawab = 0;
+                    for (let i = 0; i < totalSoal; i++) {
+                        if (isQuestionAnswered(i)) terjawab++;
+                    }
+                    const belumJawab = totalSoal - terjawab;
+
                     const result = await Swal.fire({
                         title: 'Kumpulkan Ujian?',
-                        text: 'Apakah Anda yakin ingin menyelesaikan ujian sekarang?',
-                        icon: 'question',
+                        html: `
+                            <div style="text-align:left; font-size:14px;">
+                                <p style="margin-bottom:10px;">Apakah Anda yakin ingin menyelesaikan ujian sekarang?</p>
+                                <div style="background:#f3f4f6; border-radius:8px; padding:10px 14px; line-height:1.8;">
+                                    <div>Jumlah soal: <b>${totalSoal}</b></div>
+                                    <div>Soal dijawab: <b style="color:#16a34a;">${terjawab}</b></div>
+                                    <div>Soal belum dijawab: <b style="color:${belumJawab > 0 ? '#dc2626' : '#16a34a'};">${belumJawab}</b></div>
+                                </div>
+                                ${belumJawab > 0 ? `
+                                    <div style="margin-top:10px; background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; border-radius:8px; padding:8px 12px; font-size:13px;">
+                                        <b>Perhatian:</b> Masih ada ${belumJawab} soal yang belum dijawab. Tetap ingin mengumpulkan?
+                                    </div>` : ''}
+                            </div>
+                        `,
+                        icon: belumJawab > 0 ? 'warning' : 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#22c55e',
                         cancelButtonColor: '#ef4444',
@@ -3512,20 +3552,23 @@
                                     <span class="text-5xl">✅</span>
                                 </div>
                                 <h1 class="font-bold mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: ${textColor};">Ujian Selesai!</h1>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Terima kasih telah menyelesaikan ujian</p>
                             </div>
                             
                             ${examSettings.show_score ? `
                                 <div class="grid grid-cols-1 gap-4 mb-6">
                                     <div class="bg-blue-50 rounded-xl p-6">
-                                        <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Nilai Angka:</p>
+                                        <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">NILAI ANDA</p>
                                         <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${primaryColor};">${score}</p>
                                     </div>
                                 </div>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Terima kasih telah menyelesaikan ujian.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             ` : `
                                 <div class="bg-blue-50 rounded-xl p-6 mb-6">
                                     <p class="text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Hasil ujian Anda telah disimpan. Nilai akan diumumkan kemudian.</p>
                                 </div>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Terima kasih telah menyelesaikan ujian.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             `}
                             
                             <button onclick="logout()" 
