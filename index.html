@@ -208,7 +208,7 @@
                 left: 0;
                 width: 100%;
                 min-height: 100vh;
-                background-color: #1e3a8a;
+                background-color: #F8FAFC;
                 overflow-x: hidden; 
             
                 /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
@@ -2752,7 +2752,7 @@
 
                 buttonsHTML += `
                     <button onclick="previousQuestion()" ${isFirstQuestion ? 'disabled' : ''}
-                        class="flex-1 bg-blue-500 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'} text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-semibold transition"
+                        class="flex-1 bg-blue-500 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'} text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
                         style="font-family: ${customFont}, ${baseFontStack};">
                         ⬅️ Sebelumnya
                     </button>
@@ -2760,7 +2760,7 @@
 
                 buttonsHTML += `
                     <button onclick="toggleDoubt()"
-                        class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-semibold transition"
+                        class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
                         style="font-family: ${customFont}, ${baseFontStack};">
                         ⚠️ Ragu-ragu
                     </button>
@@ -2769,7 +2769,7 @@
                 if (isLastQuestion) {
                     buttonsHTML += `
                         <button onclick="submitExam()"
-                            class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-bold transition"
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-bold transition"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             ✅ Selesai
                         </button>
@@ -2777,7 +2777,7 @@
                 } else {
                     buttonsHTML += `
                         <button onclick="nextQuestion()"
-                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-semibold transition"
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             Berikutnya ➡️
                         </button>
