@@ -254,7 +254,7 @@
                 top: 0; left: 0;
                 width: 100%; height: 100%;
                 /* DIUBAH: Dari #0f172a ke #1e3a8a, dan dari #1e40af ke #3b82f6 */
-                background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); 
+                background: #aecdec;
                 color: white;
                 z-index: 0; 
                 overflow: hidden;
@@ -2266,7 +2266,7 @@
                             </div>
                         </div>
 
-                        <div class="relative flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
+                        <div class="relative flex-none bg-transparent border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
                             <button onclick="toggleCoretan()" title="Kertas Buram"
                                 class="absolute bottom-full left-3 mb-1 z-20 bg-yellow-500 hover:bg-yellow-600 text-white
                                     w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg border border-white
@@ -6322,7 +6322,7 @@
                     </div>
                     <div class="flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
                         <div class="max-w-4xl mx-auto flex gap-1.5">
-                            <button onclick="pvGo(${s.idx - 1})" ${isFirst ? 'disabled' : ''} class="${btn} bg-red-500 ${isFirst ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-600'}">⬅️ Sebelumnya</button>
+                            <button onclick="pvGo(${s.idx - 1})" ${isFirst ? 'disabled' : ''} class="${btn} bg-blue-500 ${isFirst ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'}">⬅️ Sebelumnya</button>
                             <button onclick="pvToggleDoubt()" class="${btn} bg-yellow-500 hover:bg-yellow-600">⚠️ Ragu-ragu</button>
                             ${isLast
                                 ? `<button onclick="pvFinish()" class="${btn} bg-green-500 hover:bg-green-600 font-bold">✅ Selesai</button>`
@@ -9435,84 +9435,79 @@
 
             // 1. FUNGSI RENDER PENGATURAN UMUM
             function renderSettingsSection() {
-                const { config, customFont, baseFontStack, baseSize, textColor, primaryColor } = RC;
-                
-                document.getElementById('adminContent').innerHTML = `
-                    <div class="space-y-6">
-                        <div class="bg-white rounded-xl shadow-custom p-6">
-                            <h2 class="font-bold mb-6" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.5}px; color: ${textColor};">⚙️ Pengaturan Ujian</h2>
-                            
-                            <form id="settingsForm" class="space-y-6">
-                                <div>
-                                    <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Durasi Ujian (menit)</label>
-                                    <input type="number" id="settingDuration" value="${examSettings.exam_duration || 60}" min="1" required
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                </div>
+                const { customFont, baseFontStack, textColor, primaryColor } = RC;
 
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 font-bold mb-1" for="settingMinTime">Batas Minimal Kumpul (Menit)</label>
-                                    <input type="number" id="settingMinTime" min="0" class="w-full px-3 py-2 border rounded" 
-                                        value="${examSettings.minTimeToSubmit || 0}">
-                                    <p class="text-xs text-gray-500 mt-1">*Siswa tidak bisa mengumpulkan ujian sebelum durasi ini terlewati. Isi 0 jika tidak ada batasan.</p>
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                        Jumlah Soal Maksimal 
-                                        <span class="text-sm text-gray-500">(0 = semua soal)</span>
-                                    </label>
-                                    <input type="number" id="settingMaxQuestions" value="${examSettings.max_questions || 0}" min="0" required
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                        style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
-                                        placeholder="Masukkan 0 untuk menggunakan semua soal">
-                                    <p class="text-sm text-gray-600 mt-2" style="font-family: ${customFont}, ${baseFontStack};">
-                                        💡 Contoh: Jika diisi 20, maka setiap ujian hanya akan menampilkan maksimal 20 soal (dari total soal yang tersedia)
-                                    </p>
-                                </div>
-                                
-                                <div>
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="settingShuffle" ${examSettings.shuffle_questions ? 'checked' : ''}
-                                            class="w-5 h-5 text-blue-600 rounded">
-                                        <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Acak Urutan Soal</span>
-                                    </label>
-                                </div>
-                                
-                                <div>
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="settingShuffleAnswers" ${examSettings.shuffle_answers ? 'checked' : ''}
-                                            class="w-5 h-5 text-blue-600 rounded">
-                                        <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Acak Urutan Jawaban</span>
-                                    </label>
-                                </div>
-                                
-                                <div>
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="settingShowScore" ${examSettings.show_score ? 'checked' : ''}
-                                            class="w-5 h-5 text-blue-600 rounded">
-                                        <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Tampilkan Nilai Setelah Ujian</span>
-                                    </label>
-                                </div>
-                                
-                                <div>
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="settingLimitOneAttempt" ${examSettings.limit_one_attempt ? 'checked' : ''} class="w-5 h-5 text-blue-600 rounded">
-                                        <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Batasi Siswa 1x Mengerjakan (Per Mapel)</span>
-                                    </label>
-                                    <p class="text-sm text-gray-500 ml-8 mt-1">Jika aktif, siswa yang sudah punya nilai tidak bisa login ke mapel tersebut.</p>
-                                </div>
-                                
-                                <button type="submit" 
-                                    class="w-full py-3 rounded-lg text-white font-semibold hover:opacity-90 transition mt-6"
-                                    style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">
-                                    💾 Simpan Pengaturan
-                                </button>
-                            </form>
+                const inputCls = "w-full px-4 py-2.5 pr-16 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition";
+
+                // Baris toggle (switch) dipakai ulang untuk semua opsi checkbox
+                const toggleRow = (id, checked, title, desc) => `
+                    <label for="${id}" class="flex items-start justify-between gap-4 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition">
+                        <div>
+                            <p class="font-semibold text-gray-800 text-sm md:text-base">${title}</p>
+                            <p class="text-xs md:text-sm text-gray-500 mt-0.5">${desc}</p>
                         </div>
+                        <div class="relative shrink-0 mt-1">
+                            <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} class="peer sr-only">
+                            <div class="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+                            <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+                        </div>
+                    </label>`;
+
+                const numberField = (id, label, value, min, unit, hint) => `
+                    <div>
+                        <label for="${id}" class="block text-sm font-semibold text-gray-700 mb-1.5">${label}</label>
+                        <div class="relative">
+                            <input type="number" id="${id}" value="${value}" min="${min}" required class="${inputCls}">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400 pointer-events-none">${unit}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1.5">${hint}</p>
+                    </div>`;
+
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="max-w-3xl mx-auto space-y-4" style="font-family: ${customFont}, ${baseFontStack};">
+                        <div>
+                            <h2 class="font-bold text-xl md:text-2xl" style="color: ${textColor};">⚙️ Pengaturan Ujian</h2>
+                            <p class="text-sm text-gray-600 mt-1">Atur durasi, jumlah soal, dan aturan pelaksanaan ujian.</p>
+                        </div>
+
+                        <form id="settingsForm" class="space-y-4">
+
+                            <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
+                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">⏱️ Waktu & Jumlah Soal</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${numberField('settingDuration', 'Durasi Ujian', examSettings.exam_duration || 60, 1, 'menit', 'Lama waktu pengerjaan siswa.')}
+                                    ${numberField('settingMinTime', 'Batas Minimal Kumpul', examSettings.minTimeToSubmit || 0, 0, 'menit', 'Siswa belum bisa mengumpulkan sebelum waktu ini lewat. Isi 0 jika tanpa batas.')}
+                                    <div class="md:col-span-2">
+                                        ${numberField('settingMaxQuestions', 'Jumlah Soal Maksimal', examSettings.max_questions || 0, 0, 'soal', 'Isi 0 untuk memakai semua soal. Contoh: diisi 20, maka tiap siswa hanya mendapat maksimal 20 soal.')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
+                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">🔀 Pengacakan</h3>
+                                <div class="space-y-3">
+                                    ${toggleRow('settingShuffle', examSettings.shuffle_questions, 'Acak Urutan Soal', 'Urutan soal berbeda untuk tiap siswa.')}
+                                    ${toggleRow('settingShuffleAnswers', examSettings.shuffle_answers, 'Acak Urutan Jawaban', 'Urutan opsi jawaban diacak.')}
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
+                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">🛡️ Hasil & Akses</h3>
+                                <div class="space-y-3">
+                                    ${toggleRow('settingShowScore', examSettings.show_score, 'Tampilkan Nilai Setelah Ujian', 'Siswa langsung melihat nilainya setelah mengumpulkan.')}
+                                    ${toggleRow('settingLimitOneAttempt', examSettings.limit_one_attempt, 'Batasi 1x Mengerjakan (Per Mapel)', 'Siswa yang sudah punya nilai tidak bisa masuk lagi ke mapel tersebut.')}
+                                </div>
+                            </div>
+
+                            <button type="submit"
+                                class="w-full py-3 rounded-xl text-white font-semibold hover:opacity-90 transition shadow-lg"
+                                style="background-color: ${primaryColor}; font-size: ${RC.baseSize * 1.1}px;">
+                                💾 Simpan Pengaturan
+                            </button>
+                        </form>
                     </div>
                 `;
-                
+
                 document.getElementById('settingsForm').addEventListener('submit', saveSettings);
             }
             
