@@ -34,9 +34,33 @@
                 margin: 0;
             }
 
-            .ql-container {
+            .ql-container:not(.editor-container) {
                 height: auto !important;
                 min-height: 60px;
+            }
+
+            /* Kotak editor: putih polos, menyatu dengan toolbar, tinggi bisa diatur */
+            .swal2-popup .ql-toolbar.ql-snow {
+                border: 1px solid #d1d5db !important;
+                border-radius: 8px 8px 0 0 !important;
+            }
+            .swal2-popup .editor-container.ql-container.ql-snow {
+                background: #fff !important;
+                border: 1px solid #d1d5db !important;
+                border-top: none !important;
+                border-radius: 0 !important;
+                height: 120px;
+                min-height: 60px !important;
+                overflow: hidden;
+            }
+            .swal2-popup .editor-container.ql-container.ql-snow:focus-within {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+            .swal2-popup .editor-container .ql-editor {
+                height: 100%;
+                min-height: 0;
+                overflow-y: auto;
             }
 
             /* Tambahkan padding di bawah modal SweetAlert agar tombol konfirmasi tidak menutupi editor */
@@ -366,6 +390,39 @@
             border-radius: 0.75rem;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
+
+        /* Toolbar editor soal: tombol berkelompok */
+        .swal2-popup .ql-toolbar.ql-snow {
+            background: #f0f0f0 !important;
+            border: none !important;
+            border-bottom: 1px solid #d1d5db !important;
+            padding: 6px !important;
+        }
+        .swal2-popup .ql-toolbar.ql-snow .ql-formats {
+            display: inline-flex;
+            margin: 2px 6px 2px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #f8f9fa;
+            vertical-align: middle;
+        }
+        .swal2-popup .ql-toolbar.ql-snow .ql-formats > button {
+            width: 32px;
+            height: 32px;
+            padding: 6px;
+            border-right: 1px solid #d1d5db;
+        }
+        .swal2-popup .ql-toolbar.ql-snow .ql-formats > .ql-picker { height: 32px; }
+        .swal2-popup .ql-toolbar.ql-snow .ql-formats > :last-child { border-right: none; }
+
+        /* Tombol "√x Rumus" */
+        .swal2-popup .ql-toolbar.ql-snow button.ql-rumus { width: auto !important; padding: 0 10px !important; }
+        .swal2-popup .ql-toolbar.ql-snow button.ql-rumus::before { content: "√x"; font-weight: 700; color: #2563eb; margin-right: 4px; }
+        .swal2-popup .ql-toolbar.ql-snow button.ql-rumus::after { content: "Rumus"; font-size: 13px; font-weight: 600; color: #374151; }
+
+        /* Tombol tabel dengan tanda dropdown */
+        .swal2-popup .ql-toolbar.ql-snow button.ql-table { width: auto !important; padding: 0 8px !important; }
+        .swal2-popup .ql-toolbar.ql-snow button.ql-table::after { content: " ▾"; font-size: 11px; }
         </style>
     </head>
     <body class="min-h-screen">
@@ -2128,7 +2185,7 @@
                             <button onclick="backToLogin()" 
                                 class="w-full py-3 rounded-lg text-white font-semibold hover:opacity-90 transition shadow-lg"
                                 style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">
-                                ⬅️ Kembali ke Halaman Login
+                                Kembali ke Halaman Login
                             </button>
                         </div>
                     </div>
@@ -3559,18 +3616,18 @@
                                         <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${primaryColor};">${score}</p>
                                     </div>
                                 </div>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Terima kasih telah menyelesaikan ujian.</p>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Terima kasih telah menyelesaikan ujian.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             ` : `
                                 <div class="bg-blue-50 rounded-xl p-6 mb-6">
                                     <p class="text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Hasil ujian Anda telah disimpan. Nilai akan diumumkan kemudian.</p>
                                 </div>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Terima kasih telah menyelesaikan ujian.</p>
-                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Terima kasih telah menyelesaikan ujian.</p>
+                                <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             `}
                             
                             <button onclick="logout()" 
-                                class="w-full py-3 rounded-lg text-white font-semibold hover:opacity-90 transition"
+                                class="w-full py-1.5 rounded-lg text-white font-semibold hover:opacity-90 transition"
                                 style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">
                                 Kembali ke Halaman Login
                             </button>
@@ -5861,6 +5918,7 @@
                                         <div class="flex items-center justify-between mb-3 pb-2 border-b-2 border-gray-200">
                                             <h3 class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${primaryColor};">
                                                 📚 Kelas ${grade} <span id="countGrade${grade}" class="text-sm font-normal text-gray-600">(0 soal)</span>
+                                                <button onclick="previewQuestions('${grade}')" class="ml-2 px-2.5 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-xs font-semibold align-middle">Preview</button>
                                             </h3>
                                         </div>
                                         <div class="space-y-2" id="questionsList${grade}"></div>
@@ -5965,6 +6023,377 @@
 
                     // DELETE elemen yang sudah difilter keluar atau dihapus
                     itemMap.forEach(item => item.remove());
+                });
+            }
+
+            async function previewQuestions(grade) {
+                const isAdmin = currentUser && currentUser.role === 'admin';
+
+                let list = allQuestions.filter(q => q.question_class && String(q.question_class).startsWith(grade));
+                if (isAdmin) {
+                    if (window.selectedBankSoalSubject) list = list.filter(q => q.subject === window.selectedBankSoalSubject);
+                } else {
+                    list = list.filter(q => q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade));
+                }
+
+                if (list.length === 0) {
+                    Swal.fire('Info', `Belum ada soal untuk kelas ${grade}.`, 'info');
+                    return;
+                }
+
+                // Siswa hanya melihat 1 mapel per ujian, jadi pilih mapel dulu jika ada lebih dari satu
+                const subjects = [...new Set(list.map(q => q.subject).filter(Boolean))].sort();
+                let subject = subjects[0];
+                if (subjects.length > 1) {
+                    const inputOptions = {};
+                    subjects.forEach(s => { inputOptions[s] = s; });
+                    const pick = await Swal.fire({
+                        title: `Preview Kelas ${grade}`,
+                        text: 'Pilih mata pelajaran yang ingin dilihat:',
+                        input: 'select',
+                        inputOptions,
+                        inputPlaceholder: 'Pilih mata pelajaran',
+                        showCancelButton: true,
+                        confirmButtonText: 'Tampilkan',
+                        cancelButtonText: 'Batal',
+                        inputValidator: v => !v && 'Pilih mata pelajaran terlebih dahulu'
+                    });
+                    if (!pick.isConfirmed) return;
+                    subject = pick.value;
+                }
+
+                list = list.filter(q => q.subject === subject)
+                        .sort((a, b) => (a.id > b.id) ? 1 : (a.id < b.id ? -1 : 0));
+
+                const cards = list.map((q, idx) => {
+                    let options = [];
+                    try { options = JSON.parse(q.options || '[]'); } catch (e) { options = []; }
+                    if (!Array.isArray(options)) options = [];
+                    while (options.length > 0 && isBlankHtml(options[options.length - 1])) options.pop();
+
+                    let keyRaw = '';
+                    try { keyRaw = decodeQuestionKey(q); } catch (e) { keyRaw = ''; }
+
+                    // Tentukan opsi yang benar (logika sama dengan evaluateAnswer)
+                    let correctIdx = [];
+                    if (q.question_type === 'pilihan_ganda') {
+                        const k = normalizeText(keyRaw).trim().toLowerCase();
+                        options.forEach((o, i) => { if (k && normalizeText(o).trim().toLowerCase() === k) correctIdx.push(i); });
+                    } else if (q.question_type === 'pilihan_ganda_kompleks') {
+                        const kArr = Array.isArray(keyRaw) ? keyRaw : String(keyRaw).split(',');
+                        kArr.forEach(item => {
+                            const t = String(item).trim().toUpperCase();
+                            if (/^[A-Z]$/.test(t)) {
+                                const i = t.charCodeAt(0) - 65;
+                                if (options[i] !== undefined) correctIdx.push(i);
+                            } else if (t) {
+                                const n = normalizeText(t).trim().toUpperCase();
+                                options.forEach((o, i) => { if (normalizeText(o).trim().toUpperCase() === n) correctIdx.push(i); });
+                            }
+                        });
+                    }
+                    const bsKey = normalizeText(keyRaw).trim().toLowerCase(); // 'benar' / 'salah'
+
+                    let keyLabel = '';
+                    if (q.question_type === 'pilihan_ganda' || q.question_type === 'pilihan_ganda_kompleks') {
+                        keyLabel = correctIdx.length ? [...new Set(correctIdx)].sort().map(i => String.fromCharCode(65 + i)).join(', ') : '(tidak cocok dengan opsi)';
+                    } else if (q.question_type === 'benar_salah') {
+                        keyLabel = bsKey === 'benar' ? 'BENAR' : bsKey === 'salah' ? 'SALAH' : '(tidak terbaca)';
+                    } else {
+                        keyLabel = plainText(Array.isArray(keyRaw) ? keyRaw.join(', ') : keyRaw) || '(kosong)';
+                    }
+
+                    let body = '';
+                    if (q.question_type === 'pilihan_ganda' || q.question_type === 'pilihan_ganda_kompleks') {
+                        const inputType = q.question_type === 'pilihan_ganda' ? 'radio' : 'checkbox';
+                        body = `<div class="space-y-2">${options.map((opt, i) => `
+                            <label class="flex items-start p-3 border-2 border-gray-300 rounded-lg ${correctIdx.includes(i) ? 'pv-correct' : ''}">
+                                <input type="${inputType}" disabled class="mt-1 w-4 h-4 flex-shrink-0">
+                                <div class="ml-3 flex items-start gap-2 flex-1">
+                                    <span class="font-bold flex-shrink-0">${String.fromCharCode(65 + i)}.</span>
+                                    <div class="quill-content-render break-words w-full">${sanitizeHtml(opt)}</div>
+                                </div>
+                            </label>`).join('')}</div>`;
+                    } else if (q.question_type === 'benar_salah') {
+                        body = `<div class="flex gap-3">
+                            <label class="flex-1 flex items-center p-3 border-2 border-gray-300 rounded-lg ${bsKey === 'benar' ? 'pv-correct' : ''}"><input type="radio" disabled class="w-4 h-4"><span class="ml-2 font-bold">BENAR</span></label>
+                            <label class="flex-1 flex items-center p-3 border-2 border-gray-300 rounded-lg ${bsKey === 'salah' ? 'pv-correct' : ''}"><input type="radio" disabled class="w-4 h-4"><span class="ml-2 font-bold">SALAH</span></label>
+                        </div>`;
+                    } else if (q.question_type === 'isian_singkat') {
+                        body = `<input type="text" disabled placeholder="Ketik jawaban di sini..." class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50">`;
+                    }
+
+                    return `
+                        <div class="bg-white rounded-xl shadow p-4 mb-3">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="font-bold">Soal ${idx + 1} dari ${list.length}</h3>
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
+                            </div>
+                            <div class="quill-content-render mb-3 break-words" style="white-space: pre-wrap;">${sanitizeHtml(q.question_text)}</div>
+                            ${q.question_image && q.question_image.trim() !== '' ? `<img src="${escHtml(q.question_image)}" class="max-w-full h-auto rounded-lg border mb-3">` : ''}
+                            ${body}
+                            <div class="pv-key mt-3 px-3 py-2 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm font-semibold">✅ Kunci: ${escHtml(keyLabel)}</div>
+                        </div>`;
+                }).join('');
+
+                const old = document.getElementById('previewSoalOverlay');
+                if (old) old.remove();
+
+                const overlay = document.createElement('div');
+                overlay.id = 'previewSoalOverlay';
+                overlay.className = 'fixed inset-0 z-[9999] bg-gray-100 flex flex-col';
+                overlay.style.userSelect = 'text';
+                overlay.innerHTML = `
+                    <style>
+                        #previewSoalOverlay .pv-key { display: none; }
+                        #previewSoalOverlay.show-key .pv-key { display: block; }
+                        #previewSoalOverlay.show-key .pv-correct { border-color: #22c55e !important; background-color: #f0fdf4; }
+                        #previewSoalOverlay.show-key .pv-correct.border-blue-500 { background-color: #dcfce7; }
+                    </style>
+                    <div class="flex-none bg-indigo-700 text-white px-4 py-3 flex flex-wrap justify-between items-center gap-2 shadow">
+                        <div>
+                            <div class="font-bold text-sm md:text-base">Preview Soal</div>
+                            <div class="text-xs opacity-80">Kelas ${escHtml(grade)} - ${escHtml(subject)} - ${list.length} soal</div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button id="pvBtnList" onclick="pvSetMode('list')" class="px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-white text-indigo-700">📄 Daftar</button>
+                            <button id="pvBtnSiswa" onclick="pvSetMode('siswa')" class="px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-white bg-opacity-20">🎓 Tampilan Siswa</button>
+                            <label id="pvKeyToggle" class="flex items-center gap-1.5 text-xs md:text-sm font-semibold cursor-pointer">
+                                <input type="checkbox" onchange="document.getElementById('previewSoalOverlay').classList.toggle('show-key', this.checked)" class="w-4 h-4">
+                                Tampilkan kunci
+                            </label>
+                            <button onclick="document.getElementById('previewSoalOverlay').remove(); window.__pv = null;" class="px-3 py-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-sm font-semibold">✕ Tutup</button>
+                        </div>
+                    </div>
+                    <div id="pvListView" class="flex-1 overflow-y-auto p-3 md:p-4">
+                        <div class="max-w-4xl mx-auto">${cards}</div>
+                    </div>
+                    <div id="pvStudentView" class="hidden flex-1 flex flex-col min-h-0 relative"></div>`;
+                document.body.appendChild(overlay);
+
+                window.__pv = {
+                    items: list.map(q => ({ q, options: pvParseOptions(q) })),
+                    idx: 0, answers: {}, doubt: new Set(), navOpen: false,
+                    grade, subject
+                };
+                renderMathIn(overlay);
+            }
+
+            function pvParseOptions(q) {
+                let options = [];
+                try { options = JSON.parse(q.options || '[]'); } catch (e) { options = []; }
+                if (!Array.isArray(options)) options = [];
+                while (options.length > 0 && isBlankHtml(options[options.length - 1])) options.pop();
+                return options;
+            }
+
+            function pvComputeKey(q, options) {
+                let keyRaw = '';
+                try { keyRaw = decodeQuestionKey(q); } catch (e) { keyRaw = ''; }
+
+                const correctIdx = [];
+                if (q.question_type === 'pilihan_ganda') {
+                    const k = normalizeText(keyRaw).trim().toLowerCase();
+                    options.forEach((o, i) => { if (k && normalizeText(o).trim().toLowerCase() === k) correctIdx.push(i); });
+                } else if (q.question_type === 'pilihan_ganda_kompleks') {
+                    const kArr = Array.isArray(keyRaw) ? keyRaw : String(keyRaw).split(',');
+                    kArr.forEach(item => {
+                        const t = String(item).trim().toUpperCase();
+                        if (/^[A-Z]$/.test(t)) {
+                            const i = t.charCodeAt(0) - 65;
+                            if (options[i] !== undefined) correctIdx.push(i);
+                        } else if (t) {
+                            const n = normalizeText(t).trim().toUpperCase();
+                            options.forEach((o, i) => { if (normalizeText(o).trim().toUpperCase() === n) correctIdx.push(i); });
+                        }
+                    });
+                }
+                const bsKey = normalizeText(keyRaw).trim().toLowerCase();
+
+                let label = '';
+                if (q.question_type === 'pilihan_ganda' || q.question_type === 'pilihan_ganda_kompleks') {
+                    label = correctIdx.length ? [...new Set(correctIdx)].sort().map(i => String.fromCharCode(65 + i)).join(', ') : '(tidak cocok dengan opsi)';
+                } else if (q.question_type === 'benar_salah') {
+                    label = bsKey === 'benar' ? 'BENAR' : bsKey === 'salah' ? 'SALAH' : '(tidak terbaca)';
+                } else {
+                    label = plainText(Array.isArray(keyRaw) ? keyRaw.join(', ') : keyRaw) || '(kosong)';
+                }
+                return { correctIdx, bsKey, label };
+            }
+
+            function pvSetMode(mode) {
+                const isSiswa = mode === 'siswa';
+                document.getElementById('pvListView').classList.toggle('hidden', isSiswa);
+                document.getElementById('pvStudentView').classList.toggle('hidden', !isSiswa);
+                const active = 'px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-white text-indigo-700';
+                const idle = 'px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-white bg-opacity-20';
+                document.getElementById('pvBtnList').className = isSiswa ? idle : active;
+                document.getElementById('pvBtnSiswa').className = isSiswa ? active : idle;
+                if (isSiswa) pvRender(false);
+            }
+
+            function pvIsAnswered(i) {
+                const a = window.__pv.answers[i];
+                if (a === undefined || a === null || a === '') return false;
+                if (Array.isArray(a)) return a.length > 0;
+                return true;
+            }
+
+            function pvRender(keepScroll) {
+                const s = window.__pv;
+                const view = document.getElementById('pvStudentView');
+                if (!s || !view) return;
+
+                const oldScroll = document.getElementById('pvScroll');
+                const top = (keepScroll && oldScroll) ? oldScroll.scrollTop : 0;
+
+                const { q, options } = s.items[s.idx];
+                const total = s.items.length;
+                const ans = s.answers[s.idx];
+                const isFirst = s.idx === 0;
+                const isLast = s.idx === total - 1;
+                const pvk = pvComputeKey(q, options);
+
+                let body = '';
+                if (q.question_type === 'pilihan_ganda') {
+                    body = `<div class="space-y-3">${options.map((opt, i) => `
+                        <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${ans === i ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}">
+                            <input type="radio" name="pvAns" ${ans === i ? 'checked' : ''} onchange="pvAnswer(${i})" class="mt-1 w-5 h-5 text-blue-600 flex-shrink-0">
+                            <div class="ml-3 flex-1 flex items-start gap-2">
+                                <span class="font-bold flex-shrink-0">${String.fromCharCode(65 + i)}.</span>
+                                <div class="quill-content-render break-words w-full">${sanitizeHtml(opt)}</div>
+                            </div>
+                        </label>`).join('')}</div>`;
+                } else if (q.question_type === 'pilihan_ganda_kompleks') {
+                    const sel = Array.isArray(ans) ? ans : [];
+                    body = `<div class="space-y-3">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-blue-800">💡 Pilih semua jawaban yang menurut Anda benar.</p></div>
+                        ${options.map((opt, i) => `
+                        <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${sel.includes(i) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-400'}">
+                            <input type="checkbox" ${sel.includes(i) ? 'checked' : ''} onchange="pvToggleComplex(${i})" class="w-6 h-6 text-blue-600 rounded flex-shrink-0">
+                            <div class="ml-4 flex-grow quill-content-render break-words">${sanitizeHtml(opt)}</div>
+                        </label>`).join('')}</div>`;
+                } else if (q.question_type === 'benar_salah') {
+                    body = `<div class="flex flex-col sm:flex-row gap-4">
+                        <label class="w-full sm:w-1/2 flex items-center p-4 border-2 rounded-xl cursor-pointer ${pvk.bsKey === 'benar' ? 'pv-correct' : ''} ${ans === 'Benar' ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-white hover:bg-gray-50'}">
+                            <input type="radio" name="pvBS" ${ans === 'Benar' ? 'checked' : ''} onchange="pvAnswerBS('Benar')" class="w-6 h-6">
+                            <span class="ml-3 font-bold text-gray-700">BENAR</span>
+                        </label>
+                        <label class="w-full sm:w-1/2 flex items-center p-4 border-2 rounded-xl cursor-pointer ${pvk.bsKey === 'salah' ? 'pv-correct' : ''} ${ans === 'Salah' ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white hover:bg-gray-50'}">
+                            <input type="radio" name="pvBS" ${ans === 'Salah' ? 'checked' : ''} onchange="pvAnswerBS('Salah')" class="w-6 h-6">
+                            <span class="ml-3 font-bold text-gray-700">SALAH</span>
+                        </label></div>`;
+                } else if (q.question_type === 'isian_singkat') {
+                    body = `<label class="block text-blue-700 font-bold mb-3 uppercase tracking-wide text-xs">✍️ Tulis Jawaban Singkat:</label>
+                        <input type="text" oninput="pvType(this.value)" value="${escHtml(ans || '')}" placeholder="Ketik jawaban di sini..." autocomplete="off"
+                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 text-gray-800">`;
+                }
+
+                const navBtns = s.items.map((_, i) => {
+                    let cls = 'question-nav-btn rounded-lg font-semibold flex items-center justify-center cursor-pointer ' + (pvIsAnswered(i) ? 'answered' : 'unanswered');
+                    if (s.doubt.has(i)) cls = cls.replace('answered', 'doubt').replace('unanswered', 'doubt');
+                    if (i === s.idx) cls += ' current';
+                    return `<div class="${cls}" onclick="pvGo(${i})">${i + 1}</div>`;
+                }).join('');
+
+                const btn = 'flex-1 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition';
+                view.innerHTML = `
+                    <div class="flex-none text-white px-3 md:px-5 py-2 shadow-md flex justify-between items-center" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
+                        <div class="min-w-0">
+                            <h2 class="font-bold text-xs md:text-sm truncate">Nama Siswa (Preview)</h2>
+                            <p class="text-[11px] md:text-xs opacity-90 truncate">Kelas ${escHtml(s.grade)} - ${escHtml(s.subject)}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="text-lg md:text-xl font-bold">--:--</div>
+                            <button onclick="pvToggleNav()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-2.5 py-1 rounded-lg text-xs md:text-sm font-semibold">📋 Soal</button>
+                        </div>
+                    </div>
+                    <div id="pvScroll" class="flex-1 overflow-y-auto p-2 md:p-4">
+                        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow p-3 md:p-5">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-lg">Soal ${s.idx + 1} dari ${total}</h3>
+                                <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold text-sm">${getQuestionTypeLabel(q.question_type)}</span>
+                            </div>
+                            <div class="quill-content-render text-lg mb-4 break-words" style="word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${sanitizeHtml(q.question_text)}</div>
+                            ${q.question_image && q.question_image.trim() !== '' ? `<img src="${escHtml(q.question_image)}" class="max-w-full h-auto rounded-lg shadow-lg border-2 border-gray-300 mb-4">` : ''}
+                            ${body}
+                            <div class="pv-key mt-3 px-3 py-2 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm font-semibold">✅ Kunci: ${escHtml(pvk.label)}</div>
+                        </div>
+                    </div>
+                    <div class="flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
+                        <div class="max-w-4xl mx-auto flex gap-1.5">
+                            <button onclick="pvGo(${s.idx - 1})" ${isFirst ? 'disabled' : ''} class="${btn} bg-red-500 ${isFirst ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-600'}">⬅️ Sebelumnya</button>
+                            <button onclick="pvToggleDoubt()" class="${btn} bg-yellow-500 hover:bg-yellow-600">⚠️ Ragu-ragu</button>
+                            ${isLast
+                                ? `<button onclick="pvFinish()" class="${btn} bg-green-500 hover:bg-green-600 font-bold">✅ Selesai</button>`
+                                : `<button onclick="pvGo(${s.idx + 1})" class="${btn} bg-blue-500 hover:bg-blue-600">Berikutnya ➡️</button>`}
+                        </div>
+                    </div>
+                    <div class="${s.navOpen ? '' : 'hidden'} absolute inset-0 z-10 bg-black/60 flex items-center justify-center p-3" onclick="if(event.target===this) pvToggleNav()">
+                        <div class="bg-white w-full max-w-lg max-h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                            <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200">
+                                <h3 class="font-bold text-gray-700 text-sm md:text-base">Daftar Soal</h3>
+                                <button onclick="pvToggleNav()" class="text-gray-500 hover:text-gray-800 text-lg leading-none px-2">✕</button>
+                            </div>
+                            <div class="p-3 overflow-y-auto"><div class="grid grid-cols-5 sm:grid-cols-8 gap-1.5">${navBtns}</div></div>
+                            <div class="flex flex-wrap gap-3 px-4 py-2 border-t border-gray-200 text-[11px] text-gray-600">
+                                <span><span class="inline-block w-3 h-3 rounded bg-green-500 align-middle"></span> Dijawab</span>
+                                <span><span class="inline-block w-3 h-3 rounded bg-yellow-500 align-middle"></span> Ragu-ragu</span>
+                                <span><span class="inline-block w-3 h-3 rounded bg-gray-200 align-middle"></span> Belum dijawab</span>
+                            </div>
+                        </div>
+                    </div>`;
+
+                const sc = document.getElementById('pvScroll');
+                if (sc) sc.scrollTop = top;
+                renderMathIn(view);
+            }
+
+            function pvGo(i) {
+                const s = window.__pv;
+                if (!s || i < 0 || i >= s.items.length) return;
+                s.idx = i;
+                s.navOpen = false;
+                pvRender(false);
+            }
+            function pvToggleNav() { window.__pv.navOpen = !window.__pv.navOpen; pvRender(true); }
+            function pvToggleDoubt() {
+                const s = window.__pv;
+                if (s.doubt.has(s.idx)) s.doubt.delete(s.idx); else s.doubt.add(s.idx);
+                pvRender(true);
+            }
+            function pvAnswer(i) { const s = window.__pv; s.answers[s.idx] = i; pvRender(true); }
+            function pvAnswerBS(v) { const s = window.__pv; s.answers[s.idx] = v; pvRender(true); }
+            function pvToggleComplex(i) {
+                const s = window.__pv;
+                const cur = Array.isArray(s.answers[s.idx]) ? [...s.answers[s.idx]] : [];
+                const p = cur.indexOf(i);
+                if (p === -1) cur.push(i); else cur.splice(p, 1);
+                s.answers[s.idx] = cur;
+                pvRender(true);
+            }
+            // Isian: tidak render ulang supaya fokus kursor tidak hilang
+            function pvType(v) { const s = window.__pv; s.answers[s.idx] = v; }
+
+            function pvFinish() {
+                const s = window.__pv;
+                const total = s.items.length;
+                let done = 0;
+                for (let i = 0; i < total; i++) if (pvIsAnswered(i)) done++;
+                const belum = total - done;
+                Swal.fire({
+                    title: 'Kumpulkan Ujian?',
+                    html: `<div style="text-align:left; font-size:14px;">
+                        <div style="background:#f3f4f6; border-radius:8px; padding:10px 14px; line-height:1.8;">
+                            <div>Jumlah soal: <b>${total}</b></div>
+                            <div>Soal dijawab: <b style="color:#16a34a;">${done}</b></div>
+                            <div>Soal belum dijawab: <b style="color:${belum > 0 ? '#dc2626' : '#16a34a'};">${belum}</b></div>
+                        </div>
+                        ${belum > 0 ? `<div style="margin-top:10px; background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; border-radius:8px; padding:8px 12px; font-size:13px;"><b>Perhatian:</b> Masih ada ${belum} soal yang belum dijawab. Tetap ingin mengumpulkan?</div>` : ''}
+                        <p style="margin-top:10px; font-size:12px; color:#6b7280;">Mode preview: tidak ada jawaban yang dikirim.</p>
+                    </div>`,
+                    icon: belum > 0 ? 'warning' : 'question',
+                    confirmButtonText: 'OK'
                 });
             }
 
@@ -6230,7 +6659,7 @@
                         </div>
                     `,
                     didOpen: () => {
-                        const configMini = { modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction', 'table'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]], handlers: mathToolbarHandlers } }, theme: 'snow' };
+                        const configMini = { modules: { toolbar: { container: QUESTION_TOOLBAR, handlers: mathToolbarHandlers } }, theme: 'snow' };
 
                         window.editEditors = {
                             question: new Quill('#edit-q-text', configMini),
@@ -6249,6 +6678,7 @@
                         Object.keys(window.editEditors).forEach(key => {
                             window.editEditors[key].container.addEventListener('click', () => { window.editEditors[key].focus(); });
                             wireTableClickToEdit(window.editEditors[key]);
+                            addEditorResizeHandle(window.editEditors[key]);
                         });
                         attachDialogSelectionTracker(window.editEditors.question);
 
@@ -6552,7 +6982,7 @@
                     `,
                     didOpen: () => {
                         const config = {
-                            modules: { toolbar: { container: [['bold', 'italic', 'underline'], [{ 'align': [] }], ['image', 'formula'], ['sqrt', 'power', 'fraction', 'table'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]], handlers: mathToolbarHandlers } },
+                            modules: { toolbar: { container: QUESTION_TOOLBAR, handlers: mathToolbarHandlers } },
                             theme: 'snow',
                             placeholder: 'Ketik di sini...'
                         };
@@ -6566,6 +6996,7 @@
                         };
                         Object.keys(window.addEditors).forEach(key => {
                             wireTableClickToEdit(window.addEditors[key]);
+                            addEditorResizeHandle(window.addEditors[key]);
                         });
                         attachDialogSelectionTracker(window.addEditors.question);
 
@@ -6781,9 +7212,23 @@
                     });
                 },
                 table: function () {
-                    openTableEditorDialog(this.quill, null);
+                    const btn = this.container.querySelector('button.ql-table');
+                    if (btn) openTableGridPicker(this.quill, btn);
+                    else openTableEditorDialog(this.quill, null);
+                },
+                rumus: function () {
+                    openFormulaDialog(this.quill);
                 }
             };
+
+            const QUESTION_TOOLBAR = [
+                ['bold', 'italic', 'underline', 'clean'],
+                ['rumus'],
+                [{ 'list': 'bullet' }, { 'list': 'ordered' }],
+                [{ 'align': [] }],
+                ['table'],
+                ['image']
+            ];
 
             function tablePlaceholderText(id) {
                 return `📊 [TABEL ${id}] (klik 2x untuk edit)`;
@@ -7061,19 +7506,125 @@
                 });
             }
 
+            function openTableGridPicker(quillInstance, anchorBtn) {
+                // Klik tombol lagi saat picker terbuka = tutup
+                if (window.__closeTableGridPicker) { window.__closeTableGridPicker(); return; }
+
+                const CELL = 24, MAX_C = 10, MAX_R = 10;
+                const ar = anchorBtn.getBoundingClientRect();
+                const picker = document.createElement('div');
+                picker.style.cssText = `position:fixed; z-index:100000; top:${ar.bottom + 4}px; left:${Math.max(8, Math.min(ar.left, window.innerWidth - 268))}px; ` +
+                    'background:#fff; border:1px solid #d1d5db; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.2); padding:8px; user-select:none; -webkit-user-select:none;';
+
+                const grid = document.createElement('div');
+                grid.style.cssText = 'position:relative; touch-action:none; cursor:pointer;';
+                const label = document.createElement('div');
+                label.style.cssText = 'margin-top:6px; font-size:15px; color:#374151;';
+                picker.appendChild(grid);
+                picker.appendChild(label);
+
+                let hc = 0, hr = 0;
+                const draw = () => {
+                    const showC = Math.min(Math.max(hc + 1, 5), MAX_C);
+                    const showR = Math.min(Math.max(hr + 1, 5), MAX_R);
+                    grid.style.width = (showC * CELL) + 'px';
+                    grid.style.height = (showR * CELL) + 'px';
+                    let html = '';
+                    for (let rr = 1; rr <= showR; rr++) {
+                        for (let cc = 1; cc <= showC; cc++) {
+                            const on = cc <= hc && rr <= hr;
+                            html += `<div style="position:absolute; pointer-events:none; left:${(cc - 1) * CELL}px; top:${(rr - 1) * CELL}px; width:${CELL - 4}px; height:${CELL - 4}px; ` +
+                                `border:1px solid ${on ? '#bfdbfe' : '#e5e7eb'}; background:${on ? '#dbeafe' : '#f5f5f5'}; border-radius:2px;"></div>`;
+                        }
+                    }
+                    grid.innerHTML = html;
+                    label.textContent = (hc && hr) ? `${hc} x ${hr}` : 'Pilih ukuran';
+                };
+
+                // Ukuran dihitung dari posisi pointer, bukan dari elemen petaknya
+                const calc = (e) => {
+                    const g = grid.getBoundingClientRect();
+                    const c = Math.floor((e.clientX - g.left) / CELL) + 1;
+                    const r = Math.floor((e.clientY - g.top) / CELL) + 1;
+                    return { c: Math.min(Math.max(c, 1), MAX_C), r: Math.min(Math.max(r, 1), MAX_R) };
+                };
+
+                const onDocDown = (e) => {
+                    if (!picker.contains(e.target) && !anchorBtn.contains(e.target)) close();
+                };
+                function close() {
+                    document.removeEventListener('mousedown', onDocDown, true);
+                    window.removeEventListener('scroll', close, true);
+                    window.__closeTableGridPicker = null;
+                    if (picker.parentNode) picker.parentNode.removeChild(picker);
+                }
+                window.__closeTableGridPicker = close;
+
+                grid.addEventListener('pointermove', (e) => {
+                    const { c, r } = calc(e);
+                    if (c !== hc || r !== hr) { hc = c; hr = r; draw(); }
+                });
+                grid.addEventListener('pointerleave', () => { hc = 0; hr = 0; draw(); });
+                grid.addEventListener('click', (e) => {
+                    const { c, r } = calc(e);
+                    close();
+                    openTableEditorDialog(quillInstance, null, { rows: r, cols: c });
+                });
+
+                document.body.appendChild(picker);
+                draw();
+                document.addEventListener('mousedown', onDocDown, true);
+                window.addEventListener('scroll', close, true);
+            }
+
+            function addEditorResizeHandle(quillInstance) {
+                const box = quillInstance.container;
+                if (!box || box.__hasResizeHandle) return;
+                box.__hasResizeHandle = true;
+
+                const bar = document.createElement('div');
+                bar.title = 'Tarik untuk mengubah tinggi kotak';
+                bar.style.cssText = 'height:12px; background:#f0f0f0; border:1px solid #d1d5db; border-top:none; border-radius:0 0 8px 8px; ' +
+                    'cursor:ns-resize; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; -webkit-user-select:none;';
+                bar.innerHTML = '<div style="width:24px; height:3px; border-top:1px solid #9ca3af; border-bottom:1px solid #9ca3af;"></div>';
+                box.parentNode.insertBefore(bar, box.nextSibling);
+
+                let startY = 0, startH = 0;
+                const onMove = (e) => {
+                    const h = Math.max(60, Math.min(startH + (e.clientY - startY), 800));
+                    box.style.height = h + 'px';
+                };
+                const onUp = () => {
+                    bar.removeEventListener('pointermove', onMove);
+                    bar.removeEventListener('pointerup', onUp);
+                    bar.removeEventListener('pointercancel', onUp);
+                };
+                bar.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    startY = e.clientY;
+                    startH = box.getBoundingClientRect().height;
+                    bar.setPointerCapture(e.pointerId);
+                    bar.addEventListener('pointermove', onMove);
+                    bar.addEventListener('pointerup', onUp);
+                    bar.addEventListener('pointercancel', onUp);
+                });
+            }
+
             // Buka dialog tambah/edit tabel untuk satu editor Quill tertentu.
             // `existingId` diisi kalau ini EDIT tabel yang sudah ada (klik 2x placeholder-nya),
             // atau null kalau ini menyisipkan tabel BARU dari tombol toolbar.
-            function openTableEditorDialog(quillInstance, existingId) {
+            function openTableEditorDialog(quillInstance, existingId, size) {
                 quillInstance.__tableData = quillInstance.__tableData || {};
                 quillInstance.__tableSeq = quillInstance.__tableSeq || 0;
 
                 let cells;
                 if (existingId && quillInstance.__tableData[existingId]) {
                     cells = parseTableHtmlToGrid(quillInstance.__tableData[existingId]);
-                } else {
-                    cells = [['', '', ''], ['', '', '']];
-                }
+                    } else if (size) {
+                        cells = Array.from({ length: size.rows }, () => Array(size.cols).fill(''));
+                    } else {
+                        cells = [['', '', ''], ['', '', '']];
+                    }
 
                 return new Promise((resolve) => {
                     showTableBuilderModal({
@@ -7104,6 +7655,213 @@
                         }
                     });
                 });
+            }
+
+            function openFormulaDialog(quillInstance) {
+                if (typeof katex === 'undefined') {
+                    alert('KaTeX belum termuat. Periksa koneksi internet lalu coba lagi.');
+                    return;
+                }
+                const range = quillInstance.getSelection(true) || { index: quillInstance.getLength(), length: 0 };
+                let initial = range.length > 0 ? quillInstance.getText(range.index, range.length).trim() : '';
+                let startDisplay = false;
+                // Jika yang diblok sudah berupa rumus \( ... \) atau \[ ... \], isi popup dengan isinya
+                const mInline = initial.match(/^\\\(([\s\S]*)\\\)$/);
+                const mDisplay = initial.match(/^\\\[([\s\S]*)\\\]$/);
+                if (mInline) initial = mInline[1];
+                else if (mDisplay) { initial = mDisplay[1]; startDisplay = true; }
+                initial = initial.trim();
+
+                // Palet: tex = tampilan di tombol, ins = teks yang disisipkan, "|" = posisi kursor
+                const sym = (arr) => arr.map(t => ({ tex: t, ins: t + ' ' }));
+                const PALETTE = {
+                    'Pecahan & Akar': [
+                        { tex: '\\frac{a}{b}', ins: '\\frac{|}{}' },
+                        { tex: 'x^{2}', ins: '^{|}' },
+                        { tex: 'x_{i}', ins: '_{|}' },
+                        { tex: 'x_{i}^{2}', ins: '_{|}^{}' },
+                        { tex: '\\sqrt{x}', ins: '\\sqrt{|}' },
+                        { tex: '\\sqrt[n]{x}', ins: '\\sqrt[|]{}' },
+                        { tex: 'x = \\frac{-b \\pm \\sqrt{D}}{2a}', ins: 'x = \\frac{-b \\pm \\sqrt{D}}{2a}' }
+                    ],
+                    'Operasi & Simbol': [
+                        ...sym(['\\times', '\\div', '\\pm', '\\mp', '\\cdot', '\\leq', '\\geq', '\\neq', '\\approx', '\\equiv', '\\infty',
+                                '\\angle', '\\perp', '\\parallel', '\\therefore', '\\rightarrow', '\\Rightarrow', '\\in', '\\subset', '\\cup', '\\cap']),
+                        { tex: '45^{\\circ}', ins: '^{\\circ}' }
+                    ],
+                    'Huruf Yunani': sym(['\\alpha', '\\beta', '\\gamma', '\\delta', '\\epsilon', '\\theta', '\\lambda', '\\mu', '\\pi', '\\rho',
+                                        '\\sigma', '\\tau', '\\phi', '\\omega', '\\Delta', '\\Sigma', '\\Omega', '\\Pi', '\\Phi']),
+                    'Kalkulus & Vektor': [
+                        { tex: '\\int_{a}^{b} f(x)\\,dx', ins: '\\int_{|}^{} f(x)\\,dx' },
+                        { tex: '\\sum_{i=1}^{n}', ins: '\\sum_{|}^{} ' },
+                        { tex: '\\lim_{x \\to 0}', ins: '\\lim_{x \\to |} ' },
+                        { tex: '\\frac{dy}{dx}', ins: '\\frac{dy}{dx}' },
+                        { tex: '\\partial', ins: '\\partial ' },
+                        { tex: '\\vec{v}', ins: '\\vec{|}' },
+                        { tex: '\\overrightarrow{AB}', ins: '\\overrightarrow{|}' }
+                    ],
+                    'Matriks & Sistem': [
+                        { tex: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}', ins: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}' },
+                        { tex: '\\begin{pmatrix} a & b & c \\\\ d & e & f \\\\ g & h & i \\end{pmatrix}', ins: '\\begin{pmatrix} a & b & c \\\\ d & e & f \\\\ g & h & i \\end{pmatrix}' },
+                        { tex: '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}', ins: '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}' },
+                        { tex: '\\begin{cases} x + y = 1 \\\\ x - y = 3 \\end{cases}', ins: '\\begin{cases} x + y = 1 \\\\ x - y = 3 \\end{cases}' }
+                    ]
+                };
+
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-3';
+                overlay.style.zIndex = '99999';
+                overlay.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden text-left" style="max-height:92vh;">
+                        <div class="flex items-center justify-between px-5 py-3 text-white" style="background: linear-gradient(90deg, #1e6a91, #1b7fa3);">
+                            <h3 class="font-bold text-base md:text-lg"><span class="text-yellow-300">√x</span> Editor Rumus Matematika (LaTeX &amp; KaTeX)</h3>
+                            <button type="button" id="fmClose" class="text-xl leading-none px-2 opacity-80 hover:opacity-100">✕</button>
+                        </div>
+
+                        <div class="p-4 space-y-4 overflow-y-auto">
+                            <div>
+                                <div class="font-bold text-gray-700 mb-2 text-sm md:text-base">Palet Simbol &amp; Template Rumus Cepat:</div>
+                                <div id="fmTabs" class="flex overflow-x-auto gap-1 p-1.5 bg-gray-50 border border-gray-200 rounded-lg"></div>
+                                <div id="fmPalette" class="flex flex-wrap gap-2 p-3 mt-2 border border-gray-200 rounded-lg" style="min-height:84px;"></div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="font-bold text-gray-700 text-sm md:text-base">Kode Rumus LaTeX:</span>
+                                    <button type="button" id="fmClear" class="text-red-600 text-sm font-semibold hover:underline">🗑 Bersihkan</button>
+                                </div>
+                                <textarea id="fmLatex" rows="3" placeholder="Ketik kode LaTeX di sini atau klik simbol pada palet di atas... Contoh: \\frac{a}{b} + \\sqrt{x}"
+                                    class="w-full px-4 py-3 border-2 border-blue-400 rounded-lg font-mono text-sm focus:outline-none"
+                                    style="user-select:text; -webkit-user-select:text;"></textarea>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                                <span class="font-semibold text-gray-600">Format Tampilan:</span>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="fmMode" value="inline" checked class="w-4 h-4">
+                                    <span><b>Inline</b> <span class="text-gray-500 text-xs">(menyatu dalam kalimat teks)</span></span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="fmMode" value="display" class="w-4 h-4">
+                                    <span><b>Baris Baru / Display</b> <span class="text-gray-500 text-xs">(besar di baris tengah)</span></span>
+                                </label>
+                            </div>
+
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
+                                    <span class="font-bold text-gray-600 text-sm">Pratinjau Real-Time (KaTeX Live):</span>
+                                    <span id="fmBadge" class="px-2.5 py-1 rounded text-xs font-bold text-white bg-gray-500">Kosong</span>
+                                </div>
+                                <div id="fmPreview" class="flex items-center justify-center p-4 overflow-x-auto" style="min-height:110px;"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50">
+                            <button type="button" id="fmCancel" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold text-sm">✕ Batal</button>
+                            <button type="button" id="fmOk" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm">✔ Sisipkan Rumus ke Soal</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+
+                const ta = overlay.querySelector('#fmLatex');
+                const prev = overlay.querySelector('#fmPreview');
+                const badge = overlay.querySelector('#fmBadge');
+                const tabsBox = overlay.querySelector('#fmTabs');
+                const paletteBox = overlay.querySelector('#fmPalette');
+                ta.value = initial;
+                if (startDisplay) overlay.querySelector('input[name="fmMode"][value="display"]').checked = true;
+
+                const isDisplay = () => overlay.querySelector('input[name="fmMode"]:checked').value === 'display';
+                const setBadge = (text, color) => {
+                    badge.textContent = text;
+                    badge.className = 'px-2.5 py-1 rounded text-xs font-bold text-white ' + color;
+                };
+
+                // Mengembalikan true jika rumus valid
+                const updatePreview = () => {
+                    const v = ta.value.trim();
+                    if (!v) {
+                        prev.innerHTML = '<span class="text-gray-400 italic text-sm">Pratinjau rumus akan muncul di sini secara otomatis...</span>';
+                        setBadge('Kosong', 'bg-gray-500');
+                        return false;
+                    }
+                    try {
+                        katex.render(v, prev, { throwOnError: true, displayMode: isDisplay() });
+                        setBadge('Valid', 'bg-green-600');
+                        return true;
+                    } catch (e) {
+                        prev.innerHTML = '';
+                        const m = document.createElement('div');
+                        m.className = 'text-red-600 text-sm';
+                        m.textContent = 'Rumus belum valid: ' + (e && e.message ? e.message : e);
+                        prev.appendChild(m);
+                        setBadge('Error', 'bg-red-600');
+                        return false;
+                    }
+                };
+
+                const insertTemplate = (tpl) => {
+                    const p = tpl.indexOf('|');
+                    const text = p === -1 ? tpl : tpl.replace('|', '');
+                    const caret = p === -1 ? text.length : p;
+                    const s = ta.selectionStart, e = ta.selectionEnd;
+                    ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+                    ta.focus();
+                    ta.setSelectionRange(s + caret, s + caret);
+                    updatePreview();
+                };
+
+                const tabNames = Object.keys(PALETTE);
+                let activeTab = tabNames[0];
+                const renderPalette = () => {
+                    tabsBox.innerHTML = '';
+                    tabNames.forEach(name => {
+                        const b = document.createElement('button');
+                        b.type = 'button';
+                        b.textContent = name;
+                        b.className = 'flex-1 whitespace-nowrap px-3 py-2 rounded-md text-xs md:text-sm font-semibold transition ' +
+                            (name === activeTab ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-200');
+                        b.addEventListener('click', () => { activeTab = name; renderPalette(); });
+                        tabsBox.appendChild(b);
+                    });
+                    paletteBox.innerHTML = '';
+                    PALETTE[activeTab].forEach(item => {
+                        const b = document.createElement('button');
+                        b.type = 'button';
+                        b.className = 'px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition';
+                        try { katex.render(item.tex, b, { throwOnError: false }); } catch (e) { b.textContent = item.tex; }
+                        b.addEventListener('click', () => insertTemplate(item.ins));
+                        paletteBox.appendChild(b);
+                    });
+                };
+
+                const escGuard = (e) => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); cleanup(); } };
+                document.addEventListener('keydown', escGuard, true);
+                function cleanup() {
+                    document.removeEventListener('keydown', escGuard, true);
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                }
+
+                ta.addEventListener('input', updatePreview);
+                overlay.querySelectorAll('input[name="fmMode"]').forEach(r => r.addEventListener('change', updatePreview));
+                overlay.querySelector('#fmClear').addEventListener('click', () => { ta.value = ''; updatePreview(); ta.focus(); });
+                overlay.querySelector('#fmClose').addEventListener('click', cleanup);
+                overlay.querySelector('#fmCancel').addEventListener('click', cleanup);
+                overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) cleanup(); });
+                overlay.querySelector('#fmOk').addEventListener('click', () => {
+                    if (!updatePreview()) { ta.focus(); return; } // kosong atau tidak valid: tidak disisipkan
+                    // Baris baru dibuang agar rumus tidak terpecah jadi beberapa paragraf di Quill
+                    const latex = ta.value.replace(/\s*\n\s*/g, ' ').trim();
+                    const out = isDisplay() ? `\\[${latex}\\]` : `\\(${latex}\\)`;
+                    cleanup();
+                    quillInstance.deleteText(range.index, range.length, 'user');
+                    quillInstance.insertText(range.index, out, 'user');
+                    quillInstance.setSelection(range.index + out.length, 0, 'user');
+                });
+
+                renderPalette();
+                updatePreview();
+                ta.focus();
             }
 
             // Hapus placeholder tabel dari teks editor + datanya dari __tableData.
