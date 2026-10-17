@@ -74,22 +74,6 @@
                 padding: 2px !important;
             }
 
-            /* Ikon tombol Akar / Pangkat / Pecahan di toolbar Quill (soal & opsi jawaban) */
-            .ql-toolbar.ql-snow button.ql-sqrt,
-            .ql-toolbar.ql-snow button.ql-power,
-            .ql-toolbar.ql-snow button.ql-fraction {
-                width: auto;
-                padding: 3px 6px !important;
-                font-weight: bold;
-                font-family: 'Cambria Math', serif;
-            }
-            .ql-toolbar.ql-snow button.ql-sqrt::before { content: "√"; font-size: 16px; }
-            .ql-toolbar.ql-snow button.ql-power::before { content: "xⁿ"; font-size: 13px; }
-            .ql-toolbar.ql-snow button.ql-fraction::before { content: "a/b"; font-size: 11px; }
-            .ql-toolbar.ql-snow button.ql-sqrt:hover,
-            .ql-toolbar.ql-snow button.ql-power:hover,
-            .ql-toolbar.ql-snow button.ql-fraction:hover { color: #06c; }
-            
             /* Ikon tombol "Tabel" */
             .ql-toolbar.ql-snow button.ql-table {
                 width: auto;
@@ -175,11 +159,6 @@
                 border: 3px solid #3b82f6;
             }
             
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.6; }
-            }
-            
             .loading-overlay {
                 position: fixed;
                 top: 0;
@@ -254,7 +233,7 @@
                 top: 0; left: 0;
                 width: 100%; height: 100%;
                 /* DIUBAH: Dari #0f172a ke #1e3a8a, dan dari #1e40af ke #3b82f6 */
-                background: #aecdec;
+                background: #F8FAFC;
                 color: white;
                 z-index: 0; 
                 overflow: hidden;
@@ -2773,7 +2752,7 @@
 
                 buttonsHTML += `
                     <button onclick="previousQuestion()" ${isFirstQuestion ? 'disabled' : ''}
-                        class="flex-1 bg-blue-500 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'} text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition"
+                        class="flex-1 bg-blue-500 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'} text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-semibold transition"
                         style="font-family: ${customFont}, ${baseFontStack};">
                         ⬅️ Sebelumnya
                     </button>
@@ -2781,7 +2760,7 @@
 
                 buttonsHTML += `
                     <button onclick="toggleDoubt()"
-                        class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition"
+                        class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-semibold transition"
                         style="font-family: ${customFont}, ${baseFontStack};">
                         ⚠️ Ragu-ragu
                     </button>
@@ -2790,7 +2769,7 @@
                 if (isLastQuestion) {
                     buttonsHTML += `
                         <button onclick="submitExam()"
-                            class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-bold transition"
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-bold transition"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             ✅ Selesai
                         </button>
@@ -2798,7 +2777,7 @@
                 } else {
                     buttonsHTML += `
                         <button onclick="nextQuestion()"
-                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition"
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.8 text-[13px] md:text-sm rounded-md font-semibold transition"
                             style="font-family: ${customFont}, ${baseFontStack};">
                             Berikutnya ➡️
                         </button>
@@ -6563,8 +6542,21 @@
                 Swal.fire({
                     title: '🖋️ Edit Soal',
                     width: '800px',
+                    customClass: { popup: 'swal-form-modal' },
                     html: `
                         <style>
+                            .add-scroll-area {
+                                margin-top: 0;
+                                margin-top: 0;
+                                max-height: 70vh;
+                                overflow-y: auto;
+                                padding: 10px;
+                                background: #f8fafc;
+                                border: 2px solid #3b82f6;           /* garis biru: batas area scroll */
+                                border-radius: 14px;
+                                box-shadow: inset 0 0 0 4px #eff6ff; /* bingkai tipis di dalam supaya padding terlihat */
+                                scrollbar-gutter: stable;
+                            }
                             .editor-container { cursor: text; transition: all 0.2s; border-width: 2px !important; }
                             .editor-container:focus-within { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
                             .ql-editor { min-height: 80px; font-size: 15px; }
@@ -6576,9 +6568,21 @@
                             .box-c { border-color: #f59e0b !important; background-color: #fffbeb; }
                             .box-d { border-color: #8b5cf6 !important; background-color: #f5f3ff; }
                             label.title-opt { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; margin-bottom: 6px; }
+                            .swal-form-modal.swal2-popup {
+                                padding-top: 4px !important;       /* jarak judul ke tepi atas modal */
+                            }
+                            .swal-form-modal .swal2-title {
+                                margin: 0 !important;
+                                padding: 4px 1em 4px !important;   /* default SweetAlert: 0.8em 1em 0 */
+                                font-size: 1.25rem !important;     /* default 1.875em, dikecilkan agar hemat ruang */
+                                line-height: 1.3 !important;
+                            }
+                            .swal-form-modal .swal2-html-container {
+                                margin: 1px 1em 0 !important;      /* jarak judul ke kotak biru, ini yang menggantikan versi sebelumnya */
+                            }
                         </style>
 
-                        <div class="text-left space-y-6" style="max-height: 75vh; overflow-y: auto; padding: 15px;">
+                        <div class="text-left space-y-6 add-scroll-area">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
@@ -6889,8 +6893,20 @@
                 Swal.fire({
                     title: '➕ Tambah Soal Baru',
                     width: '800px',
+                    customClass: { popup: 'swal-form-modal' },
                     html: `
                         <style>
+                            .add-scroll-area {
+                                margin-top: 0;
+                                max-height: 70vh;
+                                overflow-y: auto;
+                                padding: 10px;
+                                background: #f8fafc;
+                                border: 2px solid #3b82f6;           /* garis biru: batas area scroll */
+                                border-radius: 14px;
+                                box-shadow: inset 0 0 0 4px #eff6ff; /* bingkai tipis di dalam supaya padding terlihat */
+                                scrollbar-gutter: stable;
+                            }
                             .editor-container { cursor: text; transition: all 0.2s; border-width: 2px !important; }
                             .editor-container:focus-within { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
                             .ql-editor { min-height: 100px; font-size: 15px; }
@@ -6899,9 +6915,21 @@
                             .box-soal { border-color: #3b82f6 !important; background-color: #eff6ff; }
                             .box-a { border-color: #10b981 !important; background-color: #ecfdf5; }
                             label.title-opt { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; margin-bottom: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+                            .swal-form-modal.swal2-popup {
+                                padding-top: 4px !important;       /* jarak judul ke tepi atas modal */
+                            }
+                            .swal-form-modal .swal2-title {
+                                margin: 0 !important;
+                                padding: 4px 1em 4px !important;   /* default SweetAlert: 0.8em 1em 0 */
+                                font-size: 1.25rem !important;     /* default 1.875em, dikecilkan agar hemat ruang */
+                                line-height: 1.3 !important;
+                            }
+                            .swal-form-modal .swal2-html-container {
+                                margin: 1px 1em 0 !important;      /* jarak judul ke kotak biru, ini yang menggantikan versi sebelumnya */
+                            }
                         </style>
 
-                        <div class="text-left space-y-6" style="max-height: 75vh; overflow-y: auto; padding: 15px;">
+                        <div class="text-left space-y-6 add-scroll-area">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
@@ -7184,33 +7212,7 @@
                 }
             }
 
-            // TOMBOL RUMUS DI TOOLBAR QUILL: Akar, Pangkat, Pecahan.
-            function insertMathTemplate(quillInstance, buildLatex) {
-                const range = quillInstance.getSelection(true) || { index: quillInstance.getLength(), length: 0 };
-                const selectedText = range.length > 0 ? quillInstance.getText(range.index, range.length) : '';
-                const { latex, cursorOffset } = buildLatex(selectedText);
-                quillInstance.deleteText(range.index, range.length, 'user');
-                quillInstance.insertText(range.index, latex, 'user');
-                quillInstance.setSelection(range.index + cursorOffset, 0, 'user');
-            }
-
             const mathToolbarHandlers = {
-                sqrt: function () {
-                    insertMathTemplate(this.quill, (sel) => {
-                        const latex = sel ? `\\(\\sqrt{${sel}}\\)` : `\\(\\sqrt{}\\)`;
-                        return { latex, cursorOffset: sel ? latex.length : latex.length - 2 };
-                    });
-                },
-                power: function () {
-                    const current = this.quill.getFormat();
-                    this.quill.format('script', current.script === 'super' ? false : 'super');
-                },
-                fraction: function () {
-                    insertMathTemplate(this.quill, (sel) => {
-                        const latex = sel ? `\\(\\frac{${sel}}{}\\)` : `\\(\\frac{}{}\\)`;
-                        return { latex, cursorOffset: latex.length - 3 };
-                    });
-                },
                 table: function () {
                     const btn = this.container.querySelector('button.ql-table');
                     if (btn) openTableGridPicker(this.quill, btn);
