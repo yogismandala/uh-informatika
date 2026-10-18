@@ -1506,29 +1506,29 @@
                         }
                     </style>
                     <div class="h-[100dvh] overflow-hidden flex items-center justify-center p-4 fixed inset-0 z-50 w-full animate-fade-bg"
-                        style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
+                        style="background: linear-gradient(to bottom, #1e3a8a 0%, #3b82f6 30%, #f8f7f3 30%, #ffffff 100%);"
                         
                         <div class="w-full max-w-md relative animate-slide-panel">
                             <div class="glass-panel p-8 shadow-2xl relative z-10">
                                 <div class="text-center mb-8">
-                                    <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: white;">Selamat Datang</h1>
-                                    <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: rgba(255,255,255,0.8);">Silahkan Login menggunakan NISN Anda</p>
+                                    <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: white; -webkit-text-stroke: 1px #000000;">Selamat Datang</h1>
+                                    <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: #000000;">Silahkan Login menggunakan NISN Anda</p>
                                 </div>
                         
                                 <form id="loginForm" class="space-y-4">
                                     <div>
-                                        <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
+                                        <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
                                         <input type="text" id="username" required 
-                                            class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition"
+                                            class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-blue-500 transition"
                                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                             placeholder="Masukkan username / nisn">
                                     </div>
                             
                                     <div class="relative">
-                                        <label class="block font-medium mb-2 text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
+                                        <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
                                         <div class="relative">
                                             <input type="password" id="password" required 
-                                                class="glass-input w-full px-4 py-3 rounded-lg focus:outline-none transition pr-10"
+                                                class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-blue-500 transition pr-10"
                                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                                 placeholder="Masukkan password">
                                             <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-white opacity-70 hover:opacity-100">
@@ -1544,7 +1544,7 @@
                                         style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                                         ${config.login_button_text || defaultConfig.login_button_text}
                                     </button>
-                                    <div class="mt-4 text-center text-white" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; opacity: 0.9;">
+                                    <div class="mt-4 text-center text-grey" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; opacity: 0.9;">
                                         Jika lupa NISN klik ini ➔ <a href="https://yogismandala.github.io/ceknisn/" target="_blank" rel="noopener noreferrer" class="font-bold underline hover:text-blue-300 transition-colors">Cek NISN</a>
                                     </div>
                                 </form>
