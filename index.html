@@ -6,7 +6,7 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="apple-mobile-web-app-title" content="SMPN 11 TNG">
-        <meta name="theme-color" content="#1e3a8a">
+        <meta name="theme-color" content="#006400">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">
         <title>SMPN 11 TANGERANG</title>
         <link rel="manifest" href="manifest.json">
@@ -94,7 +94,7 @@
 
             /* Efek Glassmorphism untuk Form Login */
             .glass-panel {
-                background: rgba(255, 255, 255, 0.2); /* Transparansi putih */
+                background: rgba(255, 255, 255, 0.5); /* Transparansi putih */
                 backdrop-filter: blur(15px);          /* Efek blur kaca */
                 -webkit-backdrop-filter: blur(15px);
                 border: 1px solid rgba(255, 255, 255, 0.3);
@@ -123,7 +123,7 @@
             }
             
             .gradient-bg {
-                background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+                background: linear-gradient(135deg, #e8f3e8 0%, #d9ecd9 100%);
             }
             
             .shadow-custom {
@@ -156,7 +156,35 @@
             }
             
             .current {
-                border: 3px solid #3b82f6;
+                border: 3px solid #006400;
+            }
+
+            /* ===== Halaman ujian siswa di layar besar (komputer / tablet landscape) =====
+            Di HP tampilan tetap seperti semula. Batas lebar layar: ubah angka 1024px. */
+            .exd-only,
+            .exd-side { display: none; }
+            @media (min-width: 1024px) {
+                .exd-hide { display: none !important; }
+                .exd-only { display: block; }
+                .exd-scroll { display: flex; overflow: hidden !important; }
+                .exd-wrap { display: flex; gap: 1rem; flex: 1 1 0%; height: 100%; max-width: 72rem !important; }
+                .exd-main { flex: 1 1 0%; min-width: 0; overflow-y: auto; padding: 6px; }
+                .exd-side { display: flex; flex-direction: column; gap: 1rem; flex: none; width: 20rem; overflow-y: auto; padding: 6px; }
+                .exd-side > div { flex: none; }
+                .exd-main #questionContainer,
+                .exd-side > div { box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12); border: 2px solid #006400; }
+                .exd-side .question-nav-btn { width: 100%; height: 44px; }
+                .exd-timer { color: #004d00; }
+                .exd-timer-warn { color: #dc2626; }
+                .exd-bar { max-width: 72rem !important; padding-left: 6px; padding-right: calc(20rem + 1rem + 6px); justify-content: space-between; }
+                .exd-bar > button { flex: none; padding-left: 1.5rem; padding-right: 1.5rem; }
+                /* Header lebih besar di layar besar */
+                .exd-header { padding: 10px 28px !important; }
+                .exd-header .rounded-full { width: 56px !important; height: 56px !important; font-size: 1.75rem !important; }
+                .exd-header h2 { font-size: 1.25rem !important; }
+                .exd-header h2 + p { font-size: 1rem !important; }
+                .exd-header .rounded-lg { padding: 6px 12px !important; }
+                .exd-header .rounded-lg span { font-size: 1rem !important; }
             }
             
             .loading-overlay {
@@ -208,7 +236,7 @@
                 left: 0;
                 width: 100%;
                 min-height: 100vh;
-                background-color: #F8FAFC;
+                background-color: #FFFFFF;
                 overflow-x: hidden; 
             
                 /* Mematikan pull-to-refresh di Chrome & Safari Mobile */
@@ -232,8 +260,8 @@
                 position: absolute;
                 top: 0; left: 0;
                 width: 100%; height: 100%;
-                background: #F8FAFC;
-                color: white;
+                background: #FFFFFF;
+                color: #FFFFFF;
                 z-index: 0; 
                 overflow: hidden;
             }
@@ -262,9 +290,9 @@
             }
             .cube-face {
                 position: absolute; width: 70px; height: 70px;
-                border: 2px solid #3b82f6;
-                background: rgba(59, 130, 246, 0.15);
-                box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+                border: 2px solid #2e8b2e;
+                background: rgba(46, 139, 46, 0.15);
+                box-shadow: 0 0 15px rgba(46,139,46, 0.3);
             }
             .front  { transform: translateZ(35px); }
             .back   { transform: rotateY(180deg) translateZ(35px); }
@@ -443,8 +471,8 @@
                 school_name: "SMPN 11 TANGERANG",
                 welcome_text: "",
                 login_button_text: "Masuk",
-                primary_color: "#3b82f6",
-                secondary_color: "#1e40af",
+                primary_color: "#006400",
+                secondary_color: "#004d00",
                 background_color: "#dbeafe",
                 text_color: "#1f2937",
                 button_color: "#2563eb",
@@ -1148,8 +1176,8 @@
                     statusClass = "text-red-600 font-bold animate-pulse";
                     bgClass = "bg-red-50";
                 } else if (statusText === "Selesai") {
-                    statusClass = "text-blue-600 font-bold";
-                    bgClass = "bg-blue-50";
+                    statusClass = "text-[#006400] font-bold";
+                    bgClass = "bg-green-50";
                 }
                 
                 const mapelSiswa = data.mapel || "-";
@@ -1174,7 +1202,7 @@
                     <td class="row-number p-3 border-b text-center text-gray-600 font-medium whitespace-nowrap">${nomorUrut}</td>
                     <td class="p-3 border-b font-medium text-gray-800 whitespace-nowrap">${escHtml(data.nama || "No Name")}</td>
                     <td class="p-3 border-b text-gray-600 whitespace-nowrap">${escHtml(data.kelas || "-")}</td>
-                    <td class="p-3 border-b text-blue-600 font-medium text-sm whitespace-nowrap">${escHtml(mapelSiswa)}</td>
+                    <td class="p-3 border-b text-[#006400] font-medium text-sm whitespace-nowrap">${escHtml(mapelSiswa)}</td>
                     <td class="p-3 border-b text-center whitespace-nowrap ${statusClass}">${escHtml(statusText)}</td>
                     <td class="p-3 border-b text-center font-mono text-sm whitespace-nowrap">${escHtml(data.progress || "0")}</td>
                     <td class="p-3 border-b text-center text-xs text-gray-500 whitespace-nowrap">${escHtml(tampilWaktuLogin)}</td>
@@ -1506,12 +1534,23 @@
                         }
                     </style>
                     <div class="h-[100dvh] overflow-hidden flex items-center justify-center p-4 fixed inset-0 z-50 w-full animate-fade-bg"
-                        style="background: linear-gradient(to bottom, #1e3a8a 0%, #3b82f6 30%, #f8f7f3 30%, #ffffff 100%);"
+                        style="background: linear-gradient(to bottom, #003300 0%, #006400 30%, #ffffff 30%, #FFFFFF 100%);">
+
+                        <div class="absolute top-0 left-0 w-full pointer-events-none"
+                            style="height: 30%;
+                                background-image:
+                                    radial-gradient(ellipse at center, rgba(255,255,255,0.15) 30%, transparent 60%),
+                                    linear-gradient(rgba(255,255,255,0.10) 1px, transparent 1px),
+                                    linear-gradient(90deg, rgba(255,255,255,0.10) 1px, transparent 1px),
+                                    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+                                    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+                                background-size: 100% 100%, 100px 100px, 100px 100px, 20px 20px, 20px 20px;">
+                        </div>
                         
                         <div class="w-full max-w-md relative animate-slide-panel">
                             <div class="glass-panel p-8 shadow-2xl relative z-10">
                                 <div class="text-center mb-8">
-                                    <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: white; -webkit-text-stroke: 1px #000000;">Selamat Datang</h1>
+                                    <h1 class="font-bold mb-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; color: black;">Selamat Datang</h1>
                                     <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: #000000;">Silahkan Login menggunakan NISN Anda</p>
                                 </div>
                         
@@ -1519,7 +1558,7 @@
                                     <div>
                                         <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
                                         <input type="text" id="username" required 
-                                            class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-blue-500 transition"
+                                            class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition"
                                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                             placeholder="Masukkan username / nisn">
                                     </div>
@@ -1528,24 +1567,24 @@
                                         <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
                                         <div class="relative">
                                             <input type="password" id="password" required 
-                                                class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-blue-500 transition pr-10"
+                                                class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition pr-10"
                                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                                 placeholder="Masukkan password">
-                                            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-white opacity-70 hover:opacity-100">
+                                            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:opacity-100">
                                                 <span id="eyeIcon">🙈</span>
                                             </button>
                                         </div>
                                     </div>
                             
-                                    <div id="errorMessage" class="text-red-300 text-center hidden font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"></div>
+                                    <div id="errorMessage" class="text-red-600 text-center hidden font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;"></div>
 
                                     <button type="submit" id="loginBtn"
                                         class="w-full py-3 rounded-lg text-white font-semibold hover:scale-[1.02] transition-transform shadow-lg"
                                         style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
                                         ${config.login_button_text || defaultConfig.login_button_text}
                                     </button>
-                                    <div class="mt-4 text-center text-grey" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; opacity: 0.9;">
-                                        Jika lupa NISN klik ini ➔ <a href="https://yogismandala.github.io/ceknisn/" target="_blank" rel="noopener noreferrer" class="font-bold underline hover:text-blue-300 transition-colors">Cek NISN</a>
+                                    <div class="mt-4 text-center text-#F2F2F2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; opacity: 0.9;">
+                                        Jika lupa NISN klik ini ➔ <a href="https://yogismandala.github.io/ceknisn/" target="_blank" rel="noopener noreferrer" class="font-bold underline hover:text-green-300 transition-colors">Cek NISN</a>
                                     </div>
                                 </form>
                             </div>
@@ -1815,12 +1854,12 @@
                 modalOverlay.innerHTML = `
                     <div class="m-auto bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-md overflow-hidden transform transition-all border border-slate-100 animate-slide-up">
                         
-                        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 px-3 py-4 text-white relative">
+                        <div class="bg-gradient-to-r from-[#006400] to-[#004d00] px-3 py-4 text-white relative">
                             <div class="absolute right-4 top-4 opacity-10">
                                 <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path></svg>
                             </div>
                             <h3 class="text-xl font-bold tracking-wide">Persiapan Ujian</h3>
-                            <p class="text-blue-100 text-xs mt-1">Harap baca peraturan sebelum memulai.</p>
+                            <p class="text-green-100 text-xs mt-1">Harap baca peraturan sebelum memulai.</p>
                         </div>
 
                         <div class="p-2">
@@ -1829,7 +1868,7 @@
                                 <h3 class="font-extrabold text-slate-800 text-xl leading-tight truncate w-full px-2" title="${escHtml(user.name || user.username)}">
                                     ${escHtml(user.name || user.username)}
                                 </h3>
-                                <p class="text-xs text-blue-700 mt-2 font-bold bg-blue-100/70 px-2 py-0.5 rounded-full border border-blue-200/50 tracking-wide">
+                                <p class="text-xs text-green-700 mt-2 font-bold bg-[#d9ecd9] px-2 py-0.5 rounded-full border border-green-200/50 tracking-wide">
                                     Kelas ${escHtml(user.class)}
                                 </p>
                             </div>
@@ -1854,7 +1893,7 @@
                                 <div class="mb-2">
                                     <label class="block text-slate-700 text-sm font-semibold mb-2">Mata Pelajaran :</label>
                                     <div class="relative">
-                                        <select id="selectedSubject" class="w-full px-3 py-1 bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-slate-700 font-bold transition duration-200 appearance-none cursor-pointer" required>
+                                        <select id="selectedSubject" class="w-full px-3 py-1 bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100 text-slate-700 font-bold transition duration-200 appearance-none cursor-pointer" required>
                                             ${optionsHTML}
                                         </select>
                                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
@@ -1866,14 +1905,14 @@
                                 <div class="mb-2" id="tokenInputWrapper" style="display:none;">
                                     <label class="block text-slate-700 text-xs font-semibold mb-1">🔑 Token Ujian :</label>
                                     <input type="text" id="examTokenInput" placeholder="Masukkan token"
-                                        class="w-full px-3 py-1 bg-white border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-700 font-bold tracking-widest uppercase text-center text-sm transition duration-200">
+                                        class="w-full px-3 py-1 bg-white border-2 border-slate-200 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-slate-700 font-bold tracking-widest uppercase text-center text-sm transition duration-200">
                                     <p id="tokenErrorMsg" class="hidden text-red-500 text-[10px] font-semibold mt-1"></p>
                                     <p class="text-[8px] text-slate-500 mt-1">Mata pelajaran ini memerlukan token untuk bisa masuk ke ujian.</p>
                                 </div>
 
                                 <div class="mb-6 bg-slate-50 p-1 rounded-lg border border-slate-200">
                                     <label class="flex items-start space-x-2 cursor-pointer">
-                                        <input type="checkbox" id="agreeRules" class="mt-1 w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500" required>
+                                        <input type="checkbox" id="agreeRules" class="mt-1 w-4 h-4 text-[#006400] bg-white border-gray-300 rounded focus:ring-green-500" required>
                                         <span class="text-xs text-slate-600 font-medium">
                                             Saya telah membaca tata tertib di atas dan siap mengerjakan ujian dengan jujur.
                                         </span>
@@ -1881,7 +1920,7 @@
                                 </div>
 
                                 <div class="space-y-2.5">
-                                    <button type="submit" id="btnSubmitUjian" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-3 rounded-xl transition duration-200 shadow-lg shadow-blue-600/30 active:scale-[0.99]">
+                                    <button type="submit" id="btnSubmitUjian" class="w-full bg-gradient-to-r from-[#006400] to-[#004d00] hover:from-[#004d00] hover:to-[#003300] text-white font-bold py-2 px-3 rounded-xl transition duration-200 shadow-lg shadow-green-600/30 active:scale-[0.99]">
                                         Masuk Ruang Ujian
                                     </button>
                                     <button type="button" onclick="logout()" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-2 px-3 rounded-xl transition duration-200 active:scale-[0.99]">
@@ -1904,7 +1943,7 @@
                             to { opacity: 1; transform: translateY(0) scale(1); }
                         }
                         .animate-slide-up { animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                        input[type="checkbox"] { accent-color: #2563eb; cursor: pointer; }
+                        input[type="checkbox"], input[type="radio"] { accent-color: #006400; cursor: pointer; }
                     `;
                     document.head.appendChild(style);
                 }
@@ -2155,7 +2194,7 @@
                                 <p class="text-gray-600 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">
                                     Maaf, saat ini belum ada soal untuk:
                                 </p>
-                                <div class="bg-blue-50 rounded-xl p-4 mb-4">
+                                <div class="bg-green-50 rounded-xl p-4 mb-4">
                                     <p class="font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${primaryColor};">
                                         ${currentExam.subject}
                                     </p>
@@ -2215,7 +2254,7 @@
                 app.innerHTML = `
                     <div class="fixed inset-0 flex flex-col overflow-hidden" style="touch-action: manipulation;">
                         
-                        <div class="gradient-header flex-none text-white px-3 md:px-5 py-1.5 md:py-2 shadow-md" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
+                        <div class="exd-header gradient-header flex-none text-white px-3 md:px-5 py-1.5 md:py-2 shadow-md" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config.secondary_color || defaultConfig.secondary_color} 100%);">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                 <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
                                     <img src="/assets/foto_siswa/${currentUser.username}.jpg" loading="lazy" alt="Foto Siswa" class="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white object-cover flex-shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2237,8 +2276,8 @@
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                    <div id="timer" class="text-lg md:text-xl font-bold" style="font-family: ${customFont}, ${baseFontStack};"></div>
-                                    <button onclick="toggleNavModal()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-1.5 py-0.5 rounded-lg text-xs md:text-xs font-semibold transition flex-shrink-0">
+                                    <div id="timer" class="exd-hide text-lg md:text-xl font-bold" style="font-family: ${customFont}, ${baseFontStack};"></div>
+                                    <button onclick="toggleNavModal()" class="exd-hide bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-1.5 py-0.5 rounded-lg text-xs md:text-xs font-semibold transition flex-shrink-0">
                                         📋 Soal
                                     </button>
                                 </div>
@@ -2246,9 +2285,33 @@
                             </div>
                         </div>
                         
-                        <div class="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 pb-2 md:pb-4" style="overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;">
-                            <div class="max-w-4xl mx-auto">
-                                <div id="questionContainer" class="bg-white rounded-xl shadow-custom p-3 md:p-5 mb-3 md:mb-4"></div>
+                        <div class="exd-scroll flex-1 min-h-0 overflow-y-auto p-2 md:p-4 pb-2 md:pb-4" style="overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;">
+                            <div class="exd-wrap max-w-4xl mx-auto">
+                                <div class="exd-main">
+                                    <div id="questionContainer" class="bg-white rounded-xl shadow-custom p-3 md:p-5 mb-3 md:mb-4"></div>
+                                </div>
+
+                                <aside class="exd-side">
+                                    <div class="bg-white rounded-xl shadow-custom p-4">
+                                        <p class="text-sm font-bold mb-3" style="color: #004d00;">⏱️ Sisa Waktu</p>
+                                        <div id="timerSide" class="exd-timer flex items-start justify-center gap-3 font-bold">
+                                            <div class="text-center"><div id="timerSideH" class="text-3xl leading-none">--</div><div class="text-xs font-normal text-gray-600 mt-1">Jam</div></div>
+                                            <div class="text-3xl leading-none">:</div>
+                                            <div class="text-center"><div id="timerSideM" class="text-3xl leading-none">--</div><div class="text-xs font-normal text-gray-600 mt-1">Menit</div></div>
+                                            <div class="text-3xl leading-none">:</div>
+                                            <div class="text-center"><div id="timerSideS" class="text-3xl leading-none">--</div><div class="text-xs font-normal text-gray-600 mt-1">Detik</div></div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-xl shadow-custom p-4">
+                                        <h3 class="font-bold text-gray-800 mb-3">Daftar Soal</h3>
+                                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 mb-3">
+                                            <span><span class="inline-block w-3 h-3 rounded bg-green-500 align-middle"></span> Dijawab</span>
+                                            <span><span class="inline-block w-3 h-3 rounded bg-yellow-500 align-middle"></span> Ragu-ragu</span>
+                                            <span><span class="inline-block w-3 h-3 rounded bg-gray-200 align-middle"></span> Belum dijawab</span>
+                                        </div>
+                                        <div id="questionNavSide" class="grid grid-cols-5 gap-2"></div>
+                                    </div>
+                                </aside>
                             </div>
                         </div>
 
@@ -2260,7 +2323,7 @@
                                     active:scale-95 transition-all duration-200">
                                 <span class="text-base md:text-xl">📝</span>
                             </button>
-                            <div id="navigationButtons" class="max-w-4xl mx-auto flex gap-1.5"></div>
+                            <div id="navigationButtons" class="exd-bar max-w-4xl mx-auto flex gap-1.5"></div>
                         </div>
 
                         <div class="flex-none text-white text-center py-0.1 px-4 text-[11px] shadow-[0_-2px_4px_rgba(0,0,0,0.05)]" style="font-family: ${customFont}, ${baseFontStack}; background-color: ${primaryColor}; filter: brightness(90%);">
@@ -2289,7 +2352,7 @@
                                 <div class="bg-gray-100 p-2 md:p-3 border-b border-gray-300 flex justify-between items-center gap-2 flex-wrap">
                                     <h3 class="font-bold text-gray-700 text-sm md:text-base flex items-center gap-2">📝 Kertas Buram</h3>
                                     <div class="flex gap-1.5 md:gap-2">
-                                        <button onclick="setPen()" id="btnPen" class="bg-blue-500 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-blue-700">✏️ Pena</button>
+                                        <button onclick="setPen()" id="btnPen" class="bg-green-500 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-green-700">✏️ Pena</button>
                                         <button onclick="setEraser()" id="btnEraser" class="bg-white text-gray-700 px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-transparent hover:bg-gray-200">🧽 Hapus</button>
                                         <button onclick="clearCanvas()" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm">🗑️ Bersih</button>
                                         <div class="w-px h-6 bg-gray-300 mx-1"></div>
@@ -2403,7 +2466,7 @@
 
             function setPen() {
                 isEraser = false;
-                document.getElementById('btnPen').classList.add('border-blue-700', 'bg-blue-500', 'text-white');
+                document.getElementById('btnPen').classList.add('border-green-700', 'bg-green-500', 'text-white');
                 document.getElementById('btnPen').classList.remove('bg-white', 'text-gray-700', 'border-transparent');
                 
                 document.getElementById('btnEraser').classList.remove('border-gray-700', 'bg-gray-300');
@@ -2415,7 +2478,7 @@
                 document.getElementById('btnEraser').classList.add('border-gray-700', 'bg-gray-300');
                 document.getElementById('btnEraser').classList.remove('bg-white', 'text-gray-700', 'border-transparent');
                 
-                document.getElementById('btnPen').classList.remove('border-blue-700', 'bg-blue-500', 'text-white');
+                document.getElementById('btnPen').classList.remove('border-green-700', 'bg-green-500', 'text-white');
                 document.getElementById('btnPen').classList.add('bg-white', 'text-gray-700', 'border-transparent');
             }
 
@@ -2759,16 +2822,16 @@
 
                 buttonsHTML += `
                     <button onclick="previousQuestion()" ${isFirstQuestion ? 'disabled' : ''}
-                        class="flex-1 bg-blue-500 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'} text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
+                        class="flex-1 bg-[#FFFFFF] border-2 border-green-600 ${isFirstQuestion ? 'opacity-40 cursor-not-allowed' : 'hover:bg-green-600 hover:text-white'} text-green-700 px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
                         style="font-family: ${customFont}, ${baseFontStack};">
-                        ⬅️ Sebelumnya
+                        < Sebelumnya
                     </button>
                 `;
 
                 buttonsHTML += `
                     <button onclick="toggleDoubt()"
                         class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
-                        style="font-family: ${customFont}, ${baseFontStack};">
+                        style="font-family: ${customFont}, ${baseFontStack}; outline: 2px solid #FFFFFF; outline-offset: -4px;">
                         ⚠️ Ragu-ragu
                     </button>
                 `;
@@ -2777,16 +2840,16 @@
                     buttonsHTML += `
                         <button onclick="submitExam()"
                             class="flex-1 bg-green-500 hover:bg-green-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-bold transition"
-                            style="font-family: ${customFont}, ${baseFontStack};">
+                            style="font-family: ${customFont}, ${baseFontStack}; outline: 2px solid #ffffff; outline-offset: -4px;">
                             ✅ Selesai
                         </button>
                     `;
                 } else {
                     buttonsHTML += `
                         <button onclick="nextQuestion()"
-                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
-                            style="font-family: ${customFont}, ${baseFontStack};">
-                            Berikutnya ➡️
+                            class="flex-1 bg-[#006400] hover:bg-green-600 text-white px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition"
+                            style="font-family: ${customFont}, ${baseFontStack}; outline: 2px solid #ffffff; outline-offset: -4px;">
+                            Berikutnya >;
                         </button>
                     `;
                 }
@@ -2807,12 +2870,23 @@
                 
                 const question = examQuestions[currentQuestionIndex];
                 const container = document.getElementById('questionContainer');
-                
+                const progressPct = Math.round(((currentQuestionIndex + 1) / examQuestions.length) * 100);
+
                 let questionHTML = `
                     <div class="mb-6">
+                        <div class="exd-only mb-5" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold" style="font-size: ${baseSize * 1.25}px;">${escHtml((currentExam && currentExam.subject) || '')}</span>
+                                <span style="font-size: ${baseSize * 0.875}px;">Soal <b>${currentQuestionIndex + 1}</b> dari ${examQuestions.length}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden"><div class="h-full rounded-full" style="width: ${progressPct}%; background-color: #006400;"></div></div>
+                                <span class="text-xs text-gray-500">${progressPct}%</span>
+                            </div>
+                        </div>
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Soal ${currentQuestionIndex + 1} dari ${examQuestions.length}</h3>
-                            <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
+                            <h3 class="exd-hide font-bold" style="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Soal ${currentQuestionIndex + 1} dari ${examQuestions.length}</h3>
+                            <span class="px-4 py-2 bg-[#d9ecd9] text-[#004d00] rounded-full font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
                                 ${getQuestionTypeLabel(question.question_type)}
                             </span>
                         </div>
@@ -2865,9 +2939,9 @@
                             label.classList.add('border-gray-300','bg-white','hover:bg-gray-50');
                         }
                     } else {
-                        label.classList.remove('border-blue-500','bg-blue-50','border-gray-300');
-                        label.classList.add(input.checked ? 'border-blue-500' : 'border-gray-300');
-                        if (input.checked) label.classList.add('bg-blue-50');
+                        label.classList.remove('border-[#006400]','bg-[#e8f3e8]','border-gray-300');
+                        label.classList.add(input.checked ? 'border-[#006400]' : 'border-gray-300');
+                        if (input.checked) label.classList.add('bg-[#e8f3e8]');
                     }
                 });
             }
@@ -2891,11 +2965,11 @@
                 return `
                     <div class="space-y-3">
                         ${question.options.map((option, idx) => `
-                            <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition ${currentAnswer === option ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}">
+                            <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-[#e8f3e8] transition ${currentAnswer === option ? 'border-[#006400] bg-[#e8f3e8]' : 'border-gray-300'}">
                                 <input type="radio" name="answer" value="${option.replace(/"/g, '&quot;')}" 
                                     ${currentAnswer === option ? 'checked' : ''}
                                     onchange="saveAnswer(${idx})"
-                                    class="mt-1 w-5 h-5 text-blue-600 flex-shrink-0">
+                                    class="mt-1 w-5 h-5 text-[#006400] flex-shrink-0">
                                 
                                 <div class="ml-3 flex-1 flex items-start gap-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">
                                     <span class="font-bold flex-shrink-0">${String.fromCharCode(65 + idx)}.</span>
@@ -2926,8 +3000,8 @@
                 
                 return `
                     <div class="space-y-3">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded-r-lg">
-                            <p class="text-sm font-bold text-blue-800" style="font-family: ${customFont}, ${baseFontStack};">
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 mb-4 rounded-r-lg">
+                            <p class="text-sm font-bold text-green-800" style="font-family: ${customFont}, ${baseFontStack};">
                                 💡 Pilih semua jawaban yang menurut Anda benar.
                             </p>
                         </div>
@@ -2939,14 +3013,14 @@
                                 const isChecked = selectedOptions.includes(option);
                                 return `
                                     <label class="group flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 
-                                        ${isChecked ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}">
+                                        ${isChecked ? 'border-[#006400] bg-[#e8f3e8] shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}">
                                         
                                         <div class="flex items-center justify-center flex-shrink-0">
                                             <input type="checkbox" value="${idx}" 
                                                 data-question-index="${currentQuestionIndex}"
                                                 ${isChecked ? 'checked' : ''}
                                                 onchange="saveComplexAnswer(this)"
-                                                class="w-6 h-6 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                                                class="w-6 h-6 text-[#006400] rounded border-gray-300 focus:ring-green-500 cursor-pointer">
                                         </div>
 
                                         <div class="ml-4 flex-grow">
@@ -2968,7 +3042,7 @@
                 
                 return `
                     <div class="mt-4">
-                        <label class="block text-blue-700 font-bold mb-3 uppercase tracking-wide" 
+                        <label class="block text-green-700 font-bold mb-3 uppercase tracking-wide" 
                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">
                             ✍️ Tulis Jawaban Singkat:
                         </label>
@@ -2976,7 +3050,7 @@
                         <input type="text" 
                             id="input-isian-${currentQuestionIndex}"
                             oninput="saveAnswer(this.value)" 
-                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl shadow-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-800"
+                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl shadow-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all text-gray-800"
                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.1}px;"
                             placeholder="Ketik jawaban di sini..."
                             value="${escHtml(currentAnswer)}"
@@ -3027,14 +3101,14 @@
                 const choices = question.rightChoices || [];
                 return `
                     <div class="space-y-3">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-2 rounded-r-lg">
-                            <p class="text-sm font-bold text-blue-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p>
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 mb-2 rounded-r-lg">
+                            <p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p>
                         </div>
                         ${question.options.map((p, i) => `
                             <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
                                 <div class="flex-1 font-medium" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">${i + 1}. ${escHtml(p.l)}</div>
                                 <select onchange="saveMatchAnswer(${i}, this.value)"
-                                    class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                                    class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
                                     <option value="">-- Pilih --</option>
                                     ${choices.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
                                 </select>
@@ -3121,7 +3195,7 @@
                 const nav = document.getElementById('questionNav');
                 if (!nav) return;
                 
-                nav.innerHTML = examQuestions.map((_, idx) => {
+                const navHTML = examQuestions.map((_, idx) => {
                     let className = 'question-nav-btn rounded-lg font-semibold flex items-center justify-center cursor-pointer unanswered';
                     
                     if (studentAnswers[idx] !== undefined && studentAnswers[idx] !== '' && 
@@ -3138,9 +3212,13 @@
                         className += ' current';
                     }
                     
-                    return `<div class="${className}" onclick="goToQuestion(${idx})">${idx + 1}</div>`;
-                }).join('');
-            }
+                        return `<div class="${className}" onclick="goToQuestion(${idx})">${idx + 1}</div>`;
+                    }).join('');
+
+                    nav.innerHTML = navHTML;
+                    const navSide = document.getElementById('questionNavSide');
+                    if (navSide) navSide.innerHTML = navHTML;
+                }
 
             function scrollQuestionToTop() {
                 const container = document.getElementById('questionContainer');
@@ -3161,7 +3239,8 @@
                 renderQuestionNav();
                 renderNavigationButtons();
                 scrollQuestionToTop();
-                toggleNavModal();
+                const navModal = document.getElementById('navModal');
+                if (navModal && !navModal.classList.contains('hidden')) toggleNavModal();
             }
 
             function previousQuestion() {
@@ -3196,6 +3275,19 @@
                 renderQuestionNav();
             }
 
+            function updateSideTimer(distance) {
+                const side = document.getElementById('timerSide');
+                if (!side) return;
+                const total = Math.max(0, Math.floor(distance / 1000));
+                const p2 = n => String(n).padStart(2, '0');
+                document.getElementById('timerSideH').innerText = p2(Math.floor(total / 3600));
+                document.getElementById('timerSideM').innerText = p2(Math.floor((total % 3600) / 60));
+                document.getElementById('timerSideS').innerText = p2(total % 60);
+                const warn = distance < 5 * 60 * 1000;
+                side.classList.toggle('exd-timer-warn', warn);
+                side.classList.toggle('animate-pulse', warn);
+            }
+
             function startTimer() {
                 if (examTimer) clearInterval(examTimer);
                 examTimeIsUp = false;
@@ -3222,6 +3314,7 @@
                         // JIKA WAKTU HABIS
                         clearInterval(examTimer);
                         document.getElementById('timer').innerText = "00:00";
+                        updateSideTimer(0);
                         examTimeIsUp = true;
                         
                         // Tampilkan pop-up dan kumpulkan jawaban otomatis
@@ -3249,6 +3342,7 @@
                         // Tambahkan angka 0 di depan jika di bawah 10 (contoh: 09:05)
                         const displayMinutes = minutes < 10 ? "0" + minutes : minutes;
                         const displaySeconds = seconds < 10 ? "0" + seconds : seconds;
+                        updateSideTimer(distance);
 
                         // Tampilkan ke elemen timer di layar
                         const timerDisplay = document.getElementById('timer');
@@ -3667,7 +3761,7 @@
                             
                             ${examSettings.show_score ? `
                                 <div class="grid grid-cols-1 gap-4 mb-6">
-                                    <div class="bg-blue-50 rounded-xl p-6">
+                                    <div class="bg-green-50 rounded-xl p-6">
                                         <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">NILAI ANDA</p>
                                         <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${primaryColor};">${score}</p>
                                     </div>
@@ -3675,7 +3769,7 @@
                                 <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Terima kasih telah menyelesaikan ujian.</p>
                                 <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Silahkan keluar ruangan atau tutup halaman ini.</p>
                             ` : `
-                                <div class="bg-blue-50 rounded-xl p-6 mb-6">
+                                <div class="bg-green-50 rounded-xl p-6 mb-6">
                                     <p class="text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1}px;">Hasil ujian Anda telah disimpan. Nilai akan diumumkan kemudian.</p>
                                 </div>
                                 <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Terima kasih telah menyelesaikan ujian.</p>
@@ -4551,9 +4645,9 @@
                     const after = u.name.slice(idx + keyword.length);
                     return `
                         <div data-name="${escHtml(u.name)}" onclick="selectUserSuggestion(this.dataset.name)" 
-                            class="px-3 py-2 text-xs md:text-sm cursor-pointer hover:bg-blue-50 flex items-center gap-2 border-b border-gray-100 last:border-b-0">
+                            class="px-3 py-2 text-xs md:text-sm cursor-pointer hover:bg-[#e8f3e8] flex items-center gap-2 border-b border-gray-100 last:border-b-0">
                             <span>👤</span>
-                            <span>${escHtml(before)}<b class="text-blue-600">${escHtml(match)}</b>${escHtml(after)}</span>
+                            <span>${escHtml(before)}<b class="text-[#006400]">${escHtml(match)}</b>${escHtml(after)}</span>
                             <span class="ml-auto text-[10px] text-gray-400">${escHtml(u.class || '')}</span>
                         </div>
                     `;
@@ -4822,7 +4916,7 @@
                         // INSERT: Baris baru
                         tr = document.createElement('tr');
                         tr.id = uniqueId;
-                        tr.className = "border-b border-gray-200 hover:bg-blue-50 transition";
+                        tr.className = "border-b border-gray-200 hover:bg-[#e8f3e8] transition";
                         
                         tr.innerHTML = `
                             <td class="p-3 md:p-4">
@@ -5970,7 +6064,7 @@
                                     <h3 class="text-gray-600 text-xs font-medium" style="font-family: ${customFont}, ${baseFontStack};">Total Keseluruhan Soal</h3>
                                     <span class="p-2.5 bg-blue-50 rounded-lg">📚</span>
                                 </div>
-                                <p id="statTotalSemua" class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSemuaSoal}</p>
+                                <p id="statTotalSemua" class="font-bold text-[#006400] text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSemuaSoal}</p>
                                 <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">Semua Mapel & Kelas</p>
                             </div>
                             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-2 md:p-3 hover:shadow-md transition duration-200">
@@ -5978,7 +6072,7 @@
                                     <h3 class="text-gray-600 text-xs font-medium" style="font-family: ${customFont}, ${baseFontStack};">Soal Anda</h3>
                                     <span class="p-2.5 bg-blue-50 rounded-lg">📝</span>
                                 </div>
-                                <p id="statTotalGuru" class="font-bold text-blue-600 text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
+                                <p id="statTotalGuru" class="font-bold text-[#006400] text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
                                 <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.subject || 'Mapel Anda'}</p>
                             </div>
                         </div>
@@ -6087,7 +6181,7 @@
                             // UPDATE
                             div.innerHTML = getQuestionItemHTML(q, grade, nomorUrut);
                             // Class reset just in case ownership changed in the UI somehow
-                            div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
+                            div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-[#e8f3e8] cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
                             
                             itemMap.delete(uniqueId);
                             listContainer.appendChild(div); // Pertahankan Sorting
@@ -6095,7 +6189,7 @@
                             // INSERT
                             div = document.createElement('div');
                             div.id = uniqueId;
-                            div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
+                            div.className = `border border-gray-200 rounded-lg p-3 ${isAdmin || isOwner ? 'hover:bg-[#e8f3e8] cursor-pointer' : 'bg-gray-50/50 cursor-pointer'} transition`;
                             div.innerHTML = getQuestionItemHTML(q, grade, nomorUrut);
                             listContainer.appendChild(div);
                         }
@@ -6349,8 +6443,8 @@
                 let body = '';
                 if (q.question_type === 'pilihan_ganda') {
                     body = `<div class="space-y-3">${options.map((opt, i) => `
-                        <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${ans === i ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}">
-                            <input type="radio" name="pvAns" ${ans === i ? 'checked' : ''} onchange="pvAnswer(${i})" class="mt-1 w-5 h-5 text-blue-600 flex-shrink-0">
+                        <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-[#e8f3e8] transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${ans === i ? 'border-[#006400] bg-[#e8f3e8]' : 'border-gray-300'}">
+                            <input type="radio" name="pvAns" ${ans === i ? 'checked' : ''} onchange="pvAnswer(${i})" class="mt-1 w-5 h-5 text-[#006400] flex-shrink-0">
                             <div class="ml-3 flex-1 flex items-start gap-2">
                                 <span class="font-bold flex-shrink-0">${String.fromCharCode(65 + i)}.</span>
                                 <div class="quill-content-render break-words w-full">${sanitizeHtml(opt)}</div>
@@ -6359,10 +6453,10 @@
                 } else if (q.question_type === 'pilihan_ganda_kompleks') {
                     const sel = Array.isArray(ans) ? ans : [];
                     body = `<div class="space-y-3">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-blue-800">💡 Pilih semua jawaban yang menurut Anda benar.</p></div>
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">💡 Pilih semua jawaban yang menurut Anda benar.</p></div>
                         ${options.map((opt, i) => `
-                        <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${sel.includes(i) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-400'}">
-                            <input type="checkbox" ${sel.includes(i) ? 'checked' : ''} onchange="pvToggleComplex(${i})" class="w-6 h-6 text-blue-600 rounded flex-shrink-0">
+                        <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${sel.includes(i) ? 'border-[#006400] bg-[#e8f3e8]' : 'border-gray-200 bg-white hover:border-gray-400'}">
+                            <input type="checkbox" ${sel.includes(i) ? 'checked' : ''} onchange="pvToggleComplex(${i})" class="w-6 h-6 text-[#006400] rounded flex-shrink-0">
                             <div class="ml-4 flex-grow quill-content-render break-words">${sanitizeHtml(opt)}</div>
                         </label>`).join('')}</div>`;
                 } else if (q.question_type === 'benar_salah') {
@@ -6378,20 +6472,20 @@
                 } else if (q.question_type === 'menjodohkan') {
                     const cur = (ans && typeof ans === 'object') ? ans : {};
                     body = `<div class="space-y-3">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-blue-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p></div>
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p></div>
                         ${options.map((p, i) => `
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
                             <div class="flex-1 font-medium">${i + 1}. ${escHtml(p.l)}</div>
-                            <select onchange="pvMatch(${i}, this.value)" class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg">
+                            <select onchange="pvMatch(${i}, this.value)" class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
                                 <option value="">-- Pilih --</option>
                                 ${rc.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
                             </select>
                             <div class="pv-key text-green-700 font-semibold text-sm">✅ ${escHtml(p.r)}</div>
                         </div>`).join('')}</div>`;
                 } else if (q.question_type === 'isian_singkat') {
-                    body = `<label class="block text-blue-700 font-bold mb-3 uppercase tracking-wide text-xs">✍️ Tulis Jawaban Singkat:</label>
+                    body = `<label class="block text-green-700 font-bold mb-3 uppercase tracking-wide text-xs">✍️ Tulis Jawaban Singkat:</label>
                         <input type="text" oninput="pvType(this.value)" value="${escHtml(ans || '')}" placeholder="Ketik jawaban di sini..." autocomplete="off"
-                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 text-gray-800">`;
+                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-green-500 text-gray-800">`;
                 }
 
                 const navBtns = s.items.map((_, i) => {
@@ -6403,7 +6497,7 @@
 
                 const btn = 'flex-1 text-white px-2 py-1 text-[11px] md:text-sm rounded-md font-semibold transition';
                 view.innerHTML = `
-                    <div class="flex-none text-white px-3 md:px-5 py-2 shadow-md flex justify-between items-center" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
+                    <div class="flex-none text-white px-3 md:px-5 py-2 shadow-md flex justify-between items-center" style="background: linear-gradient(135deg, ${RC.primaryColor} 0%, ${RC.secondaryColor} 100%);">
                         <div class="min-w-0">
                             <h2 class="font-bold text-xs md:text-sm truncate">Nama Siswa (Preview)</h2>
                             <p class="text-[11px] md:text-xs opacity-90 truncate">Kelas ${escHtml(s.grade)} - ${escHtml(s.subject)}</p>
@@ -6417,7 +6511,7 @@
                         <div class="max-w-4xl mx-auto bg-white rounded-xl shadow p-3 md:p-5">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="font-bold text-lg">Soal ${s.idx + 1} dari ${total}</h3>
-                                <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold text-sm">${getQuestionTypeLabel(q.question_type)}</span>
+                                <span class="px-4 py-2 bg-[#d9ecd9] text-[#004d00] rounded-full font-semibold text-sm">${getQuestionTypeLabel(q.question_type)}</span>
                             </div>
                             <div class="quill-content-render text-lg mb-4 break-words" style="word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${sanitizeHtml(q.question_text)}</div>
                             ${q.question_image && q.question_image.trim() !== '' ? `<img src="${escHtml(q.question_image)}" class="max-w-full h-auto rounded-lg shadow-lg border-2 border-gray-300 mb-4">` : ''}
@@ -6425,13 +6519,13 @@
                             <div class="pv-key mt-3 px-3 py-2 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm font-semibold">✅ Kunci: ${escHtml(pvk.label)}</div>
                         </div>
                     </div>
-                    <div class="flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1">
+                    <div class="flex-none bg-white border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.08)] px-2 md:px-4 py-1.5">
                         <div class="max-w-4xl mx-auto flex gap-1.5">
-                            <button onclick="pvGo(${s.idx - 1})" ${isFirst ? 'disabled' : ''} class="${btn} bg-blue-500 ${isFirst ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-600'}">⬅️ Sebelumnya</button>
+                            <button onclick="pvGo(${s.idx - 1})" ${isFirst ? 'disabled' : ''} class="${btn} bg-[#FFFFFF] border-2 border-green-600 ${isFirst ? 'opacity-40 cursor-not-allowed' : 'hover:bg-green-600 hover:text-white'} text-green-700 px-2 py-2 text-[13px] md:text-sm rounded-md font-semibold transition">< Sebelumnya</button>
                             <button onclick="pvToggleDoubt()" class="${btn} bg-yellow-500 hover:bg-yellow-600">⚠️ Ragu-ragu</button>
                             ${isLast
                                 ? `<button onclick="pvFinish()" class="${btn} bg-green-500 hover:bg-green-600 font-bold">✅ Selesai</button>`
-                                : `<button onclick="pvGo(${s.idx + 1})" class="${btn} bg-blue-500 hover:bg-blue-600">Berikutnya ➡️</button>`}
+                                : `<button onclick="pvGo(${s.idx + 1})" class="${btn} bg-[#006400] hover:bg-green-600">Berikutnya ➡️</button>`}
                         </div>
                     </div>
                     <div class="${s.navOpen ? '' : 'hidden'} absolute inset-0 z-10 bg-black/60 flex items-center justify-center p-3" onclick="if(event.target===this) pvToggleNav()">
@@ -8167,7 +8261,7 @@
                     PALETTE[activeTab].forEach(item => {
                         const b = document.createElement('button');
                         b.type = 'button';
-                        b.className = 'px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition';
+                        b.className = 'px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-[#e8f3e8] hover:border-blue-400 transition';
                         try { katex.render(item.tex, b, { throwOnError: false }); } catch (e) { b.textContent = item.tex; }
                         b.addEventListener('click', () => insertTemplate(item.ins));
                         paletteBox.appendChild(b);
@@ -9894,7 +9988,7 @@
                         </div>
                         <div class="relative shrink-0 mt-1">
                             <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} class="peer sr-only">
-                            <div class="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+                            <div class="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-green-600 transition-colors"></div>
                             <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                         </div>
                     </label>`;
@@ -10196,7 +10290,7 @@
                         <div id="manualFields" style="display: none;">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="scheduleIsActive"
-                                    class="w-5 h-5 text-blue-600 rounded">
+                                    class="w-5 h-5 text-[#006400] rounded">
                                 <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Aktifkan Sekarang</span>
                             </label>
                         </div>
@@ -10204,7 +10298,7 @@
                         <div class="border-t pt-4">
                             <label class="flex items-center cursor-pointer mb-2">
                                 <input type="checkbox" id="scheduleTokenEnabled" onchange="toggleAddTokenField()"
-                                    class="w-5 h-5 text-blue-600 rounded">
+                                    class="w-5 h-5 text-[#006400] rounded">
                                 <span class="ml-3 text-gray-700 font-semibold">🔑 Wajibkan Token Masuk</span>
                             </label>
                             <p class="text-xs text-gray-500 mb-2">Jika aktif, siswa harus memasukkan token yang benar untuk mapel ini.</p>
