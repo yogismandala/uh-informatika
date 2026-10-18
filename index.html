@@ -501,6 +501,7 @@
                 show_score: true,
                 max_questions: 0,
                 limit_one_attempt: false,
+                matching_per_item: false,
                 active_subjects: [] // Array of active exam subjects with schedules
             };
             let currentAdminTab = 'dashboard'; // Default tab admin
@@ -722,6 +723,7 @@
                         examSettings.shuffle_answers = !!settingsData.shuffle_answers;
                         examSettings.show_score = settingsData.show_score !== false;
                         examSettings.limit_one_attempt = !!settingsData.limit_one_attempt;
+                        examSettings.matching_per_item = !!settingsData.matching_per_item;
                         const minTime = parseInt(settingsData.min_time_to_submit) || 0;
                         localStorage.setItem('minTimeToSubmit', minTime.toString());
                         examSettings.minTimeToSubmit = minTime;   
@@ -2116,7 +2118,13 @@
                         options = shuffleArray(options);
                     }
 
-                    return { ...q, options };
+                    return {
+                        ...q,
+                        options,
+                        rightChoices: q.question_type === 'menjodohkan'
+                            ? shuffleArray([...new Set(options.map(o => o.r))])
+                            : undefined
+                    };
                 });
 
                 if (!remainingTime) {
@@ -2830,6 +2838,8 @@
                     questionHTML += renderShortAnswer(question);
                 } else if (question.question_type === 'benar_salah') {
                     questionHTML += renderTrueFalse(question);
+                } else if (question.question_type === 'menjodohkan') {
+                    questionHTML += renderMatching(question);
                 }
                 
                 container.innerHTML = questionHTML;
@@ -2866,6 +2876,7 @@
                 const labels = {
                     'pilihan_ganda': 'Pilihan Ganda',
                     'pilihan_ganda_kompleks': 'Pilihan Ganda Kompleks',
+                    'menjodohkan': 'Menjodohkan',
                     'isian_singkat': 'Isian Singkat',
                     'benar_salah': 'Benar/Salah'
                 };
@@ -3008,6 +3019,41 @@
                         </div>
                     </div>
                 `;
+            }
+
+            function renderMatching(question) {
+                const { customFont, baseFontStack, baseSize, textColor } = RC;
+                const cur = studentAnswers[currentQuestionIndex] || {};
+                const choices = question.rightChoices || [];
+                return `
+                    <div class="space-y-3">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-2 rounded-r-lg">
+                            <p class="text-sm font-bold text-blue-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p>
+                        </div>
+                        ${question.options.map((p, i) => `
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
+                                <div class="flex-1 font-medium" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">${i + 1}. ${escHtml(p.l)}</div>
+                                <select onchange="saveMatchAnswer(${i}, this.value)"
+                                    class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                                    <option value="">-- Pilih --</option>
+                                    ${choices.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
+                                </select>
+                            </div>`).join('')}
+                    </div>`;
+            }
+
+            function saveMatchAnswer(leftIdx, value) {
+                const prev = studentAnswers[currentQuestionIndex];
+                const cur = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? { ...prev } : {};
+                if (value === '') delete cur[leftIdx]; else cur[leftIdx] = value;
+
+                if (Object.keys(cur).length === 0) delete studentAnswers[currentQuestionIndex];
+                else studentAnswers[currentQuestionIndex] = cur;
+
+                const encoded = JSON.stringify(studentAnswers);
+                sessionStorage.setItem('studentAnswers', encoded);
+                localStorage.setItem('studentAnswers', encoded);
+                renderQuestionNav();
             }
 
             function saveAnswerDirect(value) {
@@ -3500,6 +3546,8 @@
 
             function calculateScore() {
                 let correctAnswers = 0;
+                let totalPoints = 0;
+                const perItem = !!examSettings.matching_per_item;
                 if (!examQuestions || examQuestions.length === 0) return 0;
 
                 examQuestions.forEach((question, idx) => {
@@ -3514,6 +3562,7 @@
                         decodedKey = '';
                     }
                     answerKey = parseAnswerKey(decodedKey);
+                    totalPoints += (perItem && question.question_type === 'menjodohkan' && Array.isArray(answerKey)) ? answerKey.length : 1;
 
                     // 2. Validasi: Jangan hitung jika siswa tidak menjawab
                     if (rawStudent === undefined || rawStudent === null || rawStudent === "" || (Array.isArray(rawStudent) && rawStudent.length === 0)) {
@@ -3570,9 +3619,38 @@
                             correctAnswers++;
                         }
                     }
+                    else if (type === 'menjodohkan') {
+                        const kArr = Array.isArray(answerKey) ? answerKey : [];
+                        if (kArr.length === 0 || typeof rawStudent !== 'object') return;
+                        const benar = kArr.filter((k, i) =>
+                            normalizeText(rawStudent[i]).trim().toLowerCase() === normalizeText(k).trim().toLowerCase()).length;
+                        correctAnswers += perItem ? benar : benar / kArr.length;
+                    }
                 });
 
-                return Math.round((correctAnswers / examQuestions.length) * 100);
+                return totalPoints ? Math.round((correctAnswers / totalPoints) * 100) : 0;
+            }
+
+            function addMatchRow(l = '', r = '') {
+                const box = document.getElementById('match-rows');
+                if (!box) return;
+                const row = document.createElement('div');
+                row.className = 'match-row flex gap-2 items-center';
+                row.innerHTML = `
+                    <input type="text" class="m-l flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" placeholder="Kiri" value="${escHtml(l)}">
+                    <span>→</span>
+                    <input type="text" class="m-r flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" placeholder="Pasangan kanan" value="${escHtml(r)}">
+                    <button type="button" onclick="this.closest('.match-row').remove()" class="px-2 py-1 bg-red-500 text-white rounded text-xs">🗑️</button>`;
+                box.appendChild(row);
+            }
+            function collectMatchPairs() {
+                const pairs = Array.from(document.querySelectorAll('#match-rows .match-row')).map(r => ({
+                    l: r.querySelector('.m-l').value.trim(),
+                    r: r.querySelector('.m-r').value.trim()
+                }));
+                if (pairs.length < 2) throw new Error('Minimal 2 pasangan');
+                if (pairs.some(p => !p.l || !p.r)) throw new Error('Semua kolom pasangan harus diisi');
+                return pairs;
             }
 
             function renderResultPage(score) {
@@ -5385,11 +5463,28 @@
                     }).filter(i => i !== '').sort().join(',');
                     return (sFinal !== '' && sFinal === kFinal) ? 'benar' : 'salah';
                 }
+                if (type === 'menjodohkan') {
+                    const { benar, total } = matchingResult(q, rawStudent);
+                    if (total === 0) return 'salah';
+                    return benar === total ? 'benar' : (benar === 0 ? 'salah' : 'sebagian');
+                }
                 return 'salah';
+            }
+
+            function matchingResult(q, raw) {
+                let key;
+                try { key = decodeQuestionKey(q); } catch (e) { return { benar: 0, total: 0 }; }
+                const kArr = Array.isArray(key) ? key : [];
+                const obj = (raw && typeof raw === 'object') ? raw : {};
+                const benar = kArr.filter((k, i) =>
+                    normalizeText(obj[i]).trim().toLowerCase() === normalizeText(k).trim().toLowerCase()).length;
+                return { benar, total: kArr.length };
             }
 
             function answerToText(raw) {
                 if (isEmptyAnswer(raw)) return '';
+                if (typeof raw === 'object' && !Array.isArray(raw))
+                return Object.keys(raw).sort((a, b) => a - b).map(k => raw[k]).join(', ');
                 return Array.isArray(raw) ? raw.map(a => plainText(a)).join(', ') : plainText(raw);
             }
 
@@ -5431,19 +5526,24 @@
                 const items = ids.map((qid, idx) => {
                     const q = qMap.get(String(qid));
                     const raw = answers[idx];
-                    return { no: idx + 1, q, raw, status: q ? evaluateAnswer(q, raw) : 'hilang' };
+                    return {
+                        no: idx + 1, q, raw,
+                        status: q ? evaluateAnswer(q, raw) : 'hilang',
+                        m: (q && q.question_type === 'menjodohkan') ? matchingResult(q, raw) : null
+                    };
                 });
-                const cnt = { benar: 0, salah: 0, kosong: 0, hilang: 0 };
+                const cnt = { benar: 0, salah: 0, kosong: 0, hilang: 0, sebagian: 0 };
                 items.forEach(it => cnt[it.status]++);
 
                 const color = {
                     benar: 'bg-green-100 text-green-800',
                     salah: 'bg-red-100 text-red-800',
                     kosong: 'bg-gray-200 text-gray-600',
-                    hilang: 'bg-yellow-100 text-yellow-800'
+                    hilang: 'bg-yellow-100 text-yellow-800',
+                    sebagian: 'bg-orange-100 text-orange-800'
                 };
-                const label = { benar: '✅ Benar', salah: '❌ Salah', kosong: '➖ Kosong', hilang: '⚠️ Soal dihapus' };
-
+                const label = { benar: '✅ Benar', salah: '❌ Salah', kosong: '➖ Kosong', hilang: '⚠️ Soal dihapus', sebagian: '🟠 Sebagian' };
+                const statusText = it => label[it.status] + ((it.status === 'sebagian' && it.m) ? ` (${it.m.benar}/${it.m.total})` : '');
                 const chips = items.map(it => `<span class="inline-flex w-8 h-8 items-center justify-center rounded text-xs font-bold m-0.5 ${color[it.status]}">${it.no}</span>`).join('');
                 const rows = items.map(it => `
                     <tr class="border-b border-gray-200 align-top">
@@ -5451,7 +5551,7 @@
                         <td class="p-2">${it.q ? escHtml(plainText(it.q.question_text, 90)) : '<i>(soal sudah dihapus)</i>'}</td>
                         <td class="p-2">${it.status === 'kosong' ? '<i class="text-gray-400">belum dijawab</i>' : escHtml(plainText(answerToText(it.raw), 80))}</td>
                         <td class="p-2">${it.q ? escHtml(plainText(keyToText(it.q), 80)) : '-'}</td>
-                        <td class="p-2 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${color[it.status]}">${label[it.status]}</span></td>
+                        <td class="p-2 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${color[it.status]}">${statusText(it)}</span></td>
                     </tr>`).join('');
 
                 Swal.fire({
@@ -5461,7 +5561,7 @@
                     html: head + `
                         <div style="text-align:left;font-size:13px;margin-bottom:8px">
                             Total soal: <b>${items.length}</b> · Dijawab: <b>${items.length - cnt.kosong}</b> ·
-                            Kosong: <b>${cnt.kosong}</b> · Benar: <b>${cnt.benar}</b> · Salah: <b>${cnt.salah}</b>
+                            Kosong: <b>${cnt.kosong}</b> · Benar: <b>${cnt.benar}</b> · Salah: <b>${cnt.salah}</b>${cnt.sebagian ? ' · Sebagian: <b>' + cnt.sebagian + '</b>' : ''}
                         </div>
                         <div style="text-align:left;margin-bottom:10px">${chips}</div>
                         <div style="max-height:45vh;overflow:auto;text-align:left;font-size:12px">
@@ -5496,7 +5596,7 @@
                     ids.forEach((qid, idx) => {
                         const q = qMap.get(String(qid));
                         if (!q) return;
-                        const st = stats[qid] || (stats[qid] = { q, benar: 0, salah: 0, kosong: 0, wrong: {} });
+                        const st = stats[qid] || (stats[qid] = { q, benar: 0, salah: 0, kosong: 0, sebagian: 0, wrong: {} });
                         const status = evaluateAnswer(q, answers[idx]);
                         st[status]++;
                         if (status === 'salah') {
@@ -5507,9 +5607,9 @@
                 });
 
                 const list = Object.values(stats).map(st => {
-                    const n = st.benar + st.salah + st.kosong;
+                    const n = st.benar + st.salah + st.kosong + st.sebagian;
                     const top = Object.entries(st.wrong).sort((a, b) => b[1] - a[1])[0];
-                    return { ...st, n, pBenar: st.benar / n * 100, pSalah: st.salah / n * 100, pKosong: st.kosong / n * 100, top };
+                    return { ...st, n, pBenar: st.benar / n * 100, pSalah: st.salah / n * 100, pSebagian: st.sebagian / n * 100, pKosong: st.kosong / n * 100, top };
                 }).sort((a, b) => a.pBenar - b.pBenar); // tersulit di atas
 
                 const tingkat = p => p < 40 ? ['Sulit', 'bg-red-100 text-red-800'] : p < 70 ? ['Sedang', 'bg-yellow-100 text-yellow-800'] : ['Mudah', 'bg-green-100 text-green-800'];
@@ -5522,6 +5622,7 @@
                         <td class="p-2">${escHtml(plainText(it.q.question_text, 90))}</td>
                         <td class="p-2 whitespace-nowrap"><b>${it.pBenar.toFixed(0)}%</b> <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${tCls}">${tLabel}</span></td>
                         <td class="p-2 whitespace-nowrap">${it.pSalah.toFixed(0)}%</td>
+                        <td class="p-2 whitespace-nowrap">${it.pSebagian.toFixed(0)}%</td>
                         <td class="p-2 whitespace-nowrap">${it.pKosong.toFixed(0)}%</td>
                         <td class="p-2 whitespace-nowrap">${it.n}</td>
                         <td class="p-2">${it.top ? escHtml(plainText(it.top[0], 60)) + ' <span class="text-gray-500">(' + it.top[1] + ' siswa)</span>' : '-'}</td>
@@ -5546,6 +5647,7 @@
                                 <th class="p-2 text-left" style="min-width:240px">Soal</th>
                                 <th class="p-2 text-left whitespace-nowrap">Benar</th>
                                 <th class="p-2 text-left whitespace-nowrap">Salah</th>
+                                <th class="p-2 text-left whitespace-nowrap">Sebagian</th>
                                 <th class="p-2 text-left whitespace-nowrap">Kosong</th>
                                 <th class="p-2 text-left whitespace-nowrap">Peserta</th>
                                 <th class="p-2 text-left" style="min-width:180px">Jawaban salah terbanyak</th>
@@ -6097,6 +6199,13 @@
                             <label class="flex-1 flex items-center p-3 border-2 border-gray-300 rounded-lg ${bsKey === 'benar' ? 'pv-correct' : ''}"><input type="radio" disabled class="w-4 h-4"><span class="ml-2 font-bold">BENAR</span></label>
                             <label class="flex-1 flex items-center p-3 border-2 border-gray-300 rounded-lg ${bsKey === 'salah' ? 'pv-correct' : ''}"><input type="radio" disabled class="w-4 h-4"><span class="ml-2 font-bold">SALAH</span></label>
                         </div>`;
+                    } else if (q.question_type === 'menjodohkan') {
+                        body = `<div class="space-y-2">${options.map((p, i) => `
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-300 rounded-lg">
+                                <div class="flex-1 font-medium">${i + 1}. ${escHtml(p.l)}</div>
+                                <div class="sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg bg-gray-50 text-gray-400">-- Pilih --</div>
+                                <div class="pv-key text-green-700 font-semibold text-sm">✅ ${escHtml(p.r)}</div>
+                            </div>`).join('')}</div>`;
                     } else if (q.question_type === 'isian_singkat') {
                         body = `<input type="text" disabled placeholder="Ketik jawaban di sini..." class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50">`;
                     }
@@ -6225,7 +6334,12 @@
                 const oldScroll = document.getElementById('pvScroll');
                 const top = (keepScroll && oldScroll) ? oldScroll.scrollTop : 0;
 
-                const { q, options } = s.items[s.idx];
+                const it = s.items[s.idx];
+                const { q, options } = it;
+                if (q.question_type === 'menjodohkan' && !it.rc) {
+                    it.rc = shuffleArray([...new Set(options.map(o => o.r))]);
+                }
+                const rc = it.rc || [];
                 const total = s.items.length;
                 const ans = s.answers[s.idx];
                 const isFirst = s.idx === 0;
@@ -6261,6 +6375,19 @@
                             <input type="radio" name="pvBS" ${ans === 'Salah' ? 'checked' : ''} onchange="pvAnswerBS('Salah')" class="w-6 h-6">
                             <span class="ml-3 font-bold text-gray-700">SALAH</span>
                         </label></div>`;
+                } else if (q.question_type === 'menjodohkan') {
+                    const cur = (ans && typeof ans === 'object') ? ans : {};
+                    body = `<div class="space-y-3">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-blue-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p></div>
+                        ${options.map((p, i) => `
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
+                            <div class="flex-1 font-medium">${i + 1}. ${escHtml(p.l)}</div>
+                            <select onchange="pvMatch(${i}, this.value)" class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg">
+                                <option value="">-- Pilih --</option>
+                                ${rc.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
+                            </select>
+                            <div class="pv-key text-green-700 font-semibold text-sm">✅ ${escHtml(p.r)}</div>
+                        </div>`).join('')}</div>`;
                 } else if (q.question_type === 'isian_singkat') {
                     body = `<label class="block text-blue-700 font-bold mb-3 uppercase tracking-wide text-xs">✍️ Tulis Jawaban Singkat:</label>
                         <input type="text" oninput="pvType(this.value)" value="${escHtml(ans || '')}" placeholder="Ketik jawaban di sini..." autocomplete="off"
@@ -6353,6 +6480,15 @@
             // Isian: tidak render ulang supaya fokus kursor tidak hilang
             function pvType(v) { const s = window.__pv; s.answers[s.idx] = v; }
 
+            function pvMatch(i, v) {
+                const s = window.__pv;
+                const prev = s.answers[s.idx];
+                const cur = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? { ...prev } : {};
+                if (v === '') delete cur[i]; else cur[i] = v;
+                if (Object.keys(cur).length === 0) delete s.answers[s.idx]; else s.answers[s.idx] = cur;
+                pvRender(true);
+            }
+
             function pvFinish() {
                 const s = window.__pv;
                 const total = s.items.length;
@@ -6428,7 +6564,11 @@
                 let contentHtml = '';
 
                 // CASE A: JIKA SOAL PILIHAN GANDA / KOMPLEKS
-                if (optionsArray && optionsArray.length > 0) {
+                if (q.question_type === 'menjodohkan') {
+                    contentHtml = '<div class="space-y-2 mt-3 text-left">' +
+                        optionsArray.map(p => `<div class="px-3 py-2 rounded border-2 border-green-500 bg-green-50 text-sm">${escHtml(p.l)} <b>→</b> ${escHtml(p.r)}</div>`).join('') +
+                        '</div>';
+                } else if (optionsArray && optionsArray.length > 0) {
                     contentHtml += '<div class="space-y-2 mt-3 text-left">';
                     
                     // LOGIKA BARU: Cek apakah ada opsi yang identik 100% dengan kunci jawaban (Mencegah bug 23,5 vs 23)
@@ -6606,6 +6746,7 @@
                                     <select id="edit-type" class="w-full p-2 border-2 border-purple-200 rounded-lg shadow-sm font-bold focus:border-purple-500">
                                         <option value="pilihan_ganda" ${q.question_type === 'pilihan_ganda' ? 'selected' : ''}>Pilihan Ganda</option>
                                         <option value="pilihan_ganda_kompleks" ${q.question_type === 'pilihan_ganda_kompleks' ? 'selected' : ''}>PG Kompleks</option>
+                                        <option value="menjodohkan" ${q.question_type === 'menjodohkan' ? 'selected' : ''}>Menjodohkan</option>
                                         <option value="benar_salah" ${q.question_type === 'benar_salah' ? 'selected' : ''}>Benar / Salah</option>
                                         <option value="isian_singkat" ${q.question_type === 'isian_singkat' ? 'selected' : ''}>Isian</option>
                                     </select>
@@ -6640,6 +6781,11 @@
                                     </div>
                                 </div>
                             </div>
+                            <div id="match-wrapper" style="display:none" class="space-y-2">
+                                <label class="title-opt bg-pink-500 shadow-sm">Pasangan (Kiri → Kanan)</label>
+                                <div id="match-rows" class="space-y-2"></div>
+                                <button type="button" onclick="addMatchRow()" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">+ Tambah Pasangan</button>
+                            </div>
 
                             <div class="mt-4 p-4 border-t-2 border-green-500 bg-green-50 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div class="flex-shrink-0">
@@ -6672,11 +6818,14 @@
                             opt3: new Quill('#edit-opt-3', configMini)
                         };
 
+                        const isMatchQ = q.question_type === 'menjodohkan';
+                        const optStr = i => (!isMatchQ && typeof parsedOptions[i] === 'string') ? parsedOptions[i] : '';
                         loadHtmlIntoEditorWithTables(window.editEditors.question, safeText);
-                        loadHtmlIntoEditorWithTables(window.editEditors.opt0, parsedOptions[0] || '');
-                        loadHtmlIntoEditorWithTables(window.editEditors.opt1, parsedOptions[1] || '');
-                        loadHtmlIntoEditorWithTables(window.editEditors.opt2, parsedOptions[2] || '');
-                        loadHtmlIntoEditorWithTables(window.editEditors.opt3, parsedOptions[3] || '');
+                        loadHtmlIntoEditorWithTables(window.editEditors.opt0, optStr(0));
+                        loadHtmlIntoEditorWithTables(window.editEditors.opt1, optStr(1));
+                        loadHtmlIntoEditorWithTables(window.editEditors.opt2, optStr(2));
+                        loadHtmlIntoEditorWithTables(window.editEditors.opt3, optStr(3));
+                        if (isMatchQ) parsedOptions.forEach(p => addMatchRow(p.l, p.r));
 
                         Object.keys(window.editEditors).forEach(key => {
                             window.editEditors[key].container.addEventListener('click', () => { window.editEditors[key].focus(); });
@@ -6755,6 +6904,15 @@
                             document.getElementById('edit-options-wrapper').style.display = (isSimple || val === 'pilihan_ganda_kompleks') ? 'block' : 'none';
                             document.getElementById('edit-key-dropdown-container').style.display = isSimple ? 'block' : 'none';
                             document.getElementById('edit-key-manual-container').style.display = isSimple ? 'none' : 'block';
+
+                            const isMatch = val === 'menjodohkan';
+                            document.getElementById('match-wrapper').style.display = isMatch ? 'block' : 'none';
+                            if (isMatch) {
+                                document.getElementById('edit-options-wrapper').style.display = 'none';
+                                document.getElementById('edit-key-dropdown-container').style.display = 'none';
+                                document.getElementById('edit-key-manual-container').style.display = 'none';
+                                if (!document.querySelector('#match-rows .match-row')) { addMatchRow(); addMatchRow(); }
+                            }
                         };
 
                         typeSelect.addEventListener('change', toggleUI);
@@ -6793,9 +6951,15 @@
                                 await processEditor(window.editEditors.opt3)
                             ];
 
-                            if (['pilihan_ganda', 'benar_salah'].includes(qType)) {
+                            if (qType === 'menjodohkan') {
+                                const pairs = collectMatchPairs();
+                                finalOptions = pairs;
+                                finalKey = JSON.stringify(pairs.map(p => p.r));
+                            } else if (['pilihan_ganda', 'benar_salah'].includes(qType)) {
                                 finalOptions = (qType === 'benar_salah') ? rawOptions.slice(0, 2) : rawOptions;
                                 finalKey = finalOptions[document.getElementById('edit-correct-opt').value];
+                                if (finalKey === undefined || isBlankHtml(finalKey)) throw new Error('Opsi kunci jawaban masih kosong');
+                                if (finalOptions.filter(o => !isBlankHtml(o)).length < 2) throw new Error('Minimal 2 opsi harus diisi');
                             } else {
                                 if (qType === 'pilihan_ganda_kompleks') {
                                     finalOptions = rawOptions;
@@ -6804,12 +6968,7 @@
                                 } else {
                                     finalKey = document.getElementById('edit-manual-key').value.trim();
                                 }
-                            }
-                            if (['pilihan_ganda', 'benar_salah'].includes(qType)) {
-                                if (finalKey === undefined || isBlankHtml(finalKey)) throw new Error('Opsi kunci jawaban masih kosong');
-                                if (finalOptions.filter(o => !isBlankHtml(o)).length < 2) throw new Error('Minimal 2 opsi harus diisi');
-                            } else if (!finalKey) {
-                                throw new Error('Kunci jawaban harus diisi');
+                                if (!finalKey) throw new Error('Kunci jawaban harus diisi');
                             }
 
                             const payload = {
@@ -6948,6 +7107,7 @@
                                         <option value="" disabled selected>-- Pilih Tipe Soal --</option>
                                         <option value="pilihan_ganda">Pilihan Ganda</option>
                                         <option value="pilihan_ganda_kompleks">PG Kompleks</option>
+                                        <option value="menjodohkan">Menjodohkan</option>
                                         <option value="benar_salah">Benar / Salah</option>
                                         <option value="isian_singkat">Isian / Essai</option>
                                     </select>
@@ -6981,6 +7141,11 @@
                                         <div id="add-opt-3" class="editor-container box-a rounded-xl overflow-hidden w-full"></div>
                                     </div>
                                 </div>
+                            </div>
+                            <div id="match-wrapper" style="display:none" class="space-y-2">
+                                <label class="title-opt bg-pink-500 shadow-sm">Pasangan (Kiri → Kanan)</label>
+                                <div id="match-rows" class="space-y-2"></div>
+                                <button type="button" onclick="addMatchRow()" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">+ Tambah Pasangan</button>
                             </div>
 
                             <div class="mt-4 p-4 border-t-2 border-green-500 bg-green-50 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -7053,6 +7218,14 @@
                             }
 
                             document.getElementById('key-hint-text').textContent = isComplex ? "*Gunakan koma (Contoh: A, C)" : (isEssay ? "*Ketik jawaban singkat" : "*Pilih huruf jawaban benar");
+                            const isMatch = type === 'menjodohkan';
+                            document.getElementById('match-wrapper').style.display = isMatch ? 'block' : 'none';
+                            if (isMatch) {
+                                document.getElementById('options-wrapper').style.display = 'none';
+                                document.getElementById('key-dropdown-container').style.display = 'none';
+                                document.getElementById('key-manual-container').style.display = 'none';
+                                if (!document.querySelector('#match-rows .match-row')) { addMatchRow(); addMatchRow(); }
+                            }
                         };
 
                         typeSelect.addEventListener('change', handleUIChange);
@@ -7086,7 +7259,11 @@
                             if (isBlankHtml(qText)) throw new Error('Pertanyaan tidak boleh kosong');
                             let finalOptions = [], key = "";
 
-                            if (type !== 'isian_singkat') {
+                            if (type === 'menjodohkan') {
+                                const pairs = collectMatchPairs();
+                                finalOptions = pairs;
+                                key = JSON.stringify(pairs.map(p => p.r));
+                            } else if (type !== 'isian_singkat') {
                                 const rawOptions = [
                                     await processEditor(window.addEditors.opt0),
                                     await processEditor(window.addEditors.opt1),
@@ -8148,34 +8325,81 @@
             }
 
             function extractLinesFromWordHtml(html) {
-            const container = document.createElement('div');
-            container.innerHTML = html;
+                const container = document.createElement('div');
+                container.innerHTML = html;
 
-            const lines = [];
-            const blockNodes = Array.from(container.querySelectorAll('p, li, table')).filter(el => {
-                if (el.tagName === 'TABLE') return true;
-                return !el.closest('table');
-            });
-            blockNodes.forEach(blockNode => {
-                if (blockNode.tagName === 'TABLE') {
-                    const text = (blockNode.textContent || '').trim();
-                    if (!text) return;
-                    const tmp = document.createElement('div');
-                    tmp.innerHTML = blockNode.outerHTML;
-                    lines.push({ text, node: tmp, isTable: true });
-                    return;
-                }
-                const fragments = blockNode.innerHTML.split(/<br\s*\/?>/i);
-                fragments.forEach(fragHtml => {
-                    const tmp = document.createElement('div');
-                    tmp.innerHTML = fragHtml;
-                    trimDomWhitespace(tmp);
-                    const text = (tmp.textContent || '').trim();
-                    if (text) lines.push({ text, node: tmp });
+                const lines = [];
+                const blockNodes = Array.from(container.querySelectorAll('p, li, table')).filter(el => {
+                    if (el.tagName === 'TABLE') return true;
+                    return !el.closest('table');
                 });
-            });
-            return lines;
-        }
+                blockNodes.forEach(blockNode => {
+                    if (blockNode.tagName === 'TABLE') {
+                        const text = (blockNode.textContent || '').trim();
+                        if (!text) return;
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = blockNode.outerHTML;
+                        lines.push({ text, node: tmp, isTable: true });
+                        return;
+                    }
+                    const fragments = blockNode.innerHTML.split(/<br\s*\/?>/i);
+                    fragments.forEach(fragHtml => {
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = fragHtml;
+                        trimDomWhitespace(tmp);
+                        const text = (tmp.textContent || '').trim();
+                        if (text) lines.push({ text, node: tmp });
+                    });
+                });
+                return lines;
+            }
+
+            function parseMatchingTableBlock(tableNode) {
+                const rows = Array.from(tableNode.querySelectorAll('tr')).map(tr =>
+                    Array.from(tr.cells).map(td => {
+                        const t = document.createElement('div');
+                        t.innerHTML = td.innerHTML.replace(/<br\s*\/?>/gi, ' ');
+                        return { text: (t.textContent || '').replace(/\s+/g, ' ').trim(), html: td.innerHTML };
+                    })
+                );
+                if (rows.length < 4) return null;
+                const head = rows[0], tail = rows[rows.length - 1];
+                const numM = head[0] && head[0].text.match(/^(\d+)[\.\)]$/);
+                if (!numM || head.length < 2) return null;
+                if (tail.length < 2 || !/^jawaban\s*:?$/i.test(tail[tail.length - 2].text)) return null;
+
+                const number = parseInt(numM[1], 10);
+                const fail = { number, skip: true };
+                const body = rows.slice(1, -1).filter(r => r.length >= 2);
+                const prem = body.map(r => r[r.length - 2].text);
+                const opts = body.map(r => r[r.length - 1].text);
+                const n = body.length;
+                if (n < 2 || prem.some(x => !x) || opts.some(x => !x)) return fail;
+
+                const map = {};
+                const re = /(\d+)\s*[-–=:]\s*([A-Za-z])/g;
+                const keyText = tail[tail.length - 1].text;
+                let m;
+                while ((m = re.exec(keyText)) !== null) {
+                    map[parseInt(m[1], 10)] = m[2].toUpperCase().charCodeAt(0) - 65;
+                }
+                const pairs = [];
+                for (let i = 1; i <= n; i++) {
+                    const oi = map[i];
+                    if (oi === undefined || oi < 0 || oi >= n) return fail;
+                    pairs.push({ l: prem[i - 1], r: opts[oi] });
+                }
+                const instrHtml = head[head.length - 1].html;
+                if (!instrHtml.replace(/<[^>]*>/g, '').trim()) return fail;
+
+                return {
+                    number,
+                    question_type: 'menjodohkan',
+                    question_text: `<p>${instrHtml}</p>`,
+                    options: pairs,
+                    answer_key: JSON.stringify(pairs.map(p => p.r))
+                };
+            }
 
             // Parser inti: mengubah hasil ekstraksi Word (format ASTS) menjadi array soal
             // terstruktur. Bold & italic pada isi soal & opsi tetap dipertahankan
@@ -8215,8 +8439,18 @@
                 let currentQ = null;
                 let currentOptLetter = null;
                 let isComplexSection = false;
+                const matchResults = [];
+                const matchSkipped = [];
 
                 for (const line of mainLines) {
+                    if (line.isTable) {
+                        const mt = parseMatchingTableBlock(line.node);
+                        if (mt) {
+                            if (mt.skip) matchSkipped.push(mt.number); else matchResults.push(mt);
+                            currentQ = null; currentOptLetter = null;
+                            continue;
+                        }
+                    }
                     const plain = line.text;
                     if (complexHeaderRe.test(plain)) { isComplexSection = true; currentQ = null; currentOptLetter = null; continue; }
                     if (skipLineRe.test(plain)) { continue; }
@@ -8261,6 +8495,7 @@
 
                 const results = [];
                 const skipped = [];
+                matchSkipped.forEach(n => skipped.push(n));
 
                 Object.keys(questionsMap).sort((a, b) => a - b).forEach(numStr => {
                     const num = parseInt(numStr, 10);
@@ -8302,6 +8537,8 @@
                     });
                 });
 
+                matchResults.forEach(r => results.push(r));
+                results.sort((a, b) => a.number - b.number);
                 return { results, skipped };
             }
 
@@ -8359,14 +8596,15 @@
                             : (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}">${s}</option>`).join('');
 
                         const complexCount = results.filter(r => r.question_type === 'pilihan_ganda_kompleks').length;
-                        const simpleCount = results.length - complexCount;
+                        const matchCount = results.filter(r => r.question_type === 'menjodohkan').length;
+                        const simpleCount = results.length - complexCount - matchCount;
 
                         const confirmResult = await Swal.fire({
                             title: '📝 Konfirmasi Import Soal dari Word',
                             html: `
                                 <div style="text-align:left; font-size:13px;">
                                     <p style="margin-bottom:10px;">Terdeteksi <b>${results.length} soal</b> siap diimpor
-                                    (${simpleCount} Pilihan Ganda, ${complexCount} PG Kompleks).
+                                    (${simpleCount} Pilihan Ganda, ${complexCount} PG Kompleks, ${matchCount} Menjodohkan)
                                     ${skipped.length ? `<br><span style="color:#b45309;">⚠️ ${skipped.length} nomor dilewati (soal/opsi/kunci tidak lengkap): ${skipped.join(', ')}</span>` : ''}
                                     </p>
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Jenjang Kelas</label>
@@ -9171,6 +9409,7 @@
                         pilihan_ganda: finalSoal.filter(q => q.question_type === 'pilihan_ganda' || !q.question_type),
                         pilihan_ganda_kompleks: finalSoal.filter(q => q.question_type === 'pilihan_ganda_kompleks'),
                         benar_salah: finalSoal.filter(q => q.question_type === 'benar_salah'),
+                        menjodohkan: finalSoal.filter(q => q.question_type === 'menjodohkan'),
                         isian_singkat: finalSoal.filter(q => q.question_type === 'isian_singkat')
                     };
 
@@ -9178,6 +9417,7 @@
                         { key: 'pilihan_ganda', heading: 'Pilihan Ganda', instruksi: 'Pilihlah salah satu jawaban a, b, c atau d yang paling benar!' },
                         { key: 'pilihan_ganda_kompleks', heading: 'Pilihan Ganda Kompleks', instruksi: 'Pilihlah jawaban yang benar (jawaban benar bisa lebih dari satu)!' },
                         { key: 'benar_salah', heading: 'Benar / Salah', instruksi: 'Berilah tanda centang pada kolom BENAR atau SALAH sesuai pernyataan berikut!' },
+                        { key: 'menjodohkan', heading: 'Menjodohkan', instruksi: 'Pasangkan pernyataan berikut dengan jawaban yang tepat!' },
                         { key: 'isian_singkat', heading: 'Isian Singkat', instruksi: 'Isilah titik-titik di bawah ini dengan jawaban yang tepat!' }
                     ];
 
@@ -9227,7 +9467,51 @@
                             }
 
                             const opts = getOptionsArray(q);
-                            if (sec.key === 'isian_singkat') {
+                            if (sec.key === 'menjodohkan') {
+                                let pairs = q.options;
+                                try { if (typeof pairs === 'string') pairs = JSON.parse(pairs || '[]'); } catch (e) { pairs = []; }
+                                pairs = Array.isArray(pairs) ? pairs.filter(p => p && p.l) : [];
+
+                                const answers = shuffleArray(pairs.map(p => p.r)); // sejajar per baris dengan pernyataan
+                                const W = [500, 2000, 300, 300, 1800];             // No | Pernyataan | ● | ● | Jawaban
+                                const noB = {
+                                    top: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                                    bottom: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                                    left: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                                    right: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+                                };
+                                const cell = (text, w, o = {}) => new docx.TableCell({
+                                    width: { size: w, type: docx.WidthType.DXA },
+                                    margins: { top: 60, bottom: 60, left: 80, right: 80 },
+                                    borders: o.noBorder ? noB : undefined,
+                                    children: [new docx.Paragraph({
+                                        alignment: o.center ? docx.AlignmentType.CENTER : undefined,
+                                        children: [new docx.TextRun({ text: String(text), bold: !!o.bold })]
+                                    })]
+                                });
+
+                                const rows = [new docx.TableRow({ children: [
+                                    cell('No.', W[0], { bold: true, center: true }),
+                                    cell('Pernyataan', W[1], { bold: true, center: true }),
+                                    cell('', W[2], { noBorder: true }),
+                                    cell('', W[3], { noBorder: true }),
+                                    cell('Jawaban', W[4], { bold: true, center: true })
+                                ] })];
+                                pairs.forEach((p, i) => rows.push(new docx.TableRow({ children: [
+                                    cell(`${i + 1}.`, W[0], { center: true }),
+                                    cell(p.l, W[1]),
+                                    cell('●', W[2], { noBorder: true, center: true }),
+                                    cell('●', W[3], { noBorder: true, center: true }),
+                                    cell(answers[i], W[4])
+                                ] })));
+
+                                bodyChildren.push(new docx.Table({
+                                    rows,
+                                    width: { size: W.reduce((a, b) => a + b, 0), type: docx.WidthType.DXA },
+                                    columnWidths: W
+                                }));
+                                bodyChildren.push(new docx.Paragraph({ spacing: { after: 150 } }));
+                            } else if (sec.key === 'isian_singkat') {
                                 bodyChildren.push(new docx.Paragraph({
                                     children: [new docx.TextRun({ text: 'Jawab: ....................................' })],
                                     indent: { left: QUESTION_INDENT.textIndent },
@@ -9497,6 +9781,7 @@
                                 <div class="space-y-3">
                                     ${toggleRow('settingShowScore', examSettings.show_score, 'Tampilkan Nilai Setelah Ujian', 'Siswa langsung melihat nilainya setelah mengumpulkan.')}
                                     ${toggleRow('settingLimitOneAttempt', examSettings.limit_one_attempt, 'Batasi 1x Mengerjakan (Per Mapel)', 'Siswa yang sudah punya nilai tidak bisa masuk lagi ke mapel tersebut.')}
+                                    ${toggleRow('settingMatchingPerItem', examSettings.matching_per_item, 'Menjodohkan: Nilai Per Pernyataan', 'Aktif: tiap pernyataan benar = 1 soal PG. Nonaktif: satu soal menjodohkan = 1 soal, nilai parsial sesuai proporsi pasangan benar.')}
                                 </div>
                             </div>
 
@@ -10043,6 +10328,7 @@
                 const shuffleAnswers = document.getElementById('settingShuffleAnswers').checked;
                 const showScore = document.getElementById('settingShowScore').checked;
                 const limitOneAttempt = document.getElementById('settingLimitOneAttempt').checked;
+                const matchingPerItem = document.getElementById('settingMatchingPerItem').checked;
                 const minTimeToSubmit = parseInt(document.getElementById('settingMinTime').value) || 0;
                 
                 try {
@@ -10058,6 +10344,7 @@
                         shuffle_questions: shuffle,
                         shuffle_answers: shuffleAnswers,
                         limit_one_attempt: limitOneAttempt,
+                        matching_per_item: matchingPerItem,
                         show_score: showScore,
                         jadwal: currentJadwal,
                         min_time_to_submit: minTimeToSubmit 
@@ -10077,6 +10364,7 @@
                     examSettings.shuffle_answers = shuffleAnswers;
                     examSettings.show_score = showScore;
                     examSettings.limit_one_attempt = limitOneAttempt;
+                    examSettings.matching_per_item = matchingPerItem;
                     
                     // --- TAMBAHAN: Update memori lokal & localStorage ---
                     examSettings.minTimeToSubmit = minTimeToSubmit;
