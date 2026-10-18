@@ -3635,12 +3635,12 @@
                 const box = document.getElementById('match-rows');
                 if (!box) return;
                 const row = document.createElement('div');
-                row.className = 'match-row flex gap-2 items-center';
+                row.className = 'match-row flex flex-col sm:flex-row sm:items-center gap-2 p-2 border border-gray-200 rounded-lg bg-white';
                 row.innerHTML = `
-                    <input type="text" class="m-l flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" placeholder="Kiri" value="${escHtml(l)}">
-                    <span>→</span>
-                    <input type="text" class="m-r flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" placeholder="Pasangan kanan" value="${escHtml(r)}">
-                    <button type="button" onclick="this.closest('.match-row').remove()" class="px-2 py-1 bg-red-500 text-white rounded text-xs">🗑️</button>`;
+                    <input type="text" class="m-l w-full min-w-0 sm:flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" placeholder="Kiri (pernyataan)" value="${escHtml(l)}">
+                    <span class="hidden sm:inline">→</span>
+                    <input type="text" class="m-r w-full min-w-0 sm:flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" placeholder="Kanan (pasangan)" value="${escHtml(r)}">
+                    <button type="button" onclick="this.closest('.match-row').remove()" class="self-end sm:self-auto px-2 py-1 bg-red-500 text-white rounded text-xs">🗑️ Hapus</button>`;
                 box.appendChild(row);
             }
             function collectMatchPairs() {
@@ -7117,8 +7117,16 @@
                             <div class="mb-6">
                                 <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
                                     <label class="title-opt bg-blue-600 shadow-sm mb-0">Pertanyaan Utama</label>
-                                    <button type="button" onclick="rapikanDialogInEditor('add')" title="Rapikan teks dialog/soal cerita (Nama : ucapan) jadi teks sejajar kolom (tanpa tabel). Blok sebagian teks dulu kalau cuma mau merapikan bagian itu saja." class="px-2.5 py-1 bg-teal-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-teal-700 transition">🧹 Rapikan Dialog/Cerita</button>
+                                    <div class="flex gap-2 flex-wrap items-center">
+                                        <!-- BARU: tombol kamera + input file tersembunyi -->
+                                        <button type="button" onclick="document.getElementById('ocr-file').click()" class="px-2.5 py-1 bg-purple-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-purple-700 transition">📷 Foto Soal (OCR)</button>
+                                        <input type="file" id="ocr-file" accept="image/*" capture="environment" style="display:none" onchange="handleOcrPhoto(this)">
+                                        <!-- tombol lama, tidak berubah -->
+                                        <button type="button" onclick="rapikanDialogInEditor('add')" title="Rapikan teks dialog/soal cerita (Nama : ucapan) jadi teks sejajar kolom (tanpa tabel). Blok sebagian teks dulu kalau cuma mau merapikan bagian itu saja." class="px-2.5 py-1 bg-teal-600 text-white text-[11px] font-semibold rounded-lg shadow-sm hover:bg-teal-700 transition">🧹 Rapikan Dialog/Cerita</button>
+                                    </div>
                                 </div>
+                                <!-- BARU: baris status OCR -->
+                                <p id="ocr-status" class="hidden text-xs text-purple-700 font-semibold mb-1"></p>
                                 <div id="add-q-text" class="editor-container box-soal rounded-xl overflow-hidden w-full"></div>
                             </div>
 
@@ -7336,6 +7344,93 @@
                     }
                 });
             }
+
+            async function loadImageScaled(file, maxSide = 1800) {
+                const url = URL.createObjectURL(file);
+                try {
+                    const img = await new Promise((res, rej) => {
+                        const i = new Image();
+                        i.onload = () => res(i);
+                        i.onerror = () => rej(new Error('Gambar tidak bisa dibaca'));
+                        i.src = url;
+                    });
+                    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.naturalWidth * scale);
+                    c.height = Math.round(img.naturalHeight * scale);
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    return c;
+                } finally { URL.revokeObjectURL(url); }
+            }
+
+            function parseOcrQuestion(text) {
+                const lines = String(text || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+                const optRe = /^\(?([a-dA-D])[\.\)]\s*(.*)$/;
+                const qParts = [], opts = [];
+                lines.forEach(line => {
+                    const m = line.match(optRe);
+                    // opsi hanya diterima berurutan (A lalu B lalu C lalu D)
+                    if (m && m[1].toUpperCase().charCodeAt(0) - 65 === opts.length) { opts.push(m[2]); return; }
+                    if (opts.length > 0) opts[opts.length - 1] += ' ' + line;
+                    else qParts.push(line);
+                });
+                const question = qParts.join(' ').replace(/^\d+\s*[\.\)]\s*/, '').trim();
+                return { question, options: opts.map(o => o.trim()) };
+            }
+
+            async function handleOcrPhoto(input) {
+                const file = input.files && input.files[0];
+                input.value = '';
+                const ed = window.addEditors;
+                if (!file || !ed) return;
+
+                if (Object.values(ed).some(e => e.getText().trim()) &&
+                    !confirm('Isi Pertanyaan dan opsi akan ditimpa hasil foto. Lanjutkan?')) return;
+
+                const status = document.getElementById('ocr-status');
+                const setStatus = t => { if (status) { status.textContent = t; status.classList.remove('hidden'); } };
+
+                try {
+                    setStatus('Memuat mesin OCR...');
+                    if (typeof Tesseract === 'undefined') {
+                        await loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+                    }
+                    if (typeof Tesseract === 'undefined') throw new Error('Library OCR gagal dimuat');
+
+                    setStatus('Menyiapkan foto...');
+                    const canvas = await loadImageScaled(file);
+                    const { data } = await Tesseract.recognize(canvas, 'ind', {
+                        logger: m => {
+                            if (m.status === 'recognizing text') setStatus(`Membaca teks... ${Math.round(m.progress * 100)}%`);
+                            else setStatus('Menyiapkan data bahasa...');
+                        }
+                    });
+
+                    const parsed = parseOcrQuestion(data.text);
+                    if (!parsed.question && parsed.options.length === 0) {
+                        throw new Error('Tidak ada teks terbaca. Foto ulang dengan cahaya cukup dan posisi lurus.');
+                    }
+
+                    ed.question.setText(parsed.question);
+
+                    const typeSel = document.getElementById('add-type');
+                    const canFillOpts = ['', 'pilihan_ganda', 'pilihan_ganda_kompleks'].includes(typeSel.value);
+                    if (parsed.options.length >= 2 && canFillOpts) {
+                        if (!typeSel.value) {
+                            typeSel.value = 'pilihan_ganda';
+                            typeSel.dispatchEvent(new Event('change'));
+                        }
+                        ['opt0', 'opt1', 'opt2', 'opt3'].forEach((k, i) => ed[k].setText(parsed.options[i] || ''));
+                        setStatus(`Selesai: pertanyaan + ${parsed.options.length} opsi. Periksa hasilnya, lalu pilih kunci jawaban.`);
+                    } else {
+                        setStatus('Pertanyaan terisi. Opsi tidak terbaca atau tipe soal bukan PG, isi opsi secara manual.');
+                    }
+                } catch (err) {
+                    console.error('OCR gagal:', err);
+                    setStatus('Gagal: ' + (err.message || err));
+                }
+            }
+
             // Alias supaya tombol lama onclick="showGuruAddQuestionForm()" tetap jalan tanpa perlu ubah HTML
             const showGuruAddQuestionForm = showAddQuestionForm;
 
