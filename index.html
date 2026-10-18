@@ -7378,6 +7378,70 @@
                 return { question, options: opts.map(o => o.trim()) };
             }
 
+            function cropImageCanvas(src) {
+                return new Promise(resolve => {
+                    const ov = document.createElement('div');
+                    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;gap:10px;';
+                    ov.innerHTML = `
+                        <p style="color:#fff;font-size:13px;text-align:center;margin:0;">Seret pada foto untuk memilih <b>satu soal</b>. Seret lagi untuk mengulang.</p>
+                        <canvas id="cropCv" style="max-width:100%;max-height:68vh;touch-action:none;background:#000;"></canvas>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                            <button type="button" id="cropCancel" style="padding:8px 14px;background:#6b7280;color:#fff;border-radius:8px;font-weight:bold;">Batal</button>
+                            <button type="button" id="cropReset" style="padding:8px 14px;background:#f59e0b;color:#fff;border-radius:8px;font-weight:bold;">Pakai Seluruh Foto</button>
+                            <button type="button" id="cropOk" style="padding:8px 14px;background:#7c3aed;color:#fff;border-radius:8px;font-weight:bold;">Baca Teks</button>
+                        </div>`;
+                    document.body.appendChild(ov);
+
+                    const cv = ov.querySelector('#cropCv');
+                    cv.width = src.width; cv.height = src.height;
+                    const ctx = cv.getContext('2d');
+                    let sel = null, start = null;
+
+                    const draw = () => {
+                        ctx.drawImage(src, 0, 0);
+                        if (!sel) return;
+                        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                        ctx.fillRect(0, 0, cv.width, sel.y);
+                        ctx.fillRect(0, sel.y + sel.h, cv.width, cv.height - sel.y - sel.h);
+                        ctx.fillRect(0, sel.y, sel.x, sel.h);
+                        ctx.fillRect(sel.x + sel.w, sel.y, cv.width - sel.x - sel.w, sel.h);
+                        ctx.strokeStyle = '#a78bfa';
+                        ctx.lineWidth = Math.max(3, cv.width / 300);
+                        ctx.strokeRect(sel.x, sel.y, sel.w, sel.h);
+                    };
+                    const pos = e => {
+                        const r = cv.getBoundingClientRect();
+                        return {
+                            x: Math.min(Math.max((e.clientX - r.left) * cv.width / r.width, 0), cv.width),
+                            y: Math.min(Math.max((e.clientY - r.top) * cv.height / r.height, 0), cv.height)
+                        };
+                    };
+
+                    cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); start = pos(e); sel = { x: start.x, y: start.y, w: 0, h: 0 }; draw(); });
+                    cv.addEventListener('pointermove', e => {
+                        if (!start) return;
+                        const p = pos(e);
+                        sel = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
+                        draw();
+                    });
+                    const endDrag = () => { start = null; };
+                    cv.addEventListener('pointerup', endDrag);
+                    cv.addEventListener('pointercancel', endDrag);
+
+                    const done = result => { ov.remove(); resolve(result); };
+                    ov.querySelector('#cropCancel').onclick = () => done(null);
+                    ov.querySelector('#cropReset').onclick = () => { sel = null; draw(); };
+                    ov.querySelector('#cropOk').onclick = () => {
+                        if (!sel || sel.w < 20 || sel.h < 20) return done(src);   // tanpa seleksi valid = seluruh foto
+                        const out = document.createElement('canvas');
+                        out.width = Math.round(sel.w); out.height = Math.round(sel.h);
+                        out.getContext('2d').drawImage(src, sel.x, sel.y, sel.w, sel.h, 0, 0, out.width, out.height);
+                        done(out);
+                    };
+                    draw();
+                });
+            }
+
             async function handleOcrPhoto(input) {
                 const file = input.files && input.files[0];
                 input.value = '';
@@ -7391,14 +7455,16 @@
                 const setStatus = t => { if (status) { status.textContent = t; status.classList.remove('hidden'); } };
 
                 try {
+                    setStatus('Menyiapkan foto...');
+                    const full = await loadImageScaled(file);
+                    const canvas = await cropImageCanvas(full);
+                    if (!canvas) { setStatus('Dibatalkan.'); return; }
+
                     setStatus('Memuat mesin OCR...');
                     if (typeof Tesseract === 'undefined') {
                         await loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
                     }
                     if (typeof Tesseract === 'undefined') throw new Error('Library OCR gagal dimuat');
-
-                    setStatus('Menyiapkan foto...');
-                    const canvas = await loadImageScaled(file);
                     const { data } = await Tesseract.recognize(canvas, 'ind', {
                         logger: m => {
                             if (m.status === 'recognizing text') setStatus(`Membaca teks... ${Math.round(m.progress * 100)}%`);
