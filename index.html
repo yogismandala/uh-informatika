@@ -536,6 +536,7 @@
             let filterState = {
                 class: "",      // Menyimpan kelas yang dipilih
                 subject: "",     // Menyimpan mapel yang dipilih
+                type: "",        // Menyimpan jenis ujian
                 sortBy: "time_desc" // Default: Waktu Terbaru
             };
             
@@ -543,17 +544,107 @@
             let hasSubmitted = false; // Status apakah siswa sudah submit ujian
             
             const SUBJECTS = [
-                "Uji Pemahaman BAB I",
-                "Uji Pemahaman BAB II",
-                "Uji Pemahaman BAB III",
-                "Uji Pemahaman BAB IV",
-                "Uji Pemahaman TENGAH SEMESTER GANJIL",
-                "Uji Pemahaman TENGAH SEMESTER GENAP",
-                "Uji Pemahaman AKHIR SEMESTER GANJIL",
-                "Uji Pemahaman AKHIR SEMESTER GENAP",
-                "ULANGAN HARIAN",
-                "REMEDIAL"
+                "Pendidikan Agama Islam",
+                "Pendidikan Agama Kriten",
+                "Pendidikan Agama Hindu",
+                "Pendidikan Pancasila",
+                "Bahasa Indonesia",
+                "Matematika",
+                "IPA",
+                "IPS",
+                "Bahasa Inggris",
+                "PJOK",
+                "Informatika",
+                "Seni Budaya / Prakarya",
+                "koding dan KA"
             ];
+
+            const EXAM_TYPES = [
+                { code: 'UH', name: 'Ulangan Harian' },
+                { code: 'ASTS', name: 'Asesmen Sumatif Tengah Semester' },
+                { code: 'ASAS', name: 'Asesmen Sumatif Akhir Semester' },
+                { code: 'US', name: 'Ujian Sekolah' },
+                { code: 'TO', name: 'Try Out' },
+                { code: 'PAT', name: 'Penilaian Akhir Tahun' },
+                { code: 'OSN', name: 'Olimpiade Sains Nasional' },
+                { code: 'Remed', name: 'Remedial' },
+                { code: 'UP1', name: 'Uji Pemahaman BAB I' },
+                { code: 'UP2', name: 'Uji Pemahaman BAB 2' },
+                { code: 'UP3', name: 'Uji Pemahaman BAB 3' },
+                { code: 'UP4', name: 'Uji Pemahaman BAB 4' },
+            ];
+
+            // Gabungkan jenis ujian + mapel menjadi satu nama, mis. ('UH', 'Informatika') -> 'UH Informatika'
+            function makeSubjectKey(code, mapel) {
+                return code ? `${code} ${mapel}` : mapel;
+            }
+            // Pecah kembali nama gabungan. Data lama tanpa kode jenis ujian menghasilkan code ''
+            function parseSubjectKey(key) {
+                const text = String(key || '').trim();
+                for (const t of EXAM_TYPES) {
+                    if (text.startsWith(t.code + ' ')) {
+                        return { code: t.code, mapel: text.slice(t.code.length + 1).trim() };
+                    }
+                }
+                return { code: '', mapel: text };
+            }
+            function baseSubject(key) {
+                return parseSubjectKey(key).mapel;
+            }
+            // Semua kombinasi jenis ujian + mapel, ditambah nama lain yang sudah ada di data (mis. data lama)
+            function getAllSubjectKeys(extraKeys = []) {
+                const keys = [];
+                SUBJECTS.forEach(m => EXAM_TYPES.forEach(t => keys.push(makeSubjectKey(t.code, m))));
+                extraKeys.forEach(k => { if (k && !keys.includes(k)) keys.push(k); });
+                return keys;
+            }
+            // Cocokkan soal/hasil dengan filter mapel + jenis ujian (kosong = semua; '__none__' = data lama tanpa jenis)
+            function matchSubjectAndType(key, mapel, type) {
+                const p = parseSubjectKey(key);
+                if (mapel && p.mapel !== mapel) return false;
+                if (type === '__none__') return p.code === '';
+                if (type && p.code !== type) return false;
+                return true;
+            }
+            // Jadwal disimpan dalam satu daftar (kolom settings.jadwal):
+            //  - item mapel      : { subject: 'Informatika', is_active, start_time, end_time, token_* }
+            //  - item jenis ujian: { kind: 'exam_type', code: 'UH', is_active: true }
+            // Siswa melihat gabungan: mapel yang aktif x jenis ujian yang aktif.
+            function normalizeJadwal(list) {
+                const out = [];
+                const mapelSeen = new Set();
+                const codesToEnable = new Set();
+                (Array.isArray(list) ? list : []).forEach(item => {
+                    if (item && typeof item === 'object' && item.kind === 'exam_type') { out.push(item); return; }
+                    if (item && typeof item === 'object' && item.subject) {
+                        const p = parseSubjectKey(item.subject);
+                        if (p.code) { // format sebelumnya: kode jenis menempel di nama mapel
+                            codesToEnable.add(p.code);
+                            if (mapelSeen.has(p.mapel)) return;
+                            mapelSeen.add(p.mapel);
+                            out.push({ ...item, subject: p.mapel });
+                            return;
+                        }
+                        if (mapelSeen.has(item.subject)) return;
+                        mapelSeen.add(item.subject);
+                    }
+                    out.push(item);
+                });
+                codesToEnable.forEach(code => {
+                    if (!out.some(i => i && i.kind === 'exam_type' && i.code === code)) out.push({ kind: 'exam_type', code, is_active: true });
+                });
+                return out;
+            }
+            function isExamTypeActive(code) {
+                return (examSettings.active_subjects || []).some(i => i && i.kind === 'exam_type' && i.code === code && i.is_active);
+            }
+            // Label kecil kode jenis ujian (ditaruh di sebelah kiri nama mapel)
+            function examTypeBadgeHTML(code) {
+                if (!code) return '';
+                const colors = ['bg-blue-100 text-blue-800', 'bg-orange-100 text-orange-800', 'bg-purple-100 text-purple-800', 'bg-teal-100 text-teal-800'];
+                const idx = Math.max(0, EXAM_TYPES.findIndex(t => t.code === code));
+                return `<span class="px-2 py-0.5 rounded-md text-xs font-bold whitespace-nowrap ${colors[idx % colors.length]}">${escHtml(code)}</span>`;
+            }
             
             // FUNGSI HELPER FILTER
             // --- 2. FUNGSI UPDATE FILTER ---
@@ -609,6 +700,24 @@
 
             function resetQuestionPages() {
                 pageState.questions = { '7': 1, '8': 1, '9': 1 };
+            }
+
+            // Dipanggil setelah soal dihapus: jika soal pada filter yang sedang aktif sudah habis, kembali ke "Semua"
+            function resetBankSoalFilterIfEmpty() {
+                if (!window.selectedBankSoalClass && !window.selectedBankSoalSubject && !window.selectedBankSoalType) return;
+                const isAdmin = currentUser && currentUser.role === 'admin';
+                const remaining = allQuestions.filter(q => {
+                    if (!isAdmin && baseSubject(q.subject) !== currentUser.subject) return false;
+                    if (!matchSubjectAndType(q.subject, isAdmin ? window.selectedBankSoalSubject : '', window.selectedBankSoalType)) return false;
+                    if (isAdmin && window.selectedBankSoalClass && !(q.question_class && q.question_class.startsWith(window.selectedBankSoalClass))) return false;
+                    return true;
+                });
+                if (remaining.length === 0) {
+                    window.selectedBankSoalClass = '';
+                    window.selectedBankSoalSubject = '';
+                    window.selectedBankSoalType = '';
+                    resetQuestionPages();
+                }
             }
 
             // Menunda eksekusi sampai pengguna berhenti memicu fungsi selama `wait` ms
@@ -692,7 +801,7 @@
 
             let processedCache = { key: '', ref: null, len: -1, data: [] };
             function getProcessedData() {
-                const key = `${filterState.class}|${filterState.subject}|${filterState.sortBy}`;
+                const key = `${filterState.class}|${filterState.subject}|${filterState.type}|${filterState.sortBy}`;
                 if (processedCache.ref === allExamResults && processedCache.len === allExamResults.length && processedCache.key === key) {
                     return processedCache.data;
                 }
@@ -710,7 +819,7 @@
                     const itemSubject = String(item.exam_subject || "").trim();
 
                     const matchClass = selectedClass === "" || itemClass === selectedClass;
-                    const matchSubject = selectedSubject === "" || itemSubject === selectedSubject;
+                    const matchSubject = matchSubjectAndType(itemSubject, selectedSubject, String(filterState.type || "").trim());
                     return matchClass && matchSubject;
                 });
 
@@ -763,7 +872,7 @@
                                 databaseJadwal = []; 
                             }
                         }
-                        examSettings.active_subjects = Array.isArray(databaseJadwal) ? databaseJadwal : [];
+                        examSettings.active_subjects = normalizeJadwal(databaseJadwal);
                     }
                     return true;
                 } catch (error) {
@@ -1115,7 +1224,9 @@
                                 // Pastikan membaca boolean atau string dari Supabase dengan benar
                                 const sedangLogin = dataBaru.is_login === true || String(dataBaru.is_login) === 'true';
                                 
-                                if (sedangLogin) {
+                                                                if (typeof applyUserStatus === 'function') {
+                                    applyUserStatus(statusElement, sedangLogin);
+                                } else if (sedangLogin) {
                                     statusElement.className = "text-red-500 font-bold text-sm";
                                     statusElement.innerText = "🔴 Aktif (Sedang Ujian)";
                                 } else {
@@ -1123,6 +1234,7 @@
                                     statusElement.innerText = "🟢 Offline";
                                 }
                             }
+                            if (typeof updateUserStatCards === 'function') updateUserStatCards();
                         }
                     )
                     .subscribe();
@@ -1307,13 +1419,9 @@
                     
                     if (!error) {
                         await loadExamData(); // Refresh data soal di memori lokal
-                        
-                        // --- PERBAIKAN DI SINI ---
-                        // Cukup panggil 1 fungsi ini saja, karena di dalamnya 
-                        // sudah otomatis mendeteksi apakah ini Guru atau Admin
+                        resetBankSoalFilterIfEmpty();
+                        // Cukup panggil 1 fungsi ini saja, sudah otomatis mendeteksi apakah ini Guru atau Admin
                         renderQuestionsSection();
-                        // -------------------------
-
                         showToast('Soal berhasil dihapus', 'success');
                         return true;
                     } else {
@@ -1549,7 +1657,7 @@
                         
                         <div class="w-full max-w-md relative animate-slide-panel">
                             <div class="absolute bottom-full left-0 w-full flex justify-center mb-4 z-20">
-                                <img src="https://i.ibb.co.com/tw6m9vXZ/Kom.png" alt="Logo" class="w-12 h-12 drop-shadow-lg object-contain">
+                                <img src="https://i.ibb.co.com/pjPcR7fC/Kom.png" alt="Logo" class="w-12 h-12 drop-shadow-lg object-contain">
                             </div>
                             <div class="glass-panel p-8 shadow-2xl relative z-10" style="box-shadow: inset 0 0 0 2px #FFFFFF, 0 25px 50px -12px rgba(0,0,0,0.25); outline: 0.5px solid #006400; outline-offset: -5px;">
                                 <div class="text-center mb-8">
@@ -1617,9 +1725,10 @@
                 
                 const now = new Date();
                 
-                // 2. Filter data jadwal
+                // 2. Mapel yang sedang aktif (item jenis ujian dilewati)
                 const validSchedules = examSettings.active_subjects.filter(item => {
                     if (typeof item === 'object' && item !== null) {
+                        if (item.kind) return false;
                         // Jika tidak ada start/end time, gunakan parameter is_active
                         if (!item.start_time || !item.end_time) return item.is_active; 
                         
@@ -1631,19 +1740,23 @@
                     // Jika item hanya berupa teks/string biasa
                     return typeof item === 'string';
                 });
+                const mapels = validSchedules.map(item => typeof item === 'object' ? item.subject : item);
 
-                // 3. Ambil nama mata pelajarannya saja
-                return validSchedules.map(item => {
-                    return typeof item === 'object' ? item.subject : item;
-                });
+                // 3. Gabungkan dengan jenis ujian yang aktif: "UH Mapel", "Remed Mapel", dst.
+                const activeCodes = EXAM_TYPES.map(t => t.code).filter(isExamTypeActive);
+                const result = [];
+                mapels.forEach(m => activeCodes.forEach(c => result.push(makeSubjectKey(c, m))));
+                return result;
             }
-            // Ambil objek jadwal lengkap (termasuk pengaturan token) untuk satu mapel tertentu
+            // Ambil objek jadwal mapel (termasuk pengaturan token). Token berlaku untuk mapelnya, apa pun jenis ujiannya.
             function getSubjectScheduleItem(subject) {
                 if (!subject || typeof examSettings === 'undefined' || !Array.isArray(examSettings.active_subjects)) {
                     return null;
                 }
+                const mapel = baseSubject(subject);
                 return examSettings.active_subjects.find(item => {
-                    return (typeof item === 'object' && item !== null) ? item.subject === subject : item === subject;
+                    if (item && item.kind) return false;
+                    return (typeof item === 'object' && item !== null) ? item.subject === mapel : item === mapel;
                 }) || null;
             }
 
@@ -3910,6 +4023,17 @@
                 examTimeIsUp = false;
                 isSubmitting = false;
                 isPelaporanListenerAdded = false;
+                // Reset semua filter/pencarian supaya login berikutnya mulai dari kondisi awal
+                filterState = { class: "", subject: "", type: "", sortBy: "time_desc" };
+                window.currentUserFilter = 'all';
+                window.currentUserSearch = '';
+                window.selectedBankSoalClass = '';
+                window.selectedBankSoalSubject = '';
+                window.selectedBankSoalType = '';
+                selectedResultIds = new Set();
+                pageState.users = 1;
+                pageState.results = 1;
+                resetQuestionPages();
                 
                 localStorage.clear();
                 sessionStorage.clear();
@@ -4627,8 +4751,9 @@
 
                 // Berhenti begitu sudah dapat 6 saran (tidak menyisir seluruh pengguna)
                 const matches = [];
-                for (const u of allUsers) {
-                    if (u.role === 'siswa' && u.name && u.name.toLowerCase().includes(keyword)) {
+                const tabNow = window.currentUserTab === 'staff' ? 'staff' : 'siswa';
+                for (const u of usersOfTab(tabNow)) {
+                    if (u.name && u.name.toLowerCase().includes(keyword)) {
                         matches.push(u);
                         if (matches.length >= 6) break;
                     }
@@ -4649,9 +4774,9 @@
                     return `
                         <div data-name="${escHtml(u.name)}" onclick="selectUserSuggestion(this.dataset.name)" 
                             class="px-3 py-2 text-xs md:text-sm cursor-pointer hover:bg-[#e8f3e8] flex items-center gap-2 border-b border-gray-100 last:border-b-0">
-                            <span>👤</span>
-                            <span>${escHtml(before)}<b class="text-[#006400]">${escHtml(match)}</b>${escHtml(after)}</span>
-                            <span class="ml-auto text-[10px] text-gray-400">${escHtml(u.class || '')}</span>
+                            <span>${u.role === 'admin' ? '👨‍💼' : u.role === 'guru' ? '👨‍🏫' : '👨‍🎓'}</span>
+                            <b class="text-[#006400]">${escHtml(match)}</b>${escHtml(after)}</span>
+                            <span class="ml-auto text-[10px] text-gray-400">${escHtml(u.role === 'siswa' ? (u.class || '') : u.role)}</span>
                         </div>
                     `;
                 }).join('');
@@ -4773,250 +4898,379 @@
                 }
             }
 
-            function renderUsersSection() {
-                const { config, customFont, textColor, primaryColor, baseFontStack, baseSize } = RC;                
-                // Hitung jumlah pengguna yang sedang online
-                const totalOnline = allUsers.filter(user => user.role === 'siswa' && user.is_login).length;
+                        // ===== TAMPILAN PENGGUNA (tab terpisah: Siswa | Guru & Admin) =====
+            if (typeof window.currentUserTab === 'undefined') window.currentUserTab = 'siswa'; // 'siswa' | 'staff'
+            if (typeof window.currentUserClass === 'undefined') window.currentUserClass = '';
 
-                // Filter data berdasarkan pilihan dropdown status
-                let filteredUsers = allUsers.filter(user => {
-                    if (window.currentUserFilter === 'online') {
-                        return user.role === 'siswa' && user.is_login;
-                    } else if (window.currentUserFilter === 'offline') {
-                        return user.role === 'siswa' ? !user.is_login : true;
-                    }
-                    return true;
-                });
+            const USER_AVATAR_COLORS = [
+                'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 'bg-amber-100 text-amber-700',
+                'bg-rose-100 text-rose-700', 'bg-violet-100 text-violet-700', 'bg-teal-100 text-teal-700',
+                'bg-orange-100 text-orange-700', 'bg-indigo-100 text-indigo-700'
+            ];
+            const USER_STATUS_BASE = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap';
 
-                // Filter tambahan berdasarkan kata kunci pencarian nama
-                const searchKeyword = (window.currentUserSearch || '').trim().toLowerCase();
-                if (searchKeyword !== '') {
-                    filteredUsers = filteredUsers.filter(user => 
-                        (user.name && user.name.toLowerCase().includes(searchKeyword)) ||
-                        (user.username && user.username.toLowerCase().includes(searchKeyword))
-                    );
+            function isStaffUser(u) { return u.role === 'admin' || u.role === 'guru'; }
+
+            function usersOfTab(tab) {
+                return allUsers.filter(u => tab === 'siswa' ? u.role === 'siswa' : isStaffUser(u));
+            }
+
+            function userInitials(name) {
+                const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+                if (parts.length === 0) return '?';
+                return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+            }
+
+            function userAvatarHTML(user, size) {
+                size = size || 'w-10 h-10';
+                let sum = 0;
+                const key = String(user.username || user.name || '');
+                for (let i = 0; i < key.length; i++) sum += key.charCodeAt(i);
+                const color = USER_AVATAR_COLORS[sum % USER_AVATAR_COLORS.length];
+                const initials = escHtml(userInitials(user.name));
+                const fallbackBase = `${size} rounded-full ${color} items-center justify-center text-xs font-bold shrink-0`;
+                if (user.role === 'siswa') {
+                    return `<img src="/assets/foto_siswa/${encodeURIComponent(user.username)}.jpg" loading="lazy" alt=""
+                                class="${size} rounded-full object-cover ring-2 ring-white shadow-sm shrink-0"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="${fallbackBase}" style="display:none;">${initials}</div>`;
                 }
+                return `<div class="${fallbackBase} flex">${initials}</div>`;
+            }
 
+            function userStatusInner(on) {
+                return on
+                    ? '<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>Aktif'
+                    : '<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Offline';
+            }
+            function userStatusClass(on) {
+                return `${USER_STATUS_BASE} ${on ? 'bg-red-50 text-red-600 ring-1 ring-red-200' : 'bg-green-50 text-green-700 ring-1 ring-green-200'}`;
+            }
+            // Dipakai juga oleh listener realtime agar badge status selalu seragam
+            function applyUserStatus(el, on) {
+                el.className = userStatusClass(on);
+                el.innerHTML = userStatusInner(on);
+            }
+
+            function updateUserStatCards() {
+                const siswa = usersOfTab('siswa');
+                const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+                set('uStatSiswa', siswa.length);
+                set('uStatOnline', siswa.filter(u => u.is_login).length);
+                set('uStatGuru', allUsers.filter(u => u.role === 'guru').length);
+                set('uStatAdmin', allUsers.filter(u => u.role === 'admin').length);
+                set('uTabCount-siswa', siswa.length);
+                set('uTabCount-staff', allUsers.filter(isStaffUser).length);
+            }
+
+            function setUserTab(tab) {
+                window.currentUserTab = tab === 'staff' ? 'staff' : 'siswa';
+                window.currentUserSearch = '';
+                pageState.users = 1;
+                const input = document.getElementById('userSearchInput');
+                if (input) input.value = '';
+                const box = document.getElementById('userSearchSuggestions');
+                if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+                renderUsersSection();
+            }
+
+            // Kartu "Siswa Aktif" bisa diklik: langsung tampilkan siswa yang sedang online
+            function showOnlineStudents() {
+                window.currentUserFilter = 'online';
+                window.currentUserClass = '';
+                const sel = document.getElementById('userStatusFilter');
+                if (sel) sel.value = 'online';
+                if (window.currentUserTab !== 'siswa') { setUserTab('siswa'); } else { pageState.users = 1; renderUsersSection(); }
+            }
+
+            function setUserStatusFilter(v) { window.currentUserFilter = v; pageState.users = 1; renderUsersSection(); }
+            function setUserClassFilter(v) { window.currentUserClass = v; pageState.users = 1; renderUsersSection(); }
+
+            function renderUsersSection() {
+                const { config, customFont, textColor, primaryColor, baseFontStack } = RC;
+                const secondary = config.secondary_color || defaultConfig.secondary_color;
+                const tab = window.currentUserTab === 'staff' ? 'staff' : 'siswa';
                 const container = document.getElementById('adminContent');
                 let tbody = document.getElementById('usersTableBody');
 
-                // --- FASE 1: RENDER SKELETON JIKA BELUM ADA ---
+                // --- FASE 1: KERANGKA HALAMAN (hanya dibuat sekali) ---
                 if (!tbody) {
+                    const statCard = (id, label, icon, tint, extra) => `
+                        <div ${extra || ''} class="bg-white rounded-2xl shadow-custom p-4 flex items-center gap-3 ${extra ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition' : ''}">
+                            <div class="w-11 h-11 rounded-xl ${tint} flex items-center justify-center text-xl shrink-0">${icon}</div>
+                            <div class="min-w-0">
+                                <div id="${id}" class="text-2xl font-bold leading-none" style="color:${textColor};">0</div>
+                                <div class="text-[11px] md:text-xs text-gray-500 mt-1 truncate">${label}</div>
+                            </div>
+                        </div>`;
+
+                    const tabBtn = (key, icon, label) => `
+                        <button type="button" id="uTab-${key}" onclick="setUserTab('${key}')"
+                            class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2">
+                            <span>${icon}</span><span>${label}</span>
+                            <span id="uTabCount-${key}" class="px-1.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-bold">0</span>
+                        </button>`;
+
+                    const selCls = 'w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500';
+
                     container.innerHTML = `
-                        <div class="space-y-6" id="usersContainerWrapper">
-                            <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+                        <div class="space-y-5" id="usersContainerWrapper" style="font-family: ${customFont}, ${baseFontStack};">
+
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
-                                    <h2 class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.35}px; color: ${textColor};">Data Pengguna</h2>
-                                    <p class="text-xs mt-1 text-gray-500" style="font-family: ${customFont}, ${baseFontStack};">
-                                        Siswa Sedang Aktif: <span id="onlineUserCounter" class="px-2 py-0.5 bg-red-100 text-red-600 font-bold rounded-full text-[11px]">${totalOnline} Online</span>
-                                    </p>
+                                    <h2 class="font-bold text-xl md:text-2xl" style="color: ${textColor};">Manajemen Pengguna</h2>
+                                    <p class="text-xs md:text-sm text-gray-500 mt-0.5">Kelola akun siswa, guru, dan admin.</p>
                                 </div>
-                                
-                                <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
-                                    <div id="userSearchWrapper" class="relative w-full sm:w-56">
-                                        <div class="relative">
-                                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
-                                            <input type="text" id="userSearchInput" 
-                                                value="${window.currentUserSearch || ''}"
-                                                oninput="handleUserSearchInput(this.value)"
-                                                onfocus="showUserSuggestions(this.value)"
-                                                placeholder="Cari nama siswa..." 
-                                                autocomplete="off"
-                                                class="w-full pl-7 pr-7 py-1.5 bg-white border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                style="font-family: ${customFont}, ${baseFontStack};">
-                                            ${window.currentUserSearch ? `<button onclick="clearUserSearch()" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>` : ''}
-                                        </div>
-                                        <div id="userSearchSuggestions" class="absolute z-20 top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden" style="display:none;"></div>
-                                    </div>
-                                    <div class="w-full sm:w-auto flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
-                                        <span class="text-[11px] font-semibold px-1.5 text-gray-600 shrink-0">Filter:</span>
-                                        <select onchange="window.currentUserFilter = this.value; pageState.users = 1; renderUsersSection();"
-                                            class="w-full sm:w-auto bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            style="font-family: ${customFont}, ${baseFontStack};">
-                                            <option value="all" ${window.currentUserFilter === 'all' ? 'selected' : ''}>Semua Pengguna</option>
-                                            <option value="online" ${window.currentUserFilter === 'online' ? 'selected' : ''}>🔴 Sedang Aktif</option>
-                                            <option value="offline" ${window.currentUserFilter === 'offline' ? 'selected' : ''}>🟢 Offline</option>
-                                        </select>
-                                    </div>
-                                    <button onclick="resetAllOnlineUsers()" class="w-full sm:w-auto px-3 py-1.5 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition shadow flex items-center justify-center gap-1.5" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">🚨 Reset Semua Online</button>
-                                    <button onclick="showAddUserForm()" class="w-full sm:w-auto px-3 py-1.5 rounded-lg text-white font-semibold hover:opacity-90 transition shadow flex items-center justify-center gap-1.5" style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;"><span class="text-xs">➕</span><span>Tambah Pengguna</span></button>
-                                    <button onclick="refreshTarget('users')" class="w-full sm:w-auto px-3 py-1.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition shadow" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">🔄 Refresh</button>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="showAddUserForm()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-white text-xs md:text-sm font-semibold hover:opacity-90 transition shadow flex items-center justify-center gap-2" style="background: linear-gradient(135deg, ${primaryColor}, ${secondary});">
+                                        <span>➕</span><span id="addUserBtnLabel">Tambah Siswa</span>
+                                    </button>
+                                    <button onclick="refreshTarget('users')" title="Muat ulang data" class="px-3.5 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition shadow-sm text-sm">⟳</button>
                                 </div>
                             </div>
-                            
-                            <div id="userFormContainer" style="display: none;" class="bg-white rounded-2xl shadow-custom p-6"></div>
-                            
-                            <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
-                                <div class="overflow-x-auto -mx-4 md:mx-0">
-                                    <table class="w-full min-w-full">
-                                        <thead>
-                                            <tr class="border-b-2 border-gray-300">
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Foto</th>
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Username</th>
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Nama</th>
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Role</th>
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Kelas</th>
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Status Sesi</th>
-                                                <th class="text-left p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: ${textColor};">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="usersTableBody"></tbody>
+
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                ${statCard('uStatSiswa', 'Total Siswa', '👨‍🎓', 'bg-sky-100')}
+                                ${statCard('uStatOnline', 'Siswa Sedang Aktif', '🔴', 'bg-red-100', 'onclick="showOnlineStudents()" title="Klik untuk menampilkan siswa yang sedang aktif"')}
+                                ${statCard('uStatGuru', 'Guru', '👨‍🏫', 'bg-emerald-100')}
+                                ${statCard('uStatAdmin', 'Admin', '👨‍💼', 'bg-violet-100')}
+                            </div>
+
+                            <div id="userFormContainer" style="display: none;" class="bg-white rounded-2xl shadow-custom p-5 md:p-6"></div>
+
+                            <div class="bg-white rounded-2xl shadow-custom overflow-hidden">
+                                <div class="p-3 md:p-4 border-b border-gray-100 bg-gray-50/60">
+                                    <div class="flex gap-1.5 p-1 bg-gray-200/70 rounded-2xl w-full sm:w-fit">
+                                        ${tabBtn('siswa', '👨‍🎓', 'Siswa')}
+                                        ${tabBtn('staff', '👨‍🏫', 'Guru &amp; Admin')}
+                                    </div>
+                                </div>
+
+                                <div class="p-3 md:p-4 flex flex-col lg:flex-row gap-2 lg:items-center">
+                                    <div id="userSearchWrapper" class="relative w-full lg:flex-1 lg:max-w-sm">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">🔍</span>
+                                        <input type="text" id="userSearchInput"
+                                            value="${escHtml(window.currentUserSearch || '')}"
+                                            oninput="handleUserSearchInput(this.value)"
+                                            onfocus="showUserSuggestions(this.value)"
+                                            autocomplete="off"
+                                            class="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded-xl text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500">
+                                        <button id="userSearchClear" onclick="clearUserSearch()" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs" style="display:none;">✕</button>
+                                        <div id="userSearchSuggestions" class="absolute z-20 top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden" style="display:none;"></div>
+                                    </div>
+
+                                    <div id="siswaOnlyTools" class="grid grid-cols-2 sm:flex gap-2 sm:items-center">
+                                        <select id="userClassFilter" onchange="setUserClassFilter(this.value)" class="${selCls} sm:w-auto"></select>
+                                        <select id="userStatusFilter" onchange="setUserStatusFilter(this.value)" class="${selCls} sm:w-auto">
+                                            <option value="all">Semua Status</option>
+                                            <option value="online">🔴 Sedang Aktif</option>
+                                            <option value="offline">🟢 Offline</option>
+                                        </select>
+                                        <button onclick="resetAllOnlineUsers()" class="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition text-xs md:text-sm font-semibold whitespace-nowrap">🚨 Reset Semua Online</button>
+                                    </div>
+
+                                    <div id="usersResultInfo" class="text-xs text-gray-500 lg:ml-auto whitespace-nowrap"></div>
+                                </div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="w-full min-w-[480px]">
+                                        <thead id="usersTableHead"></thead>
+                                        <tbody id="usersTableBody" class="divide-y divide-gray-100"></tbody>
                                     </table>
                                 </div>
-                                <div id="usersPager"></div>
+                                <div id="usersPager" class="px-4 pb-4"></div>
                             </div>
                         </div>
                     `;
                     tbody = document.getElementById('usersTableBody');
-                } else {
-                    // Jika DOM sudah ada, cukup update statisiknya
-                    const counter = document.getElementById('onlineUserCounter');
-                    if (counter) counter.textContent = `${totalOnline} Online`;
                 }
 
-                // --- PAGINASI ---
-                const pgUsers = paginate(filteredUsers, pageState.users);
-                pageState.users = pgUsers.current;
-                const pageUsers = pgUsers.items;
-                renderPager('usersPager', pgUsers, 'users');
+                // --- FASE 2: SESUAIKAN TAMPILAN DENGAN TAB AKTIF ---
+                const activeTabCls = 'text-white shadow';
+                const idleTabCls = 'text-gray-600 hover:bg-white/60';
+                ['siswa', 'staff'].forEach(key => {
+                    const b = document.getElementById('uTab-' + key);
+                    if (!b) return;
+                    const on = key === tab;
+                    b.className = `flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2 ${on ? activeTabCls : idleTabCls}`;
+                    b.style.background = on ? `linear-gradient(135deg, ${primaryColor}, ${secondary})` : '';
+                    const cnt = document.getElementById('uTabCount-' + key);
+                    if (cnt) cnt.className = `px-1.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-bold ${on ? 'bg-white/25 text-white' : 'bg-gray-300/70 text-gray-700'}`;
+                });
 
-                // --- FASE 2: DOM RECONCILIATION UNTUK BARIS ---
-                // Handle status kosong
-                if (filteredUsers.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack};" id="empty-user-row">Tidak ada data pengguna yang sesuai filter</td></tr>`;
+                const siswaTools = document.getElementById('siswaOnlyTools');
+                if (siswaTools) siswaTools.style.display = tab === 'siswa' ? '' : 'none';
+
+                const addLbl = document.getElementById('addUserBtnLabel');
+                if (addLbl) addLbl.textContent = tab === 'siswa' ? 'Tambah Siswa' : 'Tambah Guru / Admin';
+
+                const searchInput = document.getElementById('userSearchInput');
+                if (searchInput) searchInput.placeholder = tab === 'siswa' ? 'Cari nama atau username siswa...' : 'Cari nama atau username guru/admin...';
+                const clearBtn = document.getElementById('userSearchClear');
+                if (clearBtn) clearBtn.style.display = window.currentUserSearch ? '' : 'none';
+
+                // Opsi kelas dibangun dari data siswa yang ada
+                const clsSel = document.getElementById('userClassFilter');
+                if (clsSel) {
+                    const classes = [...new Set(usersOfTab('siswa').map(u => String(u.class || '').trim()).filter(Boolean))]
+                        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                    if (window.currentUserClass && !classes.includes(window.currentUserClass)) window.currentUserClass = '';
+                    clsSel.innerHTML = `<option value="">Semua Kelas</option>` +
+                        classes.map(c => `<option value="${escHtml(c)}" ${window.currentUserClass === c ? 'selected' : ''}>Kelas ${escHtml(c)}</option>`).join('');
+                }
+                const stSel = document.getElementById('userStatusFilter');
+                if (stSel) stSel.value = window.currentUserFilter || 'all';
+
+                const thCls = 'text-left px-4 py-3 text-[11px] md:text-xs font-semibold uppercase tracking-wide text-gray-500';
+                const head = document.getElementById('usersTableHead');
+                if (head) {
+                    head.innerHTML = tab === 'siswa'
+                        ? `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Siswa</th><th class="${thCls}">Kelas</th><th class="${thCls}">Status Sesi</th><th class="${thCls} text-right">Aksi</th></tr>`
+                        : `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Pengguna</th><th class="${thCls}">Role</th><th class="${thCls} text-right">Aksi</th></tr>`;
+                }
+
+                updateUserStatCards();
+
+                // --- FASE 3: FILTER, URUTKAN, PAGINASI ---
+                let list = usersOfTab(tab);
+                if (tab === 'siswa') {
+                    if (window.currentUserFilter === 'online') list = list.filter(u => u.is_login);
+                    else if (window.currentUserFilter === 'offline') list = list.filter(u => !u.is_login);
+                    if (window.currentUserClass) list = list.filter(u => String(u.class || '').trim() === window.currentUserClass);
+                }
+                const kw = (window.currentUserSearch || '').trim().toLowerCase();
+                if (kw) {
+                    list = list.filter(u =>
+                        (u.name && u.name.toLowerCase().includes(kw)) ||
+                        (u.username && String(u.username).toLowerCase().includes(kw))
+                    );
+                }
+                const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'id');
+                if (tab === 'siswa') {
+                    list = [...list].sort((a, b) => String(a.class || '').localeCompare(String(b.class || ''), undefined, { numeric: true }) || byName(a, b));
+                } else {
+                    const rank = r => (r === 'admin' ? 0 : 1);
+                    list = [...list].sort((a, b) => rank(a.role) - rank(b.role) || byName(a, b));
+                }
+
+                const info = document.getElementById('usersResultInfo');
+                if (info) info.textContent = `${list.length} ${tab === 'siswa' ? 'siswa' : 'pengguna'}${kw || window.currentUserClass || (tab === 'siswa' && window.currentUserFilter !== 'all') ? ' (terfilter)' : ''}`;
+
+                const pg = paginate(list, pageState.users);
+                pageState.users = pg.current;
+                renderPager('usersPager', pg, 'users');
+
+                const colCount = tab === 'siswa' ? 4 : 3;
+                if (list.length === 0) {
+                    tbody.innerHTML = `
+                        <tr><td colspan="${colCount}" class="text-center py-14">
+                            <div class="text-4xl mb-2">🗂️</div>
+                            <div class="text-sm font-semibold text-gray-600">Tidak ada pengguna yang sesuai</div>
+                            <div class="text-xs text-gray-400 mt-1">Coba ubah kata kunci atau filter.</div>
+                        </td></tr>`;
                     return;
                 }
 
-                const emptyRow = document.getElementById('empty-user-row');
-                if (emptyRow) emptyRow.remove();
+                // --- FASE 4: BARIS TABEL ---
+                const btnBase = 'px-2.5 py-1.5 rounded-lg text-[11px] md:text-xs font-semibold border transition whitespace-nowrap';
+                tbody.innerHTML = pg.items.map(user => {
+                    const nameCell = `
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                ${userAvatarHTML(user)}
+                                <div class="min-w-0">
+                                    <div class="font-semibold text-xs md:text-sm text-gray-800 truncate">${escHtml(user.name)}</div>
+                                    <div class="text-[11px] md:text-xs text-gray-400 truncate">@${escHtml(user.username)}</div>
+                                </div>
+                            </div>
+                        </td>`;
+                    const delBtn = `<button onclick="deleteUser('${user.id}')" class="${btnBase} bg-white text-red-600 border-red-200 hover:bg-red-50" title="Hapus pengguna">🗑️ Hapus</button>`;
 
-                // Map elemen saat ini
-                const existingRows = Array.from(tbody.children);
-                const rowMap = new Map();
-                existingRows.forEach(row => { if (row.id) rowMap.set(row.id, row); });
-
-                // Loop data & Update DOM
-                pageUsers.forEach(user => {
-                    const uniqueId = `user-row-${user.username}`;
-                    let tr = rowMap.get(uniqueId);
-
-                    if (tr) {
-                        // UPDATE: Baris sudah ada, cukup perbarui data (seperti status online) agar UI tidak berkedip
-                        tr.children[2].textContent = user.name;
-                        
-                        if (user.role === 'siswa') {
-                            const statusContainer = tr.children[5];
-                            statusContainer.innerHTML = `
-                                <span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-[11px] md:text-xs">
-                                    ${user.is_login ? '🔴 Aktif' : '🟢 Offline'}
-                                </span>
-                            `;
-                        }
-
-                        rowMap.delete(uniqueId);
-                        tbody.appendChild(tr); // Jaga urutan sorting
-                    } else {
-                        // INSERT: Baris baru
-                        tr = document.createElement('tr');
-                        tr.id = uniqueId;
-                        tr.className = "border-b border-gray-200 hover:bg-[#e8f3e8] transition";
-                        
-                        tr.innerHTML = `
-                            <td class="p-3 md:p-4">
-                                <img src="/assets/foto_siswa/${user.username}.jpg" loading="lazy" alt="${escHtml(user.name)}" class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg" style="display:none;">👤</div>
-                            </td>
-                            <td class="p-3 md:p-4"><span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(user.username)}</span></td>
-                            <td class="p-3 md:p-4 text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(user.name)}</td>
-                            <td class="p-3 md:p-4">
-                                <span class="px-2 py-0.5 rounded-full text-[11px] md:text-xs font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'guru' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}" style="font-family: ${customFont}, ${baseFontStack};">
-                                    ${user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'guru' ? '👨‍🏫 Guru' : '👨‍🎓 Siswa'}
-                                </span>
-                            </td>
-                            <td class="p-3 md:p-4"><span class="font-semibold text-xs md:text-sm" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(user.class || '-')}</span></td>
-                            <td class="p-3 md:p-4">
-                                ${user.role === 'siswa' ? `<span id="status-login-${user.username}" class="${user.is_login ? 'text-red-500' : 'text-green-500'} font-bold text-[11px] md:text-xs">${user.is_login ? '🔴 Aktif' : '🟢 Offline'}</span>` : '-'}
-                            </td>
-                            <td class="p-3 md:p-4 flex gap-1.5">
-                                ${user.role === 'siswa' ? `<button data-u="${escHtml(user.username)}" onclick="resetSiswaLogin(this.dataset.u)" class="px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition shadow text-[11px] md:text-xs" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;" title="Reset Sesi Login Jika Siswa Terkunci">🔓 Reset</button>` : ''}
-                                <button onclick="deleteUser('${user.id}')" class="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition shadow text-[11px] md:text-xs" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.72}px;">🗑️ Hapus</button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
+                    if (tab === 'siswa') {
+                        return `
+                            <tr id="user-row-${escHtml(user.username)}" class="hover:bg-emerald-50/40 transition">
+                                ${nameCell}
+                                <td class="px-4 py-3"><span class="inline-block px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-[11px] md:text-xs font-bold">${escHtml(user.class || '-')}</span></td>
+                                <td class="px-4 py-3"><span id="status-login-${escHtml(user.username)}" class="${userStatusClass(!!user.is_login)}">${userStatusInner(!!user.is_login)}</span></td>
+                                <td class="px-4 py-3"><div class="flex justify-end gap-1.5">
+                                    <button data-u="${escHtml(user.username)}" onclick="resetSiswaLogin(this.dataset.u)" class="${btnBase} bg-white text-amber-700 border-amber-300 hover:bg-amber-50" title="Reset sesi login jika siswa terkunci">🔓 Reset</button>
+                                    ${delBtn}
+                                </div></td>
+                            </tr>`;
                     }
-                });
-
-                // DELETE: Hapus baris yang tidak cocok dengan filter
-                rowMap.forEach(row => row.remove());
+                    const isAdminRole = user.role === 'admin';
+                    return `
+                        <tr id="user-row-${escHtml(user.username)}" class="hover:bg-emerald-50/40 transition">
+                            ${nameCell}
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] md:text-xs font-semibold ${isAdminRole ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'}">
+                                    ${isAdminRole ? '👨‍💼 Admin' : '👨‍🏫 Guru'}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3"><div class="flex justify-end gap-1.5">${delBtn}</div></td>
+                        </tr>`;
+                }).join('');
             }
 
-            function showAddUserForm() {
-                const { config, primaryColor, customFont, baseFontStack, baseSize } = RC;                
+                        function showAddUserForm() {
+                const { primaryColor } = RC;
+                const secondary = RC.config.secondary_color || defaultConfig.secondary_color;
+                const presetRole = window.currentUserTab === 'siswa' ? 'siswa' : '';
                 const container = document.getElementById('userFormContainer');
                 container.style.display = 'block';
+                const lbl = 'block text-xs md:text-sm font-semibold text-gray-700 mb-1.5';
+                const inp = 'w-full px-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500';
                 container.innerHTML = `
-                    <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Pengguna Baru</h3>
-                    <form id="addUserForm" class="grid grid-cols-2 gap-4">
+                    <div class="flex items-center justify-between mb-4">
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
-                            <input type="text" id="newUsername" required 
-                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <h3 class="font-bold text-base md:text-lg text-gray-800">Tambah Pengguna Baru</h3>
+                            <p class="text-xs text-gray-500">Isi data akun di bawah ini.</p>
+                        </div>
+                        <button type="button" onclick="hideAddUserForm()" class="w-8 h-8 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" title="Tutup">✕</button>
+                    </div>
+                    <form id="addUserForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="${lbl}">Username</label>
+                            <input type="text" id="newUsername" required autocomplete="off" class="${inp}">
                         </div>
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
-                            <input type="password" id="newPassword" required 
-                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${lbl}">Password</label>
+                            <input type="password" id="newPassword" required autocomplete="new-password" class="${inp}">
                         </div>
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Nama Lengkap</label>
-                            <input type="text" id="newName" required 
-                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${lbl}">Nama Lengkap</label>
+                            <input type="text" id="newName" required class="${inp}">
                         </div>
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Role</label>
-                            <select id="newRole" required onchange="toggleClassField()"
-                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${lbl}">Role</label>
+                            <select id="newRole" required onchange="toggleClassField()" class="${inp}">
                                 <option value="">Pilih Role</option>
-                                <option value="admin">admin</option>
+                                <option value="siswa" ${presetRole === 'siswa' ? 'selected' : ''}>siswa</option>
                                 <option value="guru">guru</option>
-                                <option value="siswa">siswa</option>
+                                <option value="admin">admin</option>
                             </select>
                         </div>
                         <div id="classFieldContainer" style="display: none;">
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Kelas</label>
-                            <select id="newClass"
-                                class="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${lbl}">Kelas</label>
+                            <select id="newClass" class="${inp}">
                                 <option value="">Pilih Kelas</option>
                                 ${generateClassOptions()}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">URL Foto (Opsional)</label>
-                            <input type="url" id="newPhoto" 
-                                class="w-full px-2 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${lbl}">URL Foto (Opsional)</label>
+                            <input type="url" id="newPhoto" class="${inp}">
                         </div>
-                        <div class="col-span-2 flex gap-3">
-                            <button type="submit" 
-                                class="px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
-                                style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                Simpan
-                            </button>
-                            <button type="button" onclick="hideAddUserForm()" 
-                                class="px-6 py-2 bg-gray-500 rounded-lg text-white font-semibold hover:bg-gray-600 transition"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                                Batal
-                            </button>
+                        <div class="sm:col-span-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                            <button type="button" onclick="hideAddUserForm()" class="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition">Batal</button>
+                            <button type="submit" class="px-6 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition shadow" style="background: linear-gradient(135deg, ${primaryColor}, ${secondary});">Simpan</button>
                         </div>
                     </form>
                 `;
-                
+
                 document.getElementById('addUserForm').addEventListener('submit', addUser);
+                toggleClassField();
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
             
             //untuk tambah user
@@ -5065,6 +5319,7 @@
                 const success = await saveUserToSheet(userData);
                 
                 if (success) {
+                    window.currentUserTab = role === 'siswa' ? 'siswa' : 'staff';
                     hideAddUserForm();
                     showToast('Pengguna berhasil ditambahkan!', 'success');
                     renderUsersSection();
@@ -5086,11 +5341,13 @@
                 confirmDiv.id = 'delete-user-modal'; // Berikan ID spesifik disini
                 confirmDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
                 confirmDiv.innerHTML = `
-                    <div class="bg-white rounded-lg p-6 max-w-sm">
-                        <p class="mb-4">Yakin ingin menghapus pengguna <b>${escHtml(user.username)}</b>?</p>
-                        <div class="flex gap-3">
-                            <button onclick="confirmDeleteUser('${userId}')" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Hapus</button>
-                            <button onclick="document.getElementById('delete-user-modal').remove()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Batal</button>
+                    <div class="bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-sm text-center">
+                        <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center text-2xl">🗑️</div>
+                        <h3 class="font-bold text-lg text-gray-800 mb-1">Hapus Pengguna?</h3>
+                        <p class="text-sm text-gray-500 mb-5"><b class="text-gray-700">${escHtml(user.name)}</b> (@${escHtml(user.username)}) akan dihapus permanen.</p>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('delete-user-modal').remove()" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition">Batal</button>
+                            <button onclick="confirmDeleteUser('${userId}')" class="flex-1 px-4 py-2.5 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition">Ya, Hapus</button>
                         </div>
                     </div>
                 `;
@@ -5112,6 +5369,21 @@
                 }
             }
 
+            // Opsi filter mapel & jenis ujian: hanya yang sudah ada hasil ujiannya
+            function getResultFilterOptions() {
+                const mapels = new Set(), codes = new Set();
+                let legacy = false;
+                allExamResults.forEach(r => {
+                    const p = parseSubjectKey(String(r.exam_subject || '').trim());
+                    if (p.mapel) mapels.add(p.mapel);
+                    if (p.code) codes.add(p.code); else if (p.mapel) legacy = true;
+                });
+                const types = EXAM_TYPES.filter(t => codes.has(t.code)).map(t => ({ value: t.code, label: `${t.code} — ${t.name}` }));
+                if (legacy) types.push({ value: '__none__', label: 'Tanpa jenis (data lama)' });
+                return { mapels: [...mapels].sort(), types };
+            }
+            const optionsHTMLOf = (items) => items.map(o => `<option value="${escHtml(o.value)}">${escHtml(o.label)}</option>`).join('');
+
             function renderResultsSection() {
                 const { config, customFont, baseFontStack, baseSize, textColor } = RC;
                 const allFiltered = getProcessedData();
@@ -5127,81 +5399,64 @@
                     // Siapkan opsi dropdown saat inisialisasi awal
                     const uniqueClasses = [...new Set(allExamResults.map(item => String(item.student_class || "").trim()))].sort();
                     const classOptionsHTML = uniqueClasses.map(c => `<option value="${c}">${c}</option>`).join('');
-                    const subjectOptionsHTML = SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('');
+                    const resultOpts = getResultFilterOptions();
+                    const subjectOptionsHTML = optionsHTMLOf(resultOpts.mapels.map(m => ({ value: m, label: m })));
+                    const typeOptionsHTML = optionsHTMLOf(resultOpts.types);
 
                     document.getElementById('adminContent').innerHTML = `
                         <div class="bg-white rounded-xl shadow-custom p-4 md:p-6">
-                            <h2 class="font-bold mb-4 md:mb-6 text-lg md:text-xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Hasil Ujian</h2>
-                            
-                            <div class="mb-4 md:mb-6 flex flex-col sm:flex-row flex-wrap gap-2 md:gap-3">
-                                
-                                <select id="filterClass" onchange="updateFilter('class', this.value)"
-                                    class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack};">
-                                    <option value="">Semua Kelas</option>
-                                    ${classOptionsHTML}
-                                </select>
+                            <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+                                <h2 class="font-bold text-lg md:text-xl" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">Hasil Ujian</h2>
+                                <span id="resultsCountLabel" class="text-xs text-gray-500"></span>
+                            </div>
 
-                                <select id="filterSubject" onchange="updateFilter('subject', this.value)"
-                                    class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack};">
-                                    <option value="">Semua Mapel</option>
-                                    ${subjectOptionsHTML}
-                                </select>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-3">
+                                <label class="block"><span class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Kelas</span>
+                                    <select id="filterClass" onchange="updateFilter('class', this.value)" class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" style="font-family: ${customFont}, ${baseFontStack};">
+                                        <option value="">Semua Kelas</option>
+                                        ${classOptionsHTML}
+                                    </select></label>
+                                <label class="block"><span class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Mapel</span>
+                                    <select id="filterSubject" onchange="updateFilter('subject', this.value)" class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" style="font-family: ${customFont}, ${baseFontStack};">
+                                        <option value="">Semua Mapel</option>
+                                        ${subjectOptionsHTML}
+                                    </select></label>
+                                <label class="block"><span class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Jenis Ujian</span>
+                                    <select id="filterType" onchange="updateFilter('type', this.value)" class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" style="font-family: ${customFont}, ${baseFontStack};">
+                                        <option value="">Semua Jenis</option>
+                                        ${typeOptionsHTML}
+                                    </select></label>
+                                <label class="block"><span class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Urutkan</span>
+                                    <select id="filterSort" onchange="updateFilter('sortBy', this.value)" class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" style="font-family: ${customFont}, ${baseFontStack};">
+                                        <option value="time_desc">🕒 Terkini</option>
+                                        <option value="score_desc">🏆 Nilai Tertinggi</option>
+                                        <option value="score_asc">📉 Nilai Terendah</option>
+                                        <option value="name_asc">🔤 Nama (A-Z)</option>
+                                        <option value="name_desc">🔠 Nama (Z-A)</option>
+                                    </select></label>
+                            </div>
 
-                                <select id="filterSort" onchange="updateFilter('sortBy', this.value)"
-                                    class="w-full sm:w-auto px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack};">
-                                    <option value="time_desc">🕒 Terkini</option>
-                                    <option value="score_desc">🏆 Nilai Tertinggi</option>
-                                    <option value="score_asc">📉 Nilai Terendah</option>
-                                    <option value="name_asc">🔤 Nama (A-Z)</option>
-                                    <option value="name_desc">🔠 Nama (Z-A)</option>
-                                </select>
-
-                                <div class="flex flex-wrap items-stretch gap-2 w-full sm:w-auto">
-                                    <div class="flex flex-col gap-2">
-                                        <button onclick="downloadExcel()" class="px-3 py-1 text-sm bg-green-500 rounded-lg text-white font-semibold hover:bg-green-600 transition" style="font-family: ${customFont}, ${baseFontStack};">
-                                            Download Hasil Excel
-                                        </button>
-                                        <button onclick="showQuestionAnalysis()" class="px-3 py-1 text-sm bg-blue-500 rounded-lg text-white font-semibold hover:bg-blue-600 transition" style="font-family: ${customFont}, ${baseFontStack};">
-                                            Analisis Soal
-                                        </button>
-                                    </div>
-
-                                    <div class="flex flex-col gap-2">
-                                        <button id="btnDeleteSelected" onclick="deleteSelectedResults()" disabled class="px-3 py-1 text-sm bg-orange-500 rounded-lg text-white font-semibold hover:bg-orange-600 transition shadow disabled:opacity-40 disabled:cursor-not-allowed" style="font-family: ${customFont}, ${baseFontStack};">
-                                            Hapus Terpilih (0)
-                                        </button>
-                                        <button onclick="deleteResultsByClass()" class="px-3 py-1 text-sm bg-orange-500 rounded-lg text-white font-semibold hover:bg-orange-600 transition shadow" style="font-family: ${customFont}, ${baseFontStack};">
-                                            Hapus Per Kelas
-                                        </button>
-                                    </div>
-
-                                    <div class="flex flex-col gap-2">
-                                        <button onclick="clearAllResults()" class="px-3 py-1 text-sm bg-red-500 rounded-lg text-white font-semibold hover:bg-red-600 transition shadow" style="font-family: ${customFont}, ${baseFontStack};">
-                                            Bersihkan Data
-                                        </button>
-                                        <button onclick="refreshTarget('examResults')" class="px-3 py-1 text-sm bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition" style="font-family: ${customFont}, ${baseFontStack};">
-                                            Refresh
-                                        </button>
-                                    </div>
-                                </div>
+                            <div class="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-100" style="font-family: ${customFont}, ${baseFontStack};">
+                                <button onclick="downloadExcel()" class="px-3 py-2 text-sm bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold transition shadow-sm">Download Hasil Excel</button>
+                                <button onclick="showQuestionAnalysis()" class="px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-semibold transition shadow-sm">Analisis Soal</button>
+                                <button id="btnDeleteSelected" onclick="deleteSelectedResults()" disabled class="px-3 py-2 text-sm bg-orange-500 rounded-lg text-white font-semibold hover:bg-orange-600 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">Hapus Terpilih (0)</button>
+                                <button onclick="deleteResultsByClass()" class="px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 rounded-lg text-white font-semibold transition shadow-sm">Hapus Per Kelas</button>
+                                <button onclick="clearAllResults()" class="px-3 py-2 text-sm bg-red-500 hover:bg-red-600 rounded-lg text-white font-semibold transition shadow-sm">Bersihkan Data</button>
+                                <button onclick="refreshTarget('examResults')" class="px-3 py-2 text-sm bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold transition shadow-sm">Refresh</button>
                             </div>
                             
-                            <div class="hidden md:block overflow-x-auto -mx-4 md:mx-0">
+                            <div class="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
                                 <table class="w-full min-w-full">
                                     <thead>
-                                        <tr class="border-b-2 border-gray-300 text-xs text-gray-600 uppercase tracking-wider">
+                                        <tr class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase tracking-wider">
                                             <th class="text-left p-3 w-10"><input type="checkbox" id="selectAllResults" onchange="toggleSelectAllResults(this.checked)" title="Pilih semua yang tampil"></th>
                                             <th class="text-left p-3 w-12">No</th>
                                             <th class="text-left p-3">Nama</th>
                                             <th class="text-left p-3">Kelas</th>
                                             <th class="text-left p-3">Mapel</th>
-                                            <th class="text-left p-3">Waktu</th>
                                             <th class="text-left p-3">Nilai</th>
-                                            <th class="text-left p-3">Waktu Login</th>
-                                            <th class="text-left p-3">Waktu Selesai</th>
+                                            <th class="text-left p-3">Waktu</th>
+                                            <th class="text-left p-3">Login / Selesai</th>
                                             <th class="text-left p-3">Pelanggaran</th>
                                             <th class="text-left p-3">Aksi</th>
                                         </tr>
@@ -5222,6 +5477,8 @@
 
                     if (dropClass) dropClass.value = String(filterState.class || "").trim();
                     if (dropSubject) dropSubject.value = String(filterState.subject || "").trim();
+                    const dropType = document.getElementById('filterType');
+                    if (dropType) dropType.value = String(filterState.type || "").trim();
                     if (dropSort) dropSort.value = filterState.sortBy;
                 }
 
@@ -5231,9 +5488,21 @@
                     const pilihanSaatIni = dropClass.value; 
                     const uniqueClassesBaru = [...new Set(allExamResults.map(item => String(item.student_class || "").trim()))].sort();
                     dropClass.innerHTML = `<option value="">Semua Kelas</option>` + 
-                                        uniqueClassesBaru.map(c => `<option value="${c}">${c}</option>`).join('');
+                    uniqueClassesBaru.map(c => `<option value="${c}">${c}</option>`).join('');
                     dropClass.value = pilihanSaatIni;
                 }
+
+                const refreshOpts = getResultFilterOptions();
+                [['filterSubject', 'Semua Mapel', refreshOpts.mapels.map(m => ({ value: m, label: m }))],
+                 ['filterType', 'Semua Jenis', refreshOpts.types]].forEach(([id, allLabel, list]) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const cur = el.value;
+                    el.innerHTML = `<option value="">${allLabel}</option>` + optionsHTMLOf(list);
+                    el.value = cur;
+                });
+                const countLabel = document.getElementById('resultsCountLabel');
+                if (countLabel) countLabel.textContent = `${allFiltered.length} hasil`;
 
                 const tableBody = document.getElementById('resultsTableBody');
                 const mobileView = document.getElementById('resultsMobileView');
@@ -5247,19 +5516,18 @@
                     tableBody.innerHTML = '';
                 } else if (tableBody) {
                     if (filteredData.length === 0) {
-                        tableBody.innerHTML = `<tr><td colspan="11" class="text-center py-12 text-gray-400 text-xs">Data tidak ditemukan</td></tr>`;
+                        tableBody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-gray-400 text-xs">Data tidak ditemukan</td></tr>`;
                     } else {
                         tableBody.innerHTML = filteredData.map((result, index) => `
-                            <tr class="border-b border-gray-200 hover:bg-gray-50 ${selectedResultIds.has(String(result.id)) ? 'bg-red-50' : ''}">
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 ${selectedResultIds.has(String(result.id)) ? 'bg-red-50' : ''}" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">
                                 <td class="p-3"><input type="checkbox" class="result-check" data-id="${result.id}" ${selectedResultIds.has(String(result.id)) ? 'checked' : ''} onchange="toggleResultSelect('${result.id}', this.checked)"></td>
-                                <td class="p-3 text-gray-500 font-medium" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${pg.start + index + 1}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(result.student_name)}${dupKeys.has(resultDupKey(result)) ? ' <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">⚠️ Ganda</span>' : ''}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(result.student_class)}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(result.exam_subject)}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
-                                <td class="p-3 font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px; color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(result.waktu_login || '-')}</td>
-                                <td class="p-3" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px;">${escHtml(result.waktu_selesai || '-')}</td>
+                                <td class="p-3 text-gray-400">${pg.start + index + 1}</td>
+                                <td class="p-3 font-semibold text-gray-800">${escHtml(result.student_name)}${dupKeys.has(resultDupKey(result)) ? ' <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">⚠️ Ganda</span>' : ''}</td>
+                                <td class="p-3 whitespace-nowrap">${escHtml(result.student_class)}</td>
+                                <td class="p-3"><div class="flex items-center gap-1.5">${examTypeBadgeHTML(parseSubjectKey(result.exam_subject).code)}<span>${escHtml(parseSubjectKey(result.exam_subject).mapel)}</span></div></td>
+                                <td class="p-3"><span class="inline-block min-w-[2.5rem] text-center px-2 py-1 rounded-lg font-bold" style="background-color: ${result.final_score >= 80 ? '#dcfce7' : result.final_score >= 60 ? '#fef9c3' : '#fee2e2'}; color: ${result.final_score >= 80 ? '#166534' : result.final_score >= 60 ? '#854d0e' : '#991b1b'};">${result.final_score}</span></td>
+                                <td class="p-3 text-gray-600">${result.exam_time ? (!isNaN(new Date(result.exam_time)) ? new Date(result.exam_time).toLocaleString('id-ID') : result.exam_time) : '-'}</td>
+                                <td class="p-3 text-gray-600 whitespace-nowrap"><div>${escHtml(result.waktu_login || '-')}</div><div class="text-gray-400">${escHtml(result.waktu_selesai || '-')}</div></td>
                                 <td class="p-3">
                                     <span class="px-2 py-1 rounded-full text-xs font-semibold ${result.violations > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                                         ${result.violations > 0 ? `🚨 ${result.violations}x` : '✅ 0'}
@@ -5298,7 +5566,7 @@
                                 <div class="pt-3 border-t border-gray-200 text-xs space-y-2">
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">Mapel</span>
-                                        <span class="font-medium">${escHtml(result.exam_subject)}</span>
+                                        <span class="font-medium flex items-center gap-1.5">${examTypeBadgeHTML(parseSubjectKey(result.exam_subject).code)}${escHtml(parseSubjectKey(result.exam_subject).mapel)}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">Waktu</span>
@@ -5433,7 +5701,8 @@
 
             async function deleteResultsByClass() {
                 const subj = String(filterState.subject || '').trim();
-                const inScope = allExamResults.filter(r => !subj || String(r.exam_subject || '').trim() === subj);
+                const inScope = allExamResults.filter(r => matchSubjectAndType(String(r.exam_subject || '').trim(), subj, filterState.type));
+                const scopeLabel = [(filterState.type && filterState.type !== '__none__') ? filterState.type : '', subj].filter(Boolean).join(' ');
                 const counts = {};
                 inScope.forEach(r => { const c = String(r.student_class || '').trim(); if (c) counts[c] = (counts[c] || 0) + 1; });
                 const classes = Object.keys(counts).sort();
@@ -5444,7 +5713,7 @@
 
                 const pick = await Swal.fire({
                     title: 'Hapus Hasil Per Kelas',
-                    text: subj ? `Hanya mapel: ${subj}` : 'Semua mapel pada kelas yang dipilih',
+                    text: scopeLabel ? `Hanya: ${scopeLabel}` : 'Semua mapel pada kelas yang dipilih',
                     input: 'select',
                     inputOptions: options,
                     inputValue: counts[filterState.class] ? filterState.class : '',
@@ -5460,7 +5729,7 @@
                 const rows = inScope.filter(r => String(r.student_class || '').trim() === kelas);
                 const { isConfirmed } = await Swal.fire({
                     title: `Hapus ${rows.length} data kelas ${kelas}?`,
-                    text: (subj ? `Mapel: ${subj}. ` : 'Semua mapel. ') + 'Aksi ini tidak dapat dibatalkan!',
+                    text: (scopeLabel ? `Hanya: ${scopeLabel}. ` : 'Semua mapel. ') + 'Aksi ini tidak dapat dibatalkan!',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ef4444',
@@ -5898,6 +6167,7 @@
                 // 3. Buat Nama File Dinamis
                 let fileName = "Hasil_Ujian";
                 if (filterState.class) fileName += `_Kelas_${filterState.class}`;
+                if (filterState.type && filterState.type !== '__none__') fileName += `_${filterState.type}`;
                 if (filterState.subject) fileName += `_${filterState.subject}`;
                 fileName += ".xlsx";
 
@@ -5922,18 +6192,25 @@
                 XLSX.writeFile(workbook, fileName);            
             }
 
+            function bankSoalTypeOptions() {
+                const sel = window.selectedBankSoalType || '';
+                const hasLegacy = allQuestions.some(q => q.subject && !parseSubjectKey(q.subject).code);
+                return EXAM_TYPES.map(t => `<option value="${escHtml(t.code)}" ${sel === t.code ? 'selected' : ''}>${escHtml(t.code)} — ${escHtml(t.name)}</option>`).join('') +
+                    (hasLegacy ? `<option value="__none__" ${sel === '__none__' ? 'selected' : ''}>Tanpa jenis (data lama)</option>` : '');
+            }
+
             function renderQuestionsSection() {
                 const { config, primaryColor, customFont, baseFontStack, baseSize, textColor } = RC;                
                 const isAdmin = currentUser && currentUser.role === 'admin';
                 const targetContainer = isAdmin ? document.getElementById('adminContent') : document.getElementById('guruContent');
-                const uniqueSubjects = [...new Set(allQuestions.map(q => q.subject))].filter(Boolean);
+                const uniqueSubjects = [...new Set(allQuestions.map(q => baseSubject(q.subject)))].filter(Boolean);
                 const uniqueClasses = [...new Set(allQuestions.map(q => q.question_class ? q.question_class.charAt(0) : ''))].filter(Boolean).sort();
                 
                 let questionsToRender = allQuestions;
 
                 if (isAdmin) {
-                    if (window.selectedBankSoalSubject) {
-                        questionsToRender = questionsToRender.filter(q => q.subject === window.selectedBankSoalSubject);
+                    if (window.selectedBankSoalSubject || window.selectedBankSoalType) {
+                        questionsToRender = questionsToRender.filter(q => matchSubjectAndType(q.subject, window.selectedBankSoalSubject, window.selectedBankSoalType));
                     }
                     if (window.selectedBankSoalClass) {
                         questionsToRender = questionsToRender.filter(q => q.question_class && q.question_class.startsWith(window.selectedBankSoalClass));
@@ -5942,7 +6219,7 @@
                     // GURU: hanya tampilkan soal miliknya sendiri
                     questionsToRender = questionsToRender.filter(q => {
                         const grade = q.question_class ? q.question_class.charAt(0) : '';
-                        return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                        return baseSubject(q.subject) === currentUser.subject && matchSubjectAndType(q.subject, '', window.selectedBankSoalType) && currentUser.class && currentUser.class.includes(grade);
                     });
                 }
 
@@ -5952,7 +6229,7 @@
                     totalSemuaSoal = allQuestions.length;
                     totalSoalGuru = allQuestions.filter(q => {
                         const grade = q.question_class ? q.question_class.charAt(0) : ''; 
-                        return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                        return baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
                     }).length;
                 }
 
@@ -5993,7 +6270,7 @@
                             </div>
                         `;
                     } else {
-                        const isRightSubject = q.subject === currentUser.subject;
+                        const isRightSubject = baseSubject(q.subject) === currentUser.subject;
                         const teachesThisGrade = currentUser.class && currentUser.class.includes(grade);
                         const isOwner = isRightSubject && teachesThisGrade;
                         
@@ -6024,34 +6301,42 @@
                 if (!questionsWrapper) {
                     const adminControls = `
                         <div class="flex flex-col sm:flex-row gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
-                            <select id="filterKelasBankSoal" onchange="window.selectedBankSoalClass = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                            <select id="filterKelasBankSoal" onchange="window.selectedBankSoalClass = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
                                 <option value="">Semua Kelas</option>
                                 ${uniqueClasses.map(cls => `<option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>`).join('')}
                             </select>
-                            <select id="filterMapelBankSoal" onchange="window.selectedBankSoalSubject = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                            <select id="filterMapelBankSoal" onchange="window.selectedBankSoalSubject = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
                                 <option value="">Semua Mata Pelajaran</option>
                                 ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
                             </select>
+                            <select id="filterJenisBankSoal" onchange="window.selectedBankSoalType = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
+                                <option value="">Semua Jenis Ujian</option>
+                                ${bankSoalTypeOptions()}
+                            </select>
                         </div>
                         <div class="grid grid-cols-2 sm:flex sm:flex-row sm:items-stretch w-full sm:w-auto gap-2 sm:gap-3 mt-3 sm:mt-0">
-                            <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-4 py-2 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">📄 Template</button>
-                            <div class="flex flex-col gap-1 w-full sm:w-32">
-                                <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-3 py-1.5 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-xs whitespace-nowrap shadow-sm">📥 Download Exceel</button>
-                                <button onclick="downloadSoalWord()" class="w-full flex justify-center items-center px-3 py-1.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-xs whitespace-nowrap shadow-sm">📃 Download Word</button>
+                            <button onclick="downloadTemplateSoal()" class="w-full flex justify-center items-center px-2 py-1 bg-yellow-500 rounded-lg text-white font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap shadow-sm">Template</button>
+                            <div class="flex flex-col gap-1 w-full sm:w-28">
+                                <button onclick="downloadSoalExcel()" class="w-full flex justify-center items-center px-2 py-1.5 bg-green-600 rounded-lg text-white font-semibold hover:bg-green-700 transition text-xs whitespace-nowrap shadow-sm">Download Exceel</button>
+                                <button onclick="downloadSoalWord()" class="w-full flex justify-center items-center px-2 py-1.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-xs whitespace-nowrap shadow-sm">Download Word</button>
                             </div>
-                            <div class="flex flex-col gap-1 w-full sm:w-32">
-                                <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-3 py-1.5 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-xs whitespace-nowrap shadow-sm">📤 Upload Excel</button>
-                                <button onclick="triggerUploadWord()" class="w-full flex justify-center items-center px-3 py-1.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-xs whitespace-nowrap shadow-sm">📝 Upload Word</button>
+                            <div class="flex flex-col gap-1 w-full sm:w-28">
+                                <button onclick="triggerUploadSoal()" class="w-full flex justify-center items-center px-2 py-1.5 bg-indigo-600 rounded-lg text-white font-semibold hover:bg-indigo-700 transition text-xs whitespace-nowrap shadow-sm">Upload Excel</button>
+                                <button onclick="triggerUploadWord()" class="w-full flex justify-center items-center px-2 py-1.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-xs whitespace-nowrap shadow-sm">Upload Word</button>
                             </div>
                             <input type="file" id="fileUploadSoalWord" accept=".docx" style="display: none;" onchange="handleUploadWord(event)">
-                            <button onclick="showAddQuestionForm()" class="w-full flex justify-center items-center px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
-                            <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-4 py-2 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
+                            <button onclick="showAddQuestionForm()" class="w-full flex justify-center items-center px-2 py-1 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">Tambah Soal</button>
+                            <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-2 py-1 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">Refresh</button>
                             <input type="file" id="fileUploadSoal" accept=".xlsx, .xls" style="display: none;" onchange="handleUploadSoal(event)">
                         </div>
                     `;
 
                     const guruControls = `
                         <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
+                            <select id="filterJenisBankSoal" onchange="window.selectedBankSoalType = this.value; resetQuestionPages(); renderQuestionsSection()" class="col-span-2 sm:col-span-1 px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-[11px] bg-white">
+                                <option value="">Semua Jenis Ujian</option>
+                                ${bankSoalTypeOptions()}
+                            </select>
                             <button onclick="downloadSoalWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📃 Download Word</button>
                             <button onclick="triggerUploadWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📝 Upload Word</button>
                             <button onclick="showGuruAddQuestionForm()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
@@ -6110,6 +6395,10 @@
                     if (!isAdmin) {
                         document.getElementById('statTotalSemua').textContent = totalSemuaSoal;
                         document.getElementById('statTotalGuru').textContent = totalSoalGuru;
+                        const selJenisGuru = document.getElementById('filterJenisBankSoal');
+                        if (selJenisGuru) {
+                            selJenisGuru.innerHTML = `<option value="">Semua Jenis Ujian</option>${bankSoalTypeOptions()}`;
+                        }
                     } else {
                         // ADMIN: perbarui ulang opsi dropdown Mapel & Kelas agar sinkron dgn data terbaru
                         const selMapel = document.getElementById('filterMapelBankSoal');
@@ -6118,6 +6407,10 @@
                                 <option value="">Semua Mata Pelajaran</option>
                                 ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
                             `;
+                        }
+                        const selJenis = document.getElementById('filterJenisBankSoal');
+                        if (selJenis) {
+                            selJenis.innerHTML = `<option value="">Semua Jenis Ujian</option>${bankSoalTypeOptions()}`;
                         }
                         const selKelas = document.getElementById('filterKelasBankSoal');
                         if (selKelas) {
@@ -6178,7 +6471,7 @@
                         const uniqueId = `q-item-${q.id}`;
                         let div = itemMap.get(uniqueId);
                         
-                        const isOwner = !isAdmin && (q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade));
+                        const isOwner = !isAdmin && (baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade));
 
                         if (div) {
                             // UPDATE
@@ -6208,9 +6501,9 @@
 
                 let list = allQuestions.filter(q => q.question_class && String(q.question_class).startsWith(grade));
                 if (isAdmin) {
-                    if (window.selectedBankSoalSubject) list = list.filter(q => q.subject === window.selectedBankSoalSubject);
+                    if (window.selectedBankSoalSubject || window.selectedBankSoalType) list = list.filter(q => matchSubjectAndType(q.subject, window.selectedBankSoalSubject, window.selectedBankSoalType));
                 } else {
-                    list = list.filter(q => q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade));
+                    list = list.filter(q => baseSubject(q.subject) === currentUser.subject && matchSubjectAndType(q.subject, '', window.selectedBankSoalType) && currentUser.class && currentUser.class.includes(grade));
                 }
 
                 if (list.length === 0) {
@@ -6819,7 +7112,7 @@
                         </style>
 
                         <div class="text-left space-y-6 add-scroll-area">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-100 p-4 rounded-xl">
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
                                     <select id="edit-class" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
@@ -6829,12 +7122,23 @@
                                     </select>
                                 </div>
                                 <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenis Ujian</label>
+                                    <select id="edit-exam-type" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+                                        ${(() => {
+                                            const qp = parseSubjectKey(q.subject);
+                                            return (qp.code ? '' : '<option value="" selected>— Tanpa jenis (data lama) —</option>') +
+                                                EXAM_TYPES.map(t => `<option value="${escHtml(t.code)}" ${t.code === qp.code ? 'selected' : ''}>${escHtml(t.code)} — ${escHtml(t.name)}</option>`).join('');
+                                        })()}
+                                    </select>
+                                </div>
+                                <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
                                     <select id="edit-subject" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
                                         ${(() => {
                                             const list = (typeof SUBJECTS !== 'undefined' ? [...SUBJECTS] : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN', 'IPS', 'Informatika']);
-                                            if (q.subject && !list.includes(q.subject)) list.unshift(q.subject); // pertahankan mapel lama
-                                            return list.map(s => `<option value="${escHtml(s)}" ${s === q.subject ? 'selected' : ''}>${escHtml(s)}</option>`).join('');
+                                            const qMapel = baseSubject(q.subject);
+                                            if (qMapel && !list.includes(qMapel)) list.unshift(qMapel); // pertahankan mapel lama
+                                            return list.map(s => `<option value="${escHtml(s)}" ${s === qMapel ? 'selected' : ''}>${escHtml(s)}</option>`).join('');
                                         })()}
                                     </select>
                                 </div>
@@ -7020,7 +7324,7 @@
                     confirmButtonColor: '#10B981',
                     preConfirm: async () => {
                         const qClass = document.getElementById('edit-class').value;
-                        const qSubject = document.getElementById('edit-subject').value;
+                        const qSubject = makeSubjectKey(document.getElementById('edit-exam-type').value, document.getElementById('edit-subject').value);
                         const qType = document.getElementById('edit-type').value;
 
                         const processEditor = async (editorInstance) => {
@@ -7139,11 +7443,15 @@
 
                 // Mapel: kalau guru sudah punya mapel tetap, kunci ke mapel itu saja
                 const hasSubject = isGuru && currentUser.subject && currentUser.subject.trim() !== '';
+                // Jenis ujian + mapel yang sedang dibuka di Bank Soal dipilihkan otomatis
+                const preSel = { code: (window.selectedBankSoalType && window.selectedBankSoalType !== '__none__') ? window.selectedBankSoalType : '', mapel: window.selectedBankSoalSubject || '' };
+                const examTypeOptions = `<option value="" disabled ${preSel.code ? '' : 'selected'}>-- Pilih Jenis Ujian --</option>` +
+                    EXAM_TYPES.map(t => `<option value="${t.code}" ${t.code === preSel.code ? 'selected' : ''}>${t.code} — ${t.name}</option>`).join('');
                 const subjectOptions = hasSubject
                     ? `<option value="${currentUser.subject}">${currentUser.subject}</option>`
-                    : `<option value="" disabled selected>-- Pilih Mata Pelajaran --</option>` +
+                    : `<option value="" disabled ${preSel.mapel ? '' : 'selected'}>-- Pilih Mata Pelajaran --</option>` +
                     (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris'])
-                        .map(s => `<option value="${s}">${s}</option>`).join('');
+                        .map(s => `<option value="${s}" ${s === preSel.mapel ? 'selected' : ''}>${s}</option>`).join('');
 
                 Swal.fire({
                     title: '➕ Tambah Soal Baru',
@@ -7185,11 +7493,17 @@
                         </style>
 
                         <div class="text-left space-y-6 add-scroll-area">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded-xl">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-100 p-4 rounded-xl">
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
                                     <select id="add-class" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate" ${(hasClass && guruGrades.length === 1) ? 'disabled' : ''}>
                                         ${classOptions}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenis Ujian</label>
+                                    <select id="add-exam-type" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate">
+                                        ${examTypeOptions}
                                     </select>
                                 </div>
                                 <div>
@@ -7341,12 +7655,14 @@
                     confirmButtonColor: '#10B981',
                     preConfirm: async () => {
                         const qClass = document.getElementById('add-class').value;
-                        const qSubject = document.getElementById('add-subject').value;
+                        const qMapel = document.getElementById('add-subject').value;
+                        const qJenis = document.getElementById('add-exam-type').value;
+                        const qSubject = (qMapel && qJenis) ? makeSubjectKey(qJenis, qMapel) : '';
 
                         try {
                             const type = document.getElementById('add-type').value;
                             if (!qClass || !qSubject || !type) {
-                                throw new Error('Jenjang kelas, mata pelajaran, dan tipe soal wajib dipilih');
+                                throw new Error('Jenjang kelas, jenis ujian, mata pelajaran, dan tipe soal wajib dipilih');
                             }
 
                             const processEditor = async (ed) => {
@@ -8849,9 +9165,12 @@
                             <option value="7">Kelas 7</option>
                             <option value="8">Kelas 8</option>
                             <option value="9">Kelas 9</option>`;
+                        const preSel = { code: (window.selectedBankSoalType && window.selectedBankSoalType !== '__none__') ? window.selectedBankSoalType : '', mapel: window.selectedBankSoalSubject || '' };
+                        const examTypeOptions = `<option value="" disabled ${preSel.code ? '' : 'selected'}>-- Pilih Jenis Ujian --</option>` +
+                            EXAM_TYPES.map(t => `<option value="${t.code}" ${t.code === preSel.code ? 'selected' : ''}>${t.code} — ${t.name}</option>`).join('');
                         const subjectOptions = (isGuru && currentUser.subject)
                             ? `<option value="${currentUser.subject}">${currentUser.subject}</option>`
-                            : (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}">${s}</option>`).join('');
+                            : (typeof SUBJECTS !== 'undefined' ? SUBJECTS : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris']).map(s => `<option value="${s}" ${s === preSel.mapel ? 'selected' : ''}>${s}</option>`).join('');
 
                         const complexCount = results.filter(r => r.question_type === 'pilihan_ganda_kompleks').length;
                         const matchCount = results.filter(r => r.question_type === 'menjodohkan').length;
@@ -8867,6 +9186,8 @@
                                     </p>
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Jenjang Kelas</label>
                                     <select id="wordImportClass" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">${classOptions}</select>
+                                    <label style="display:block; font-weight:bold; margin-bottom:4px;">Jenis Ujian</label>
+                                    <select id="wordImportExamType" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">${examTypeOptions}</select>
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Mata Pelajaran</label>
                                     <select id="wordImportSubject" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">${subjectOptions}</select>
                                 </div>
@@ -8874,10 +9195,17 @@
                             showCancelButton: true,
                             confirmButtonText: '🚀 Import Sekarang',
                             cancelButtonText: 'Batal',
-                            preConfirm: () => ({
-                                targetClass: document.getElementById('wordImportClass').value,
-                                targetSubject: document.getElementById('wordImportSubject').value
-                            })
+                            preConfirm: () => {
+                                const jenis = document.getElementById('wordImportExamType').value;
+                                if (!jenis) {
+                                    Swal.showValidationMessage('Pilih jenis ujian terlebih dahulu');
+                                    return false;
+                                }
+                                return {
+                                    targetClass: document.getElementById('wordImportClass').value,
+                                    targetSubject: makeSubjectKey(jenis, document.getElementById('wordImportSubject').value)
+                                };
+                            }
                         });
 
                         if (!confirmResult.isConfirmed) { event.target.value = ''; return; }
@@ -8968,7 +9296,7 @@
                     } else {
                         accessibleQuestions = allQuestions.filter(q => {
                             const grade = q.question_class ? String(q.question_class).charAt(0) : '';
-                            return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                            return baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
                         });
                     }
 
@@ -9578,7 +9906,7 @@
                     } else {
                         accessibleQuestions = allQuestions.filter(q => {
                             const grade = q.question_class ? String(q.question_class).charAt(0) : '';
-                            return q.subject === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                            return baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
                         });
                     }
 
@@ -10058,235 +10386,236 @@
             function renderScheduleSection() {
                 const { config, primaryColor, customFont, baseFontStack, baseSize, textColor } = RC;                
                 const now = new Date();
-                
+                const fmt = (iso) => new Date(iso).toLocaleString('id-ID', {
+                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                // Status tiap mapel, urut: Aktif -> Belum dimulai -> Nonaktif -> Selesai
+                const entries = (examSettings.active_subjects || []).filter(item => !(item && item.kind)).map(item => {
+                    let isActive = false, rank = 2, statusBadge = '', statusColor = '';
+                    if (!item.start_time || !item.end_time) {
+                        isActive = !!item.is_active;
+                        statusBadge = isActive ? '✅ Aktif Manual' : '🔒 Nonaktif';
+                        statusColor = isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700';
+                        rank = isActive ? 0 : 2;
+                    } else {
+                        const startTime = new Date(item.start_time);
+                        const endTime = new Date(item.end_time);
+                        if (now < startTime) {
+                            statusBadge = '⏳ Belum Dimulai';
+                            statusColor = 'bg-yellow-100 text-yellow-800';
+                            rank = 1;
+                        } else if (now <= endTime) {
+                            isActive = true;
+                            statusBadge = '✅ Sedang Berlangsung';
+                            statusColor = 'bg-green-100 text-green-800';
+                            rank = 0;
+                        } else {
+                            statusBadge = '⏹️ Sudah Selesai';
+                            statusColor = 'bg-gray-100 text-gray-700';
+                            rank = 3;
+                        }
+                    }
+                    return { item, isActive, rank, statusBadge, statusColor };
+                }).sort((a, b) => a.rank - b.rank);
+
+                const mapelCardHTML = ({ item, isActive, statusBadge, statusColor }) => {
+                    const hasTime = item.start_time && item.end_time;
+                    return `
+                        <div class="bg-white rounded-2xl border ${isActive ? 'border-green-400 ring-1 ring-green-200' : 'border-gray-200'} shadow-sm overflow-hidden flex flex-col">
+                            <div class="h-1.5 ${isActive ? 'bg-green-500' : 'bg-gray-200'}"></div>
+                            <div class="p-4 flex-1 space-y-3">
+                                <div class="flex items-start justify-between gap-2">
+                                    <h4 class="font-bold text-base leading-snug break-words min-w-0" style="color: ${textColor};">${escHtml(item.subject)}</h4>
+                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${statusColor}">${statusBadge}</span>
+                                </div>
+
+                                ${hasTime ? `
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="bg-gray-50 rounded-lg px-3 py-2">
+                                            <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Mulai</p>
+                                            <p class="text-xs font-semibold text-gray-700">${fmt(item.start_time)}</p>
+                                        </div>
+                                        <div class="bg-gray-50 rounded-lg px-3 py-2">
+                                            <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Selesai</p>
+                                            <p class="text-xs font-semibold text-gray-700">${fmt(item.end_time)}</p>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div class="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-600">Tanpa jadwal — dikontrol manual oleh admin</div>
+                                `}
+
+                                ${item.token_enabled ? `
+                                    <div class="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] text-indigo-600 font-semibold">🔑 Token Aktif</p>
+                                            <p class="font-mono font-bold text-indigo-800 tracking-[0.2em] text-base">${escHtml(item.token_code || '-')}</p>
+                                        </div>
+                                        <div class="flex gap-1.5 flex-shrink-0">
+                                            <button onclick="regenerateToken('${item.subject}')" class="px-2 py-1.5 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition text-xs">🎲 Ganti</button>
+                                            <button onclick="toggleSubjectToken('${item.subject}', false)" class="px-2 py-1.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-xs">Matikan</button>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <button onclick="toggleSubjectToken('${item.subject}', true)" class="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium">
+                                        🔓 Token Tidak Aktif — Klik untuk Aktifkan
+                                    </button>
+                                `}
+                            </div>
+                            <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex gap-2">
+                                ${!hasTime ? `
+                                    <button onclick="toggleSubjectActive('${item.subject}', ${!item.is_active})"
+                                        class="flex-1 px-3 py-2 ${item.is_active ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition text-xs font-semibold">
+                                        ${item.is_active ? '🔒 Nonaktifkan' : '✅ Aktifkan'}
+                                    </button>
+                                ` : ''}
+                                <button onclick="deleteSchedule('${item.subject}')"
+                                    class="${hasTime ? 'w-full' : 'flex-1'} px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-semibold">
+                                    🗑️ Hapus
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                };
+
+                const typeRowHTML = (t) => {
+                    const on = isExamTypeActive(t.code);
+                    return `
+                        <div class="flex items-center justify-between gap-3 p-3 rounded-xl border ${on ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}">
+                            <div class="flex items-center gap-2 min-w-0">
+                                ${examTypeBadgeHTML(t.code)}
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-800 leading-tight">${escHtml(t.name)}</p>
+                                    <p class="text-[11px] ${on ? 'text-green-700' : 'text-gray-400'}">${on ? 'Aktif' : 'Nonaktif'}</p>
+                                </div>
+                            </div>
+                            <button type="button" role="switch" aria-checked="${on}" title="${on ? 'Nonaktifkan' : 'Aktifkan'} ${escHtml(t.name)}"
+                                onclick="toggleExamType('${t.code}', ${!on})"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${on ? 'bg-green-500' : 'bg-gray-300'}">
+                                <span class="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}"></span>
+                            </button>
+                        </div>
+                    `;
+                };
+
+                const studentChoices = getActiveSubjects();
+
                 document.getElementById('adminContent').innerHTML = `
-                    <div class="space-y-6">
+                    <div class="space-y-5" style="font-family: ${customFont}, ${baseFontStack};">
                         <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
                             <div>
-                                <h2 class="font-bold mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.5}px; color: ${textColor};">📅 Jadwal Ujian</h2>
-                                <p class="text-sm text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">Kelola mata pelajaran yang dapat diakses siswa untuk ujian</p>
+                                <h2 class="font-bold mb-1" style="font-size: ${baseSize * 1.5}px; color: ${textColor};">📅 Jadwal Ujian</h2>
+                                <p class="text-sm text-gray-600">Aktifkan jenis ujian dan mata pelajaran. Siswa melihat gabungan keduanya.</p>
                             </div>
                             <button onclick="showAddScheduleForm()" 
                                 class="px-4 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition shadow-lg"
-                                style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
-                                ➕ Tambah Jadwal
+                                style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-size: ${baseSize * 0.875}px;">
+                                ➕ Tambah Mapel
                             </button>
                         </div>
-                        
-                        <div id="scheduleFormContainer" style="display: none;" class="bg-white rounded-2xl shadow-custom p-6"></div>
-                        
-                        <div class="bg-white rounded-2xl shadow-custom p-6">
-                            <h3 class="font-bold mb-4 flex items-center gap-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor};">
-                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                                Ujian Aktif Saat Ini
-                            </h3>
-                            <div id="activeSchedulesList" class="space-y-3">
-                                ${examSettings.active_subjects && examSettings.active_subjects.length > 0 ? 
-                                    examSettings.active_subjects.filter(item => {
-                                        if (!item.start_time || !item.end_time) return item.is_active;
-                                        const startTime = new Date(item.start_time);
-                                        const endTime = new Date(item.end_time);
-                                        return now >= startTime && now <= endTime;
-                                    }).map(item => `
-                                        <div class="border-2 border-green-500 bg-green-50 rounded-lg p-4">
-                                            <div class="flex justify-between items-start gap-3">
-                                                <div class="flex-1">
-                                                    <h4 class="font-bold text-lg mb-2" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${item.subject}</h4>
-                                                    ${item.start_time && item.end_time ? `
-                                                        <div class="text-sm text-gray-600 space-y-1" style="font-family: ${customFont}, ${baseFontStack};">
-                                                            <p>🕐 Mulai: ${new Date(item.start_time).toLocaleString('id-ID', { 
-                                                                day: '2-digit', 
-                                                                month: 'long', 
-                                                                year: 'numeric', 
-                                                                hour: '2-digit', 
-                                                                minute: '2-digit' 
-                                                            })}</p>
-                                                            <p>🕐 Selesai: ${new Date(item.end_time).toLocaleString('id-ID', { 
-                                                                day: '2-digit', 
-                                                                month: 'long', 
-                                                                year: 'numeric', 
-                                                                hour: '2-digit', 
-                                                                minute: '2-digit' 
-                                                            })}</p>
-                                                        </div>
-                                                    ` : `
-                                                        <p class="text-sm text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">
-                                                            ✅ Aktif Manual (Tanpa Jadwal)
-                                                        </p>
-                                                    `}
-                                                </div>
-                                                ${(!item.start_time || !item.end_time) ? `
-                                                <button onclick="toggleSubjectActive('${item.subject}', false)" 
-                                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm flex-shrink-0"
-                                                    style="font-family: ${customFont}, ${baseFontStack};">
-                                                    🔒 Nonaktifkan
-                                                </button>` : `<span class="text-xs text-gray-400 flex-shrink-0">Mengikuti jadwal</span>`}
-                                            </div>
-                                        </div>
-                                    `).join('') 
-                                    : 
-                                    `<div class="text-center py-12 text-gray-400">
-                                        <p class="text-xl mb-2">📭</p>
-                                        <p style="font-family: ${customFont}, ${baseFontStack};">Tidak ada ujian yang aktif saat ini</p>
-                                    </div>`
-                                }
-                            </div>
+
+                        <div id="scheduleFormContainer" style="display: none;" class="bg-white rounded-2xl shadow-custom p-4 md:p-6"></div>
+
+                        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+                            <p class="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-2">Pilihan yang muncul di siswa sekarang</p>
+                            ${studentChoices.length > 0
+                                ? `<div class="flex flex-wrap gap-2">${studentChoices.map(k => {
+                                    const p = parseSubjectKey(k);
+                                    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-lg text-sm font-medium text-gray-800">${examTypeBadgeHTML(p.code)}${escHtml(p.mapel)}</span>`;
+                                }).join('')}</div>`
+                                : `<p class="text-sm text-gray-400">Belum ada. Aktifkan minimal satu jenis ujian dan satu mapel.</p>`}
                         </div>
-                        
-                        <div class="bg-white rounded-2xl shadow-custom p-6">
-                            <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px; color: ${textColor};">
-                                📋 Semua Jadwal Ujian
-                            </h3>
-                            <div class="space-y-3">
-                                ${examSettings.active_subjects && examSettings.active_subjects.length > 0 ? 
-                                    examSettings.active_subjects.map(item => {
-                                        let isActive = false;
-                                        let statusBadge = '';
-                                        let statusColor = '';
-                                        
-                                        if (!item.start_time || !item.end_time) {
-                                            isActive = item.is_active;
-                                            statusBadge = item.is_active ? '✅ Aktif Manual' : '🔒 Nonaktif';
-                                            statusColor = item.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-                                        } else {
-                                            const startTime = new Date(item.start_time);
-                                            const endTime = new Date(item.end_time);
-                                            
-                                            if (now < startTime) {
-                                                statusBadge = '⏳ Belum Dimulai';
-                                                statusColor = 'bg-yellow-100 text-yellow-800';
-                                            } else if (now >= startTime && now <= endTime) {
-                                                isActive = true;
-                                                statusBadge = '✅ Sedang Berlangsung';
-                                                statusColor = 'bg-green-100 text-green-800';
-                                            } else {
-                                                statusBadge = '⏹️ Sudah Selesai';
-                                                statusColor = 'bg-gray-100 text-gray-800';
-                                            }
-                                        }
-                                        
-                                        return `
-                                            <div class="border-2 ${isActive ? 'border-green-500 bg-green-50' : 'border-gray-200'} rounded-lg p-4">
-                                                <div class="flex justify-between items-start gap-3 mb-3">
-                                                    <div class="flex-1">
-                                                        <div class="flex items-center gap-2 mb-2">
-                                                            <h4 class="font-bold text-lg" style="font-family: ${customFont}, ${baseFontStack}; color: ${textColor};">${item.subject}</h4>
-                                                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColor}" style="font-family: ${customFont}, ${baseFontStack};">
-                                                                ${statusBadge}
-                                                            </span>
-                                                        </div>
-                                                        ${item.start_time && item.end_time ? `
-                                                            <div class="text-sm text-gray-600 space-y-1" style="font-family: ${customFont}, ${baseFontStack};">
-                                                                <p>🕐 Mulai: ${new Date(item.start_time).toLocaleString('id-ID', { 
-                                                                    day: '2-digit', 
-                                                                    month: 'long', 
-                                                                    year: 'numeric', 
-                                                                    hour: '2-digit', 
-                                                                    minute: '2-digit' 
-                                                                })}</p>
-                                                                <p>🕐 Selesai: ${new Date(item.end_time).toLocaleString('id-ID', { 
-                                                                    day: '2-digit', 
-                                                                    month: 'long', 
-                                                                    year: 'numeric', 
-                                                                    hour: '2-digit', 
-                                                                    minute: '2-digit' 
-                                                                })}</p>
-                                                            </div>
-                                                        ` : `
-                                                            <p class="text-sm text-gray-600" style="font-family: ${customFont}, ${baseFontStack};">
-                                                                Tanpa Jadwal (Kontrol Manual)
-                                                            </p>
-                                                        `}
-                                                    </div>
-                                                    <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
-                                                        ${!item.start_time || !item.end_time ? `
-                                                            <button onclick="toggleSubjectActive('${item.subject}', ${!item.is_active})" 
-                                                                class="px-2 py-2 ${item.is_active ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition text-xs"
-                                                                style="font-family: ${customFont}, ${baseFontStack};">
-                                                                ${item.is_active ? '🔒 Nonaktifkan' : '✅ Aktifkan'}
-                                                            </button>
-                                                        ` : ''}
-                                                        <button onclick="deleteSchedule('${item.subject}')" 
-                                                            class="px-2 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-xs"
-                                                            style="font-family: ${customFont}, ${baseFontStack};">
-                                                            🗑️ Hapus
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="pt-3 border-t border-dashed border-gray-200">
-                                                    ${item.token_enabled ? `
-                                                        <div class="flex items-center justify-between gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
-                                                            <div>
-                                                                <p class="text-[11px] text-indigo-600 font-semibold">🔑 Token Aktif</p>
-                                                                <p class="font-mono font-bold text-indigo-800 tracking-[0.2em] text-lg">${item.token_code || '-'}</p>
-                                                            </div>
-                                                            <div class="flex gap-2">
-                                                                <button onclick="regenerateToken('${item.subject}')" class="px-2 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition text-xs">🎲 Ganti</button>
-                                                                <button onclick="toggleSubjectToken('${item.subject}', false)" class="px-2 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-xs">Matikan</button>
-                                                            </div>
-                                                        </div>
-                                                    ` : `
-                                                        <button onclick="toggleSubjectToken('${item.subject}', true)" class="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium">
-                                                            🔓 Token Tidak Aktif — Klik untuk Aktifkan
-                                                        </button>
-                                                    `}
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')
-                                    :
-                                    `<div class="text-center py-12 text-gray-400">
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+                            <section class="lg:col-span-1 bg-white rounded-2xl shadow-custom p-4 space-y-3">
+                                <div>
+                                    <h3 class="font-bold text-base" style="color: ${textColor};">Jenis Ujian</h3>
+                                    <p class="text-xs text-gray-500">Nyalakan jenis yang boleh dikerjakan siswa.</p>
+                                </div>
+                                ${EXAM_TYPES.map(typeRowHTML).join('')}
+                            </section>
+
+                            <section class="lg:col-span-2 space-y-3">
+                                <div>
+                                    <h3 class="font-bold text-base" style="color: ${textColor};">Mapel Ujian</h3>
+                                    <p class="text-xs text-gray-500">${entries.length} mapel · ${entries.filter(e => e.isActive).length} aktif saat ini</p>
+                                </div>
+                                ${entries.length > 0 ? `
+                                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        ${entries.map(mapelCardHTML).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="bg-white rounded-2xl shadow-custom text-center py-12 text-gray-400">
                                         <p class="text-xl mb-2">📭</p>
-                                        <p style="font-family: ${customFont}, ${baseFontStack};">Belum ada jadwal ujian</p>
-                                    </div>`
-                                }
-                            </div>
+                                        <p>Belum ada mapel di jadwal</p>
+                                    </div>
+                                `}
+                            </section>
                         </div>
                     </div>
                 `;
+            }
+
+            async function toggleExamType(code, newStatus) {
+                const list = examSettings.active_subjects;
+                let item = list.find(i => i && i.kind === 'exam_type' && i.code === code);
+                const created = !item;
+                const oldStatus = item ? item.is_active : false;
+                if (created) { item = { kind: 'exam_type', code, is_active: newStatus }; list.push(item); }
+                else item.is_active = newStatus;
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('settings').update({ jadwal: list }).eq('id', 1);
+                    if (error) throw error;
+                    showToast(`Jenis ujian ${code} ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}!`, 'success');
+                } catch (error) {
+                    console.error('Gagal ubah jenis ujian:', error);
+                    showToast('Gagal mengubah jenis ujian!', 'error');
+                    if (created) list.splice(list.indexOf(item), 1); else item.is_active = oldStatus;
+                } finally {
+                    hideLoading();
+                    renderScheduleSection();
+                }
             }
 
             function showAddScheduleForm() {
                 const { config, primaryColor, customFont, baseFontStack, baseSize } = RC;                
                 const container = document.getElementById('scheduleFormContainer');
                 container.style.display = 'block';
+                const inputClass = 'w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500';
+                const labelClass = 'block text-gray-700 font-medium mb-2';
+                const labelStyle = `font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;`;
+                const inputStyle = `font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;`;
                 container.innerHTML = `
-                    <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Jadwal Ujian Baru</h3>
+                    <h3 class="font-bold mb-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.125}px;">Tambah Mapel ke Jadwal</h3>
                     <form id="addScheduleForm" class="space-y-4">
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Mata Pelajaran</label>
-                            <select id="scheduleSubject" required
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${labelClass}" style="${labelStyle}">Mata Pelajaran</label>
+                            <select id="scheduleSubject" required class="${inputClass}" style="${inputStyle}">
                                 <option value="">Pilih Mata Pelajaran</option>
                                 ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
                             </select>
                         </div>
                         
                         <div>
-                            <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Tipe Jadwal</label>
-                            <select id="scheduleType" required onchange="toggleScheduleFields()"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                            <label class="${labelClass}" style="${labelStyle}">Tipe Jadwal</label>
+                            <select id="scheduleType" required onchange="toggleScheduleFields()" class="${inputClass}" style="${inputStyle}">
                                 <option value="">Pilih Tipe</option>
                                 <option value="manual">Manual (Kontrol Admin)</option>
                                 <option value="scheduled">Terjadwal (Otomatis)</option>
                             </select>
                         </div>
                         
-                        <div id="scheduledFields" style="display: none;" class="space-y-4">
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Waktu Mulai</label>
-                                <input type="datetime-local" id="scheduleStart"
-                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Waktu Selesai</label>
-                                <input type="datetime-local" id="scheduleEnd"
-                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                        <div id="scheduledFields" style="display: none;">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="${labelClass}" style="${labelStyle}">Waktu Mulai</label>
+                                    <input type="datetime-local" id="scheduleStart" class="${inputClass}" style="${inputStyle}">
+                                </div>
+                                <div>
+                                    <label class="${labelClass}" style="${labelStyle}">Waktu Selesai</label>
+                                    <input type="datetime-local" id="scheduleEnd" class="${inputClass}" style="${inputStyle}">
+                                </div>
                             </div>
                         </div>
                         
@@ -10294,7 +10623,7 @@
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="scheduleIsActive"
                                     class="w-5 h-5 text-[#006400] rounded">
-                                <span class="ml-3 text-gray-700" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">Aktifkan Sekarang</span>
+                                <span class="ml-3 text-gray-700" style="${inputStyle}">Aktifkan Sekarang</span>
                             </label>
                         </div>
 
@@ -10318,12 +10647,12 @@
                         <div class="flex gap-3">
                             <button type="submit" 
                                 class="px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
-                                style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                                style="background-color: ${primaryColor}; ${inputStyle}">
                                 Simpan
                             </button>
                             <button type="button" onclick="hideScheduleForm()" 
                                 class="px-6 py-2 bg-gray-500 rounded-lg text-white font-semibold hover:bg-gray-600 transition"
-                                style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">
+                                style="${inputStyle}">
                                 Batal
                             </button>
                         </div>
