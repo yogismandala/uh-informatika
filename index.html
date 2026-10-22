@@ -11138,11 +11138,25 @@
             init();
         </script>
         <script>
-            // Registrasi Service Worker agar aplikasi bisa diinstal (PWA)
             if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('service-worker.js')
-                        .catch((err) => console.warn('Gagal mendaftarkan service worker:', err));
+                window.addEventListener('load', async () => {
+                    try {
+                        const reg = await navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });
+                        reg.update();
+                    } catch (err) {
+                        console.warn('Gagal mendaftarkan service worker:', err);
+                    }
+
+                    let hadController = !!navigator.serviceWorker.controller;
+                    let reloading = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (!hadController) { hadController = true; return; }
+                        if (reloading) return;
+                        const sedangUjian = !!localStorage.getItem('currentExam') && !examSubmitted;
+                        if (sedangUjian) return;
+                        reloading = true;
+                        window.location.reload();
+                    });
                 });
             }
         </script>
