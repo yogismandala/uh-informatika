@@ -1,6 +1,6 @@
 {
-  "name": "Informatika - Ujian Online",
-  "short_name": "TIK 11 TNG",
+  "name": "ysm-exam",
+  "short_name": "11 TNG",
   "description": "Aplikasi ujian online - SMPN 11 Tangerang",
   "id": "/index.html",
   "start_url": "./",
