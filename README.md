@@ -1,1 +1,1 @@
-# uh-informatika
+# ysm-exam
