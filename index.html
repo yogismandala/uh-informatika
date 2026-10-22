@@ -637,7 +637,114 @@
             }
             function isExamTypeActive(code) {
                 return (examSettings.active_subjects || []).some(i => i && i.kind === 'exam_type' && i.code === code && i.is_active);
+                            }
+            // Jenis ujian yang dikunci admin untuk guru tertentu. Disimpan di settings.jadwal sebagai
+            // { kind: 'guru_exam_type', username, code }. Tidak ada item = guru bebas memilih jenis ujian.
+            function getGuruExamType(username) {
+                const item = (examSettings.active_subjects || []).find(i => i && i.kind === 'guru_exam_type' && i.username === username);
+                return item ? item.code : '';
             }
+            // Jenis ujian yang wajib dipakai guru yang sedang login ('' = bebas / bukan guru)
+            function myLockedExamType() {
+                if (!currentUser || String(currentUser.role).toLowerCase() !== 'guru') return '';
+                const code = getGuruExamType(currentUser.username);
+                return EXAM_TYPES.some(t => t.code === code) ? code : '';
+            }
+            function guruTypeAllowed(subjectKey) {
+                const lock = myLockedExamType();
+                return !lock || parseSubjectKey(subjectKey).code === lock;
+            }
+            // Jika guru dikunci, pilihan jenis ujian di form hanya berisi jenis itu
+            function lockExamTypeOptions(defaultHTML) {
+                const lock = myLockedExamType();
+                if (!lock) return defaultHTML;
+                const t = EXAM_TYPES.find(x => x.code === lock);
+                return `<option value="${escHtml(lock)}" selected>${escHtml(lock)} — ${escHtml(t.name)}</option>`;
+            }
+            // Dropdown pengaturan jenis ujian per guru (tabel Pengguna)
+            function guruTypeSelectHTML(username) {
+                const cur = getGuruExamType(username);
+                return `<select data-u="${escHtml(username)}" onchange="setGuruExamType(this.dataset.u, this.value)" class="px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+                    <option value="" ${cur === '' ? 'selected' : ''}>Bebas (pilih sendiri)</option>
+                    ${EXAM_TYPES.map(t => `<option value="${escHtml(t.code)}" ${cur === t.code ? 'selected' : ''}>Hanya ${escHtml(t.code)}</option>`).join('')}
+                </select>`;
+            }
+            // Pengaturan guru di tabel Pengguna: mapel, jenjang kelas, jenis ujian
+            function guruSettingsHTML(u) {
+                const un = escHtml(u.username);
+                const grades = new Set(String(u.class || '').match(/[789]/g) || []);
+                const subj = String(u.subject || '').trim();
+                const subjList = (subj && !SUBJECTS.includes(subj)) ? [subj, ...SUBJECTS] : SUBJECTS;
+                const rowCls = 'flex items-center gap-2';
+                const lblCls = 'w-11 flex-shrink-0 text-[10px] uppercase tracking-wide text-gray-400 font-semibold';
+                return `<div class="flex flex-col gap-1.5 min-w-[240px]">
+                    <div class="${rowCls}"><span class="${lblCls}">Mapel</span>
+                        <select data-u="${un}" onchange="setGuruSubject(this.dataset.u, this.value)" class="px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+                            <option value="" ${subj === '' ? 'selected' : ''}>Belum diatur</option>
+                            ${subjList.map(m => `<option value="${escHtml(m)}" ${m === subj ? 'selected' : ''}>${escHtml(m)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="${rowCls}"><span class="${lblCls}">Kelas</span>
+                        <div class="flex gap-1">
+                            ${['7', '8', '9'].map(g => `<button type="button" data-u="${un}" data-g="${g}" onclick="toggleGuruGrade(this.dataset.u, this.dataset.g)" title="Kelas ${g}" class="w-8 h-7 rounded-lg text-xs font-bold border transition ${grades.has(g) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'}">${g}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="${rowCls}"><span class="${lblCls}">Jenis</span>${guruTypeSelectHTML(u.username)}</div>
+                </div>`;
+            }
+            async function updateGuruField(username, patch, okMsg) {
+                const u = allUsers.find(x => x.username === username);
+                if (!u) return;
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('users').update(patch).eq('username', username);
+                    if (error) throw error;
+                    Object.assign(u, patch);
+                    showToast(okMsg, 'success');
+                } catch (err) {
+                    console.error('Gagal menyimpan pengaturan guru:', err);
+                    showToast('Gagal menyimpan: ' + (err.message || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
+            }
+            function setGuruSubject(username, subject) {
+                return updateGuruField(username, { subject }, subject ? `Mapel guru: ${subject}` : 'Mapel guru dikosongkan');
+            }
+            function toggleGuruGrade(username, grade) {
+                const u = allUsers.find(x => x.username === username);
+                if (!u) return;
+                const set = new Set(String(u.class || '').match(/[789]/g) || []);
+                if (set.has(grade)) set.delete(grade); else set.add(grade);
+                const value = [...set].sort().join('');
+                return updateGuruField(username, { class: value }, value ? `Kelas guru: ${value.split('').join(', ')}` : 'Kelas guru dikosongkan');
+            }
+            async function setGuruExamType(username, code) {
+                const list = examSettings.active_subjects;
+                const backup = [...list];
+                const idx = list.findIndex(i => i && i.kind === 'guru_exam_type' && i.username === username);
+                if (idx >= 0) list.splice(idx, 1);
+                if (code) list.push({ kind: 'guru_exam_type', username, code });
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('settings').update({ jadwal: list }).eq('id', 1);
+                    if (error) throw error;
+                    showToast(code ? `Guru dikunci ke jenis ${code}` : 'Guru bebas memilih jenis ujian', 'success');
+                } catch (err) {
+                    console.error('Gagal menyimpan jenis ujian guru:', err);
+                    showToast('Gagal menyimpan pengaturan guru!', 'error');
+                    list.splice(0, list.length, ...backup);
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
+            }
+
+            function isGuruUser() {
+                return !!currentUser && String(currentUser.role).toLowerCase() === 'guru';
+            }
+            
             // Label kecil kode jenis ujian (ditaruh di sebelah kiri nama mapel)
             function examTypeBadgeHTML(code) {
                 if (!code) return '';
@@ -1883,7 +1990,7 @@
                     try {
                         // Tarik SEMUA DATA secara Paralel (bersamaan) agar jauh lebih cepat
                         const [usersData, resultsData, questionsData] = await Promise.all([
-                            fetchAllRows('users', 'id, username, name, role, class, is_login'),
+                            fetchAllRows('users', 'id, username, name, role, class, subject, is_login'),
                             fetchAllRows('examresult', '*', 'timestamp'),
                             fetchAllQuestions()
                         ]);
@@ -5126,7 +5233,7 @@
                 if (head) {
                     head.innerHTML = tab === 'siswa'
                         ? `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Siswa</th><th class="${thCls}">Kelas</th><th class="${thCls}">Status Sesi</th><th class="${thCls} text-right">Aksi</th></tr>`
-                        : `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Pengguna</th><th class="${thCls}">Role</th><th class="${thCls} text-right">Aksi</th></tr>`;
+                        : `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Pengguna</th><th class="${thCls}">Role</th><th class="${thCls}">Pengaturan Guru</th><th class="${thCls} text-right">Aksi</th></tr>`;
                 }
 
                 updateUserStatCards();
@@ -5160,7 +5267,7 @@
                 pageState.users = pg.current;
                 renderPager('usersPager', pg, 'users');
 
-                const colCount = tab === 'siswa' ? 4 : 3;
+                const colCount = 4;
                 if (list.length === 0) {
                     tbody.innerHTML = `
                         <tr><td colspan="${colCount}" class="text-center py-14">
@@ -5207,6 +5314,7 @@
                                     ${isAdminRole ? '👨‍💼 Admin' : '👨‍🏫 Guru'}
                                 </span>
                             </td>
+                            <td class="px-4 py-3">${isAdminRole ? '<span class="text-xs text-gray-300">—</span>' : guruSettingsHTML(user)}</td>
                             <td class="px-4 py-3"><div class="flex justify-end gap-1.5">${delBtn}</div></td>
                         </tr>`;
                 }).join('');
@@ -6193,6 +6301,8 @@
             }
 
             function bankSoalTypeOptions() {
+                const lock = myLockedExamType();
+                if (lock) return lockExamTypeOptions('');
                 const sel = window.selectedBankSoalType || '';
                 const hasLegacy = allQuestions.some(q => q.subject && !parseSubjectKey(q.subject).code);
                 return EXAM_TYPES.map(t => `<option value="${escHtml(t.code)}" ${sel === t.code ? 'selected' : ''}>${escHtml(t.code)} — ${escHtml(t.name)}</option>`).join('') +
@@ -6203,6 +6313,7 @@
                 const { config, primaryColor, customFont, baseFontStack, baseSize, textColor } = RC;                
                 const isAdmin = currentUser && currentUser.role === 'admin';
                 const targetContainer = isAdmin ? document.getElementById('adminContent') : document.getElementById('guruContent');
+                if (myLockedExamType()) window.selectedBankSoalType = myLockedExamType(); // guru dikunci admin ke satu jenis ujian
                 const uniqueSubjects = [...new Set(allQuestions.map(q => baseSubject(q.subject)))].filter(Boolean);
                 const uniqueClasses = [...new Set(allQuestions.map(q => q.question_class ? q.question_class.charAt(0) : ''))].filter(Boolean).sort();
                 
@@ -6229,7 +6340,7 @@
                     totalSemuaSoal = allQuestions.length;
                     totalSoalGuru = allQuestions.filter(q => {
                         const grade = q.question_class ? q.question_class.charAt(0) : ''; 
-                        return baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                        return baseSubject(q.subject) === currentUser.subject && guruTypeAllowed(q.subject) && currentUser.class && currentUser.class.includes(grade);
                     }).length;
                 }
 
@@ -6333,7 +6444,7 @@
 
                     const guruControls = `
                         <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
-                            <select id="filterJenisBankSoal" onchange="window.selectedBankSoalType = this.value; resetQuestionPages(); renderQuestionsSection()" class="col-span-2 sm:col-span-1 px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-[11px] bg-white">
+                                <select id="filterJenisBankSoal" ${myLockedExamType() ? 'disabled' : ''} onchange="window.selectedBankSoalType = this.value; resetQuestionPages(); renderQuestionsSection()" class="col-span-2 sm:col-span-1 px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-[11px] bg-white">
                                 <option value="">Semua Jenis Ujian</option>
                                 ${bankSoalTypeOptions()}
                             </select>
@@ -6361,7 +6472,7 @@
                                     <span class="p-2.5 bg-blue-50 rounded-lg">📝</span>
                                 </div>
                                 <p id="statTotalGuru" class="font-bold text-[#006400] text-2xl md:text-3xl" style="font-family: ${customFont}, ${baseFontStack};">${totalSoalGuru}</p>
-                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.subject || 'Mapel Anda'}</p>
+                                <p class="text-gray-500 text-xs mt-1" style="font-family: ${customFont}, ${baseFontStack};">${myLockedExamType() ? myLockedExamType() + ' ' : ''}${currentUser.subject || 'Mapel Anda'}</p>
                             </div>
                         </div>
                     `;
@@ -6821,7 +6932,7 @@
                             <button onclick="pvToggleDoubt()" class="${btn} bg-yellow-500 hover:bg-yellow-600">⚠️ Ragu-ragu</button>
                             ${isLast
                                 ? `<button onclick="pvFinish()" class="${btn} bg-green-500 hover:bg-green-600 font-bold">✅ Selesai</button>`
-                                : `<button onclick="pvGo(${s.idx + 1})" class="${btn} bg-[#006400] hover:bg-green-600">Berikutnya ➡️</button>`}
+                                : `<button onclick="pvGo(${s.idx + 1})" class="${btn} bg-[#006400] hover:bg-green-600">Berikutnya ></button>`}
                         </div>
                     </div>
                     <div class="${s.navOpen ? '' : 'hidden'} absolute inset-0 z-10 bg-black/60 flex items-center justify-center p-3" onclick="if(event.target===this) pvToggleNav()">
@@ -7115,7 +7226,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-100 p-4 rounded-xl">
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenjang Kelas</label>
-                                    <select id="edit-class" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+                                    <select id="edit-class" ${isGuruUser() ? 'disabled' : ''} class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
                                         <option value="7" ${q.question_class == '7' ? 'selected' : ''}>Kelas 7</option>
                                         <option value="8" ${q.question_class == '8' ? 'selected' : ''}>Kelas 8</option>
                                         <option value="9" ${q.question_class == '9' ? 'selected' : ''}>Kelas 9</option>
@@ -7124,16 +7235,16 @@
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenis Ujian</label>
                                     <select id="edit-exam-type" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
-                                        ${(() => {
+                                        ${lockExamTypeOptions((() => {
                                             const qp = parseSubjectKey(q.subject);
                                             return (qp.code ? '' : '<option value="" selected>— Tanpa jenis (data lama) —</option>') +
                                                 EXAM_TYPES.map(t => `<option value="${escHtml(t.code)}" ${t.code === qp.code ? 'selected' : ''}>${escHtml(t.code)} — ${escHtml(t.name)}</option>`).join('');
-                                        })()}
+                                        })())}
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Mata Pelajaran</label>
-                                    <select id="edit-subject" class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+                                    <select id="edit-subject" ${isGuruUser() ? 'disabled' : ''} class="w-full p-2 border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
                                         ${(() => {
                                             const list = (typeof SUBJECTS !== 'undefined' ? [...SUBJECTS] : ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN', 'IPS', 'Informatika']);
                                             const qMapel = baseSubject(q.subject);
@@ -7323,8 +7434,8 @@
                     confirmButtonText: '💾 Update',
                     confirmButtonColor: '#10B981',
                     preConfirm: async () => {
-                        const qClass = document.getElementById('edit-class').value;
-                        const qSubject = makeSubjectKey(document.getElementById('edit-exam-type').value, document.getElementById('edit-subject').value);
+                        const qClass = isGuruUser() ? q.question_class : document.getElementById('edit-class').value;
+                        const qSubject = makeSubjectKey(myLockedExamType() || document.getElementById('edit-exam-type').value, (isGuruUser() ? baseSubject(q.subject) : document.getElementById('edit-subject').value));
                         const qType = document.getElementById('edit-type').value;
 
                         const processEditor = async (editorInstance) => {
@@ -7503,7 +7614,7 @@
                                 <div>
                                     <label class="block text-xs font-black text-gray-500 uppercase mb-1">Jenis Ujian</label>
                                     <select id="add-exam-type" class="w-full p-3 md:p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 truncate">
-                                        ${examTypeOptions}
+                                        ${lockExamTypeOptions(examTypeOptions)}
                                     </select>
                                 </div>
                                 <div>
@@ -7656,7 +7767,7 @@
                     preConfirm: async () => {
                         const qClass = document.getElementById('add-class').value;
                         const qMapel = document.getElementById('add-subject').value;
-                        const qJenis = document.getElementById('add-exam-type').value;
+                        const qJenis = myLockedExamType() || document.getElementById('add-exam-type').value;
                         const qSubject = (qMapel && qJenis) ? makeSubjectKey(qJenis, qMapel) : '';
 
                         try {
@@ -9187,7 +9298,7 @@
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Jenjang Kelas</label>
                                     <select id="wordImportClass" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">${classOptions}</select>
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Jenis Ujian</label>
-                                    <select id="wordImportExamType" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">${examTypeOptions}</select>
+                                    <select id="wordImportExamType" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">${lockExamTypeOptions(examTypeOptions)}</select>
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Mata Pelajaran</label>
                                     <select id="wordImportSubject" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">${subjectOptions}</select>
                                 </div>
@@ -9196,7 +9307,7 @@
                             confirmButtonText: '🚀 Import Sekarang',
                             cancelButtonText: 'Batal',
                             preConfirm: () => {
-                                const jenis = document.getElementById('wordImportExamType').value;
+                                const jenis = myLockedExamType() || document.getElementById('wordImportExamType').value;
                                 if (!jenis) {
                                     Swal.showValidationMessage('Pilih jenis ujian terlebih dahulu');
                                     return false;
@@ -9296,7 +9407,7 @@
                     } else {
                         accessibleQuestions = allQuestions.filter(q => {
                             const grade = q.question_class ? String(q.question_class).charAt(0) : '';
-                            return baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                            return baseSubject(q.subject) === currentUser.subject && guruTypeAllowed(q.subject) && currentUser.class && currentUser.class.includes(grade);
                         });
                     }
 
@@ -9906,7 +10017,7 @@
                     } else {
                         accessibleQuestions = allQuestions.filter(q => {
                             const grade = q.question_class ? String(q.question_class).charAt(0) : '';
-                            return baseSubject(q.subject) === currentUser.subject && currentUser.class && currentUser.class.includes(grade);
+                            return baseSubject(q.subject) === currentUser.subject && guruTypeAllowed(q.subject) && currentUser.class && currentUser.class.includes(grade);
                         });
                     }
 
@@ -10240,7 +10351,7 @@
                             };
 
                             // Validasi data baris minimal harus punya mata pelajaran dan teks soal
-                            if (payload.subject && payload.question_text) {
+                            if (payload.subject && payload.question_text && guruTypeAllowed(payload.subject)) {
                                 const { error } = await dbClient.from('questions').insert([payload]);
                                 if (error) {
                                     console.error('Gagal simpan baris soal:', error.message);
@@ -10974,7 +11085,7 @@
                     
                     if (target === 'users') {
                         // 1. AMBIL DATA USERS DARI SUPABASE
-                        const usersData = await fetchAllRows('users', 'id, username, name, role, class, is_login');
+                        const usersData = await fetchAllRows('users', 'id, username, name, role, class, subject, is_login');
                         
                         allUsers = usersData || [];
                         renderUsersSection();
