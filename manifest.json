@@ -1,14 +1,14 @@
 {
-  "name": "ysm-exam",
+  "name": "SMPN 11 Tangerang - Ujian Online",
   "short_name": "11 TNG",
   "description": "Aplikasi ujian online - SMPN 11 Tangerang",
-  "id": "/index.html",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#dbeafe",
-  "theme_color": "#1e3a8a",
+  "background_color": "#ffffff",
+  "theme_color": "#006400",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -21,12 +21,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "icons/icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }
